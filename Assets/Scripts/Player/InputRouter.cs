@@ -29,7 +29,7 @@ public class InputRouter : MonoBehaviour
     private void Start()
     {
         
-        var player = FindObjectOfType<PlayerMovement>();
+        var player = FindFirstObjectByType<PlayerMovement>();
         if (player != null)
             SetController(player);
     }
@@ -66,7 +66,7 @@ public class InputRouter : MonoBehaviour
     public void DisableInput()
     {
         inputEnabled = false;
-        if (showLogs) Debug.Log("[InputRouter] Ввод отключён (переход)");
+        if (showLogs) Debug.Log("[InputRouter] Ввод отключён (переходим междуу траспортами)");
     }
 
     public void EnableInput()
