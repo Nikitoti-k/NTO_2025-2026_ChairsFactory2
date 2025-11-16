@@ -58,10 +58,10 @@ public class TransportMovement : MonoBehaviour, IControllable
     }
 
     public void HandleRotation(Vector2 mouseDelta) { }
-    public void HandleInteract(bool pressed) { if (pressed) Debug.Log("Клаксон!"); }
+    public void HandlePhysicalInteract(bool pressed, bool held){}
     public void HandleFlare(bool pressed) { }
 
-    public void HandleUseTool(bool pressed, bool held)
+    public void HandleInteract(bool pressed)
     {
         if (!pressed || playerTransform == null) return;
 
@@ -83,7 +83,7 @@ public class TransportMovement : MonoBehaviour, IControllable
         
         inputRouter.SetController(playerMovement);
 
-        Debug.Log("Высадка завершена!");
+        Debug.Log("Высадка");
     }
 
     public Vector3 GetMountPosition()
@@ -112,17 +112,5 @@ public class TransportMovement : MonoBehaviour, IControllable
 
     private bool isGrounded;
 
-    private void OnDrawGizmosSelected()
-    {
-        Gizmos.color = isGrounded ? Color.green : Color.red;
-        Gizmos.DrawRay(debugRayStart, Vector3.down * debugRayLength);
-
-        Gizmos.color = Color.cyan;
-        Vector3 mountPos = transform.TransformPoint(GetMountPosition());
-        Gizmos.DrawWireSphere(mountPos, 0.3f);
-
-        Gizmos.color = Color.magenta;
-        Vector3 dismountPos = transform.position + transform.TransformDirection(dismountOffset);
-        Gizmos.DrawWireSphere(dismountPos, 0.3f);
-    }
+   
 }

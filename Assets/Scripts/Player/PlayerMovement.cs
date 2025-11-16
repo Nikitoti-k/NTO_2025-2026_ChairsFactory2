@@ -42,10 +42,10 @@ public class PlayerMovement : MonoBehaviour, IControllable
     }
 
     public void HandleRotation(Vector2 mouseDelta) { }
-    public void HandleInteract(bool pressed) { }
+    public void HandlePhysicalInteract(bool pressed, bool held) { }
     public void HandleFlare(bool pressed) { }
 
-    public void HandleUseTool(bool pressed, bool held)
+    public void HandleInteract(bool pressed)
     {
         if (!pressed || isMounting) return;
 

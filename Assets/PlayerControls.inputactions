@@ -34,7 +34,7 @@
                     "initialStateCheck": false
                 },
                 {
-                    "name": "UseToolButton",
+                    "name": "Physical_Interact_Button",
                     "type": "Button",
                     "id": "78b7cfe6-68b7-4009-a495-b7f9006cabb3",
                     "expectedControlType": "",
@@ -137,7 +137,7 @@
                     "interactions": "",
                     "processors": "",
                     "groups": "",
-                    "action": "UseToolButton",
+                    "action": "Physical_Interact_Button",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },

@@ -4,7 +4,7 @@ public interface IControllable
     void HandleMovement(Vector2 movementInput);
     void HandleRotation(Vector2 mouseDelta);
     void HandleInteract(bool pressed);
-    void HandleUseTool(bool pressed, bool held);
+    void HandlePhysicalInteract(bool pressed, bool held);
     void HandleFlare(bool pressed);
 }
 
@@ -39,7 +39,7 @@ public class InputRouter : MonoBehaviour
         if (CurrentController == null || !inputEnabled || InputManager.Instance == null) return;
 
         CurrentController.HandleInteract(InputManager.Instance.InteractPressed);
-        CurrentController.HandleUseTool(InputManager.Instance.UseToolPressed, InputManager.Instance.UseToolHeld);
+        CurrentController.HandlePhysicalInteract(InputManager.Instance.Physical_Interact_Button_Pressed, InputManager.Instance.Physical_Interact_Button_Held);
         CurrentController.HandleFlare(InputManager.Instance.FlarePressed);
     }
 

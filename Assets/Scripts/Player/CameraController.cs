@@ -8,10 +8,10 @@ public class CameraController : MonoBehaviour
         FPS  
     }
 
-    [Header("Следование за игроком")]
+    [Header("Высота камер (глаз)")]
     public float eyeHeight = 1.6f;
 
-    [Header("Чувствительность мыши (только FPS)")]
+    [Header("Чувствительность мыши (для FPS)")]
     public float mouseSensitivityX = 2f;
     public float mouseSensitivityY = 2f;
     public float pitchMin = -80f;
