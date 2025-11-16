@@ -74,11 +74,8 @@ public class CanGrab : MonoBehaviour
         currentTransform = null;
         isPulling = false;
     }
-
     private void FixedUpdate()
     {
-        if (currentRB == null) return;
-
         if (isPulling)
         {
             Vector3 targetPos = grabPoint.position;
@@ -96,7 +93,13 @@ public class CanGrab : MonoBehaviour
                     currentTransform.position, targetPos, pullSpeed * Time.fixedDeltaTime);
             }
         }
-        else
+    }
+    private void LateUpdate()
+    {
+        if (currentRB == null) return;
+
+
+        if (!isPulling)
         {
             currentTransform.position = grabPoint.TransformPoint(lockedOffset);
             currentTransform.rotation = grabPoint.rotation * lockedRotation;
