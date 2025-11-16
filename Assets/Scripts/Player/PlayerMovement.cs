@@ -24,13 +24,25 @@ public class PlayerMovement : MonoBehaviour, IControllable
     private Vector3 debugRayStart;
     private float debugRayLength;
     private bool debugIsGrounded;
+    [Header("Grabber")]
+    [SerializeField] private CanGrab objectGrabber; // Автоматически найдётся
 
     private void Start()
     {
         rb = GetComponent<Rigidbody>();
         rb.freezeRotation = true;
         rb.linearDamping = 2f;
-        inputRouter = FindObjectOfType<InputRouter>();
+        inputRouter = FindFirstObjectByType<InputRouter>();
+
+        
+        if (objectGrabber == null)
+            objectGrabber = FindFirstObjectByType<CanGrab>();
+    }
+
+    
+    public void HandlePhysicalInteract(bool pressed, bool held)
+    {
+        objectGrabber?.HandlePhysicalInteract(pressed, held);
     }
 
     public void HandleMovement(Vector2 input)
@@ -42,7 +54,7 @@ public class PlayerMovement : MonoBehaviour, IControllable
     }
 
     public void HandleRotation(Vector2 mouseDelta) { }
-    public void HandlePhysicalInteract(bool pressed, bool held) { }
+   
     public void HandleFlare(bool pressed) { }
 
     public void HandleInteract(bool pressed)

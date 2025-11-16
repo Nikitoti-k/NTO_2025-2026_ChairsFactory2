@@ -1,21 +1,20 @@
 using UnityEngine;
-using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody))]
 public class TransportMovement : MonoBehaviour, IControllable
 {
-    [Header("Movement")]
+    [Header("Передвижение")]
     public float moveSpeed = 15f;
     public float turnSpeed = 90f;
 
-    [Header("Ground Check")]
+    [Header("Проверка повехности")]
     public float groundCheckDistance = 0.2f;
     public LayerMask groundMask = -1;
 
-    [Header("Dismount")]
+    [Header("Высадка")]
     public Vector3 dismountOffset = new Vector3(2f, 0f, 0f);
 
-    [Header("Mount Point")]
+    [Header("Место 'сидения'")]
     public Transform seatTransform;
     public Vector3 fallbackMountOffset = new Vector3(0, 1f, 0);
 
@@ -37,12 +36,12 @@ public class TransportMovement : MonoBehaviour, IControllable
         rb.linearDamping = 2f;
         rb.angularDamping = 5f;
 
-        inputRouter = FindObjectOfType<InputRouter>();
-        playerMovement = FindObjectOfType<PlayerMovement>();
+        inputRouter = FindFirstObjectByType<InputRouter>();
+        playerMovement = FindFirstObjectByType<PlayerMovement>();
         playerTransform = playerMovement?.transform;
 
         if (playerTransform == null)
-            Debug.LogError("TransportMovement: Player не найден на сцене!");
+            Debug.LogError("TransportMovement: Player не найден!");
     }
 
     public void HandleMovement(Vector2 input)
