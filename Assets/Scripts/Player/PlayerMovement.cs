@@ -55,7 +55,9 @@ public class PlayerMovement : MonoBehaviour, IControllable
 
     public void HandleRotation(Vector2 mouseDelta) { }
    
-    public void HandleFlare(bool pressed) { }
+    public void HandleFlare(bool pressed) {
+        GetComponent<FlareController>()?.ThrowFlare(pressed);
+    }
 
     public void HandleInteract(bool pressed)
     {
