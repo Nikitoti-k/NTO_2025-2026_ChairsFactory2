@@ -38,8 +38,25 @@ public class InputRouter : MonoBehaviour
     {
         if (CurrentController == null || !inputEnabled || InputManager.Instance == null) return;
 
+        var playerMovement = CurrentController as PlayerMovement;
+        var flareController = playerMovement?.GetComponent<FlareController>();
+
+        bool holdingFlare = flareController != null && flareController.IsHoldingFlare;
+
+        // ‘акел в руках Ч блокирует ¬—®, кроме броска факела
+        if (holdingFlare)
+        {
+            CurrentController.HandleFlare(InputManager.Instance.FlarePressed);
+            // Ѕлокируем всЄ остальное!
+            return;
+        }
+
+        // ≈сли не держим факел Ч обычна€ логика
         CurrentController.HandleInteract(InputManager.Instance.InteractPressed);
-        CurrentController.HandlePhysicalInteract(InputManager.Instance.Physical_Interact_Button_Pressed, InputManager.Instance.Physical_Interact_Button_Held);
+        CurrentController.HandlePhysicalInteract(
+            InputManager.Instance.Physical_Interact_Button_Pressed,
+            InputManager.Instance.Physical_Interact_Button_Held
+        );
         CurrentController.HandleFlare(InputManager.Instance.FlarePressed);
     }
 
