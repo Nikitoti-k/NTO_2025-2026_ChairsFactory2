@@ -8,15 +8,17 @@ public class CanGrab : MonoBehaviour
     [SerializeField] private float maxGrabDistance = 3.5f;
     [SerializeField] private LayerMask grabbableLayerMask = -1;
     [SerializeField] private float pullSpeed = 20f;
-    [SerializeField] private float throwForce = 10f;
 
     [Header("Отпускание при столкновении")]
     [SerializeField] private bool releaseOnCollision = true;
-    [SerializeField] private float minReleaseImpulse = 2f; 
+    [SerializeField] private LayerMask collisionReleaseMask = -1;
 
     private Camera cam;
     private Rigidbody currentRB;
+    private Transform currentTransform;
     private GrabbableItem currentItem;
+    private Vector3 lockedOffset;
+    private Quaternion lockedRotation;
 
     private bool isPulling = false;
     private bool isSnappingToZone = false;
@@ -27,13 +29,23 @@ public class CanGrab : MonoBehaviour
         if (grabPoint == null) grabPoint = transform;
     }
 
-    private void OnEnable() => GrabbableItem.OnGrabbedCollision += HandleCollision;
-    private void OnDisable() => GrabbableItem.OnGrabbedCollision -= HandleCollision;
+    private void OnEnable()
+    {
+        GrabbableItem.OnGrabbedCollision += HandleGrabbedObjectCollision;
+    }
+
+    private void OnDisable()
+    {
+        GrabbableItem.OnGrabbedCollision -= HandleGrabbedObjectCollision;
+    }
+
+   
 
     public bool IsHoldingObject() => currentRB != null;
-    public GrabbableItem GetGrabbedItem() => currentItem;
-    public void ForceRelease() => ReleaseObject();
+    public GrabbableItem GetGrabbedItem() => currentItem;           
+    public void ForceRelease() => ReleaseObject(true);
 
+    
     public void HandlePhysicalInteract(bool pressed, bool held)
     {
         if (isSnappingToZone) return;
@@ -41,92 +53,81 @@ public class CanGrab : MonoBehaviour
         if (held && currentRB == null)
             TryGrabObject();
         else if (!held && currentRB != null)
-            ReleaseObject(throwForce); // можно бросать
+            ReleaseObject(false);
     }
 
     public void StartSnappingToZone() => isSnappingToZone = true;
     public void EndSnappingToZoneComplete() => isSnappingToZone = false;
 
+   
     private void TryGrabObject()
     {
+        if (isSnappingToZone) return;
+
         if (!Physics.Raycast(cam.transform.position, cam.transform.forward, out RaycastHit hit, maxGrabDistance, grabbableLayerMask))
             return;
 
         Rigidbody rb = hit.rigidbody;
-        if (rb == null) return;
+        if (rb == null || rb.isKinematic) return;
 
-        var item = hit.collider.GetComponent<GrabbableItem>();
+        GrabbableItem item = hit.collider.GetComponent<GrabbableItem>();
         item?.GetComponentInParent<SnapZone>()?.OnItemGrabbedFromZone();
 
+        // Захват
         currentRB = rb;
+        currentTransform = rb.transform;
         currentItem = item;
-        isPulling = true;
 
-        
+        rb.isKinematic = true;
+        isPulling = true;
     }
 
-   
-    private void ReleaseObject(float throwMultiplier = 0f)
+    private void ReleaseObject(bool force = false)
     {
         if (currentRB == null) return;
 
-        if (throwMultiplier > 0f)
-        {
-            Vector3 throwDir = cam.transform.forward + Vector3.up * 0.2f;
-            currentRB.linearVelocity = throwDir * throwForce * throwMultiplier;
-        }
+        currentRB.isKinematic = false;
 
         currentRB = null;
+        currentTransform = null;
         currentItem = null;
         isPulling = false;
         isSnappingToZone = false;
     }
 
-    
     private void FixedUpdate()
     {
-        if (currentRB == null || isSnappingToZone) return;
+        if (!isPulling || currentTransform == null) return;
 
-        Vector3 targetPos = grabPoint.position;
-        Quaternion targetRot = grabPoint.rotation;
+        Vector3 target = grabPoint.position;
+        float dist = Vector3.Distance(currentTransform.position, target);
 
-        if (isPulling)
+        if (dist < 0.05f)
         {
-            Vector3 direction = (targetPos - currentRB.position).normalized;
-            float distance = Vector3.Distance(currentRB.position, targetPos);
-
-            if (distance < 0.1f)
-                isPulling = false;
-
-            currentRB.linearVelocity = direction * pullSpeed;
+            isPulling = false;
+            lockedOffset = grabPoint.InverseTransformPoint(currentTransform.position);
+            lockedRotation = Quaternion.Inverse(grabPoint.rotation) * currentTransform.rotation;
         }
         else
         {
-           
-            Vector3 velocity = (targetPos - currentRB.position) * 20f;
-            currentRB.linearVelocity = velocity;
-
-            
-            currentRB.angularVelocity = QuaternionToAngularVelocity(targetRot * Quaternion.Inverse(currentRB.rotation)) * 30f;
+            Vector3 newPos = Vector3.MoveTowards(currentTransform.position, target, pullSpeed * Time.fixedDeltaTime);
+            currentTransform.position = newPos;
         }
     }
 
-    private Vector3 QuaternionToAngularVelocity(Quaternion delta)
+    private void LateUpdate()
     {
-        delta.ToAngleAxis(out float angleDeg, out Vector3 axis);
-        if (angleDeg > 180) angleDeg -= 360;
-        return axis * (angleDeg * Mathf.Deg2Rad);
+        if (currentRB == null || isPulling || isSnappingToZone) return;
+
+        currentTransform.position = grabPoint.TransformPoint(lockedOffset);
+        currentTransform.rotation = grabPoint.rotation * lockedRotation;
     }
 
-    
-    private void HandleCollision(GrabbableItem item, Collision collision)
+    private void HandleGrabbedObjectCollision(GrabbableItem item, Collision collision)
     {
         if (item != currentItem || !releaseOnCollision || isPulling || isSnappingToZone) return;
+        if (((1 << collision.collider.gameObject.layer) & collisionReleaseMask) == 0) return;
 
-        float impulse = collision.impulse.magnitude;
-        if (impulse > minReleaseImpulse)
-        {
-            ReleaseObject(); 
-        }
+        ReleaseObject();
     }
 }
