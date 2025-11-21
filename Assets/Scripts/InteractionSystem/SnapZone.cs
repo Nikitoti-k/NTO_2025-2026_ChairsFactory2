@@ -11,16 +11,19 @@ public class SnapZone : MonoBehaviour
     [SerializeField, Min(0.1f)] private float minSnapDuration = 0.3f;
     [SerializeField] private AnimationCurve snapCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
 
+    // ←←← ВАЖНО: сохраняем оригинальный слой объекта!
     private GrabbableItem attachedItem;
+    private int originalLayer;
     private Coroutine snapRoutine;
 
     public bool IsOccupied => attachedItem != null;
 
     private void Awake()
     {
-        // Установка триггера
         if (TryGetComponent<Collider>(out var col))
             col.isTrigger = true;
+
+        if (snapPoint == null) snapPoint = transform;
     }
 
     public bool CanSnap(GrabbableItem item)
@@ -33,15 +36,17 @@ public class SnapZone : MonoBehaviour
 
     public void Snap(GrabbableItem item)
     {
-        if (snapRoutine != null) StopCoroutine(snapRoutine);
+        if (snapRoutine != null) return;
 
         attachedItem = item;
+        originalLayer = item.gameObject.layer;               // ← запоминаем слой
+        item.gameObject.layer = LayerMask.NameToLayer("Ignore Raycast"); // ← убираем из рейкаста на время анимации
+
         snapRoutine = StartCoroutine(Snapping(item));
     }
 
     private IEnumerator Snapping(GrabbableItem item)
     {
-        // Анимация snap
         CanGrab grabber = FindFirstObjectByType<CanGrab>();
         grabber?.StartSnappingToZone();
 
@@ -49,9 +54,18 @@ public class SnapZone : MonoBehaviour
         Collider col = item.GetComponent<Collider>();
 
         bool wasKinematic = rb ? rb.isKinematic : true;
+        bool hadGravity = rb ? rb.useGravity : true;
 
         if (col) col.isTrigger = true;
-        if (rb) rb.isKinematic = true;
+        if (rb)
+        {
+            rb.isKinematic = true;
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+        }
+
+        // Сразу отпускаем из руки
+        grabber?.ForceRelease();
 
         Vector3 startPos = item.transform.position;
         Quaternion startRot = item.transform.rotation;
@@ -69,27 +83,42 @@ public class SnapZone : MonoBehaviour
             yield return null;
         }
 
+        // Финальная привязка
         item.transform.SetParent(snapPoint);
         item.transform.localPosition = Vector3.zero;
         item.transform.localRotation = Quaternion.identity;
 
+        // Возвращаем коллайдер и физику
         if (col) col.isTrigger = false;
         if (rb)
         {
-            rb.isKinematic = false;
-            rb.useGravity = true;
+            rb.isKinematic = wasKinematic;
+            rb.useGravity = hadGravity;
             rb.linearVelocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
         }
 
-        item.gameObject.layer = LayerMask.NameToLayer("Default");
+        // ←←← ВОЗВРАЩАЕМ ОРИГИНАЛЬНЫЙ СЛОЙ (чтобы можно было снова взять!)
+        item.gameObject.layer = originalLayer;
 
         snapRoutine = null;
-        grabber?.ForceRelease();
+        grabber?.EndSnappingToZoneComplete();
     }
 
+    // ←←← ЭТО САМОЕ ГЛАВНОЕ! Вызывается при взятии объекта из зоны
     public void OnItemGrabbedFromZone()
     {
-        attachedItem = null;
+        if (attachedItem != null)
+        {
+            // Если объект ещё не успел улететь — отрываем от зоны
+            attachedItem.transform.SetParent(null);
+        }
+
+        attachedItem = null;        // ← зона снова свободна!
+        if (snapRoutine != null)
+        {
+            StopCoroutine(snapRoutine);
+            snapRoutine = null;
+        }
     }
 }
