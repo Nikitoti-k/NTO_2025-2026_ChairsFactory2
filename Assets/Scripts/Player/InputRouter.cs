@@ -1,94 +1,73 @@
-using UnityEngine;
+п»їusing UnityEngine;
+
 public interface IControllable
 {
-    void HandleMovement(Vector2 movementInput);
-    void HandleRotation(Vector2 mouseDelta);
+    void HandleMovement(Vector2 input);
     void HandleInteract(bool pressed);
     void HandlePhysicalInteract(bool pressed, bool held);
     void HandleFlare(bool pressed);
 }
 
 
-
 public class InputRouter : MonoBehaviour
 {
-    [Header("Debug")]
+    public static InputRouter Instance { get; private set; }
+
     [SerializeField] private bool showLogs = true;
-
     public IControllable CurrentController { get; private set; }
-
-    // Ввод отключён только во время анимации посадки/высадки и т.п.
-    private bool inputEnabled = true;
 
     private void Awake()
     {
-        
-        inputEnabled = true;
+        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        Instance = this;
     }
 
     private void Start()
     {
-        
         var player = FindFirstObjectByType<PlayerMovement>();
-        if (player != null)
-            SetController(player);
+        if (player != null) SetController(player);
     }
 
-    private void Update()
+  
+   private void Update()
     {
-        if (CurrentController == null || !inputEnabled || InputManager.Instance == null) return;
+        if (CurrentController == null || InputManager.Instance == null) return;
 
-        var playerMovement = CurrentController as PlayerMovement;
-        var flareController = playerMovement?.GetComponent<FlareController>();
+        var im = InputManager.Instance;
 
-        bool holdingFlare = flareController != null && flareController.IsHoldingFlare;
-
-        // Факел в руках — блокирует ВСЁ, кроме броска факела
-        if (holdingFlare)
+        // РЈР‘РР РђР•Рњ РџР РћР’Р•Р РљРЈ РќРђ Р¤РђРљР•Р› РўРћР›Р¬РљРћ Р”Р›РЇ РР“Р РћРљРђ!
+        // РўРµРїРµСЂСЊ РїСЂРѕРІРµСЂСЏРµРј: РµСЃР»Рё С‚РµРєСѓС‰РёР№ РєРѕРЅС‚СЂРѕР»Р»РµСЂ вЂ” РёРіСЂРѕРє Р РѕРЅ РґРµСЂР¶РёС‚ С„Р°РєРµР» в†’ С‚РѕРіРґР° Р±СЂРѕСЃР°РµРј
+        if (CurrentController is PlayerMovement playerMovement)
         {
-            CurrentController.HandleFlare(InputManager.Instance.FlarePressed);
-            // Блокируем всё остальное!
-            return;
+            var flareCtrl = playerMovement.GetComponent<FlareController>();
+            if (flareCtrl != null && flareCtrl.IsHoldingFlare)
+            {
+                CurrentController.HandleFlare(im.Flare);
+                // РќР• return! РџСѓСЃС‚СЊ РѕСЃС‚Р°Р»СЊРЅС‹Рµ РґРµР№СЃС‚РІРёСЏ С‚РѕР¶Рµ РїСЂРѕР№РґСѓС‚ (РЅР°РїСЂРёРјРµСЂ, РІС‹С…РѕРґ РёР· РјР°С€РёРЅС‹)
+            }
         }
 
-        // Если не держим факел — обычная логика
-        CurrentController.HandleInteract(InputManager.Instance.InteractPressed);
-        CurrentController.HandlePhysicalInteract(
-            InputManager.Instance.Physical_Interact_Button_Pressed,
-            InputManager.Instance.Physical_Interact_Button_Held
-        );
-        CurrentController.HandleFlare(InputManager.Instance.FlarePressed);
+        // РќРѕСЂРјР°Р»СЊРЅР°СЏ РїРµСЂРµРґР°С‡Р° РІРІРѕРґР° вЂ” РІСЃРµРіРґР°!
+        CurrentController.HandleInteract(im.Interact);
+        CurrentController.HandlePhysicalInteract(im.Physical, im.PhysicalHeld);
+        CurrentController.HandleFlare(im.Flare);
     }
 
     private void FixedUpdate()
     {
-        if (CurrentController == null || !inputEnabled || InputManager.Instance == null) return;
-
+        if (CurrentController == null || InputManager.Instance == null) return;
         CurrentController.HandleMovement(InputManager.Instance.Move);
     }
 
-   
     public void SetController(IControllable controller)
     {
         CurrentController = controller;
-
-        
-        inputEnabled = true;
-
         if (showLogs && controller != null)
-            Debug.Log($"[InputRouter] Управление передано: {controller.GetType().Name}");
+            Debug.Log($"[InputRouter] Control в†’ {controller.GetType().Name}");
     }
 
-   
-    public void DisableInput()
+    private void OnDestroy()
     {
-        inputEnabled = false;
-        if (showLogs) Debug.Log("[InputRouter] Ввод отключён (переходим междуу траспортами)");
-    }
-
-    public void EnableInput()
-    {
-        inputEnabled = true;
-        if (showLogs) Debug.Log("[InputRouter] Ввод включён");
+        if (Instance == this) Instance = null;
     }
 }

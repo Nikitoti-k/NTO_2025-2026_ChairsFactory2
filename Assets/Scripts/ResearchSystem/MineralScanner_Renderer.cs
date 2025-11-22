@@ -1,125 +1,202 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
+using System;
 
 [RequireComponent(typeof(RectTransform))]
 public class MineralScanner_Renderer : MonoBehaviour
 {
-    [Header("=== Настройки сканирующей точки ===")]
-    public RectTransform scanningPoint;                  // Точка, которую двигаем
-    public Vector2 moveDirectionLocal = Vector2.up;      // Направление В ЛОКАЛЬНОМ пространстве сканера
-    public float speed = 200f;                           // единиц/сек в локальном пространстве
+    public static MineralScanner_Renderer Instance { get; private set; }
 
-    [Header("=== Границы В ЛОКАЛЬНЫХ координатах сканера ===")]
-    public Vector2 boundsMin = new Vector2(-250, -250);
-    public Vector2 boundsMax = new Vector2(250, 250);
+    // Событие закрыто — подписка только через методы
+    private event Action<float> OnProximityChanged;
 
-    [Header("=== Поведение на границе ===")]
-    public BounceMode bounceMode = BounceMode.Bounce;
-    public bool wrapAround = false;                      // Зациклить (как в Asteroids)
+    public void SubscribeToProximity(Action<float> callback) => OnProximityChanged += callback;
+    public void UnsubscribeFromProximity(Action<float> callback) => OnProximityChanged -= callback;
 
-    public enum BounceMode { Bounce, Stop, Wrap }
+    [Header("UI")]
+    [SerializeField] private RectTransform scanningPoint;
+    [SerializeField] private Button recordButtonUI;
+    [SerializeField] private TextMeshProUGUI resultText;
 
-    private RectTransform myRect;        // RectTransform самого сканера (this)
-    private Vector3 lastValidPosition;
+    [Header("Границы")]
+    [SerializeField] private Vector2 boundsMin = new Vector2(-300f, -300f);
+    [SerializeField] private Vector2 boundsMax = new Vector2(300f, 300f);
+
+    [Header("Детект")]
+    [SerializeField] private float detectionRadius = 80f;
+    [SerializeField] private float captureRadius = 30f;
+    [SerializeField] private float scannerSpeed = 580f;
+
+    public Camera renderCam;
+
+    private RectTransform myRect;
+    private MineralData currentMineral;
+    private ScanPoint nearestPoint;
+    private Vector2 currentDirection;
 
     private void Awake()
     {
+        Instance = this;
         myRect = GetComponent<RectTransform>();
 
-        if (scanningPoint == null)
+        if (scanningPoint == null || renderCam == null || resultText == null)
         {
-            Debug.LogError("MineralScanner_Renderer: назначь scanningPoint!");
             enabled = false;
-        }
-        myRect = GetComponent<RectTransform>();
-
-        if (scanningPoint == null)
-        {
-            Debug.LogError("MineralScanner_Renderer: назначь scanningPoint!");
-            enabled = false;
+            return;
         }
 
-        joystick = FindObjectOfType<JoystickController>(); // или перетащи в инспекторе
+        resultText.text = "Крист. решётка: ???\nВозраст: ???\nРадиоактивность: ???";
+        recordButtonUI?.onClick.AddListener(TryRecordData);
     }
-    private JoystickController joystick;
 
-  
+    private void OnDestroy()
+    {
+        Instance = null;
+        recordButtonUI?.onClick.RemoveListener(TryRecordData);
+    }
 
     private void LateUpdate()
     {
-        if (scanningPoint == null || joystick == null) return;
-        // ← ВОТ ГЛАВНОЕ ИЗМЕНЕНИЕ:
-        Vector2 input = joystick.CurrentDirection; // от -1 до 1
-        moveDirectionLocal = input.normalized;
-        speed = input.magnitude > 0.01f ? 45f : 0f; // скорость зависит от силы наклона!
+        if (JoystickController.Instance == null) return;
 
-        // 1. Берём текущее локальное положение точки относительно этого сканера
-        Vector3 currentLocalPos = myRect.InverseTransformPoint(scanningPoint.position);
-        Vector2 pos2D = new Vector2(currentLocalPos.x, currentLocalPos.y);
+        Vector2 input = JoystickController.Instance.CurrentDirection;
+        currentDirection = input.normalized;
+        float speed = input.sqrMagnitude > 0.01f ? scannerSpeed : 0f;
 
-        // 2. Считаем новое положение в локальном пространстве
-        Vector2 delta = moveDirectionLocal.normalized * speed * Time.deltaTime;
-        Vector2 desiredPos = pos2D + delta;
+        Vector2 pos = scanningPoint.anchoredPosition + currentDirection * speed * Time.deltaTime;
+        scanningPoint.anchoredPosition = ClampToBounds(pos);
 
-        // 3. Ограничиваем + обрабатываем отскок/зацикливание
-        Vector2 finalPos = desiredPos;
-        bool hitBoundary = false;
-
-        if (desiredPos.x < boundsMin.x)
-        {
-            hitBoundary = true;
-            if (bounceMode == BounceMode.Bounce) moveDirectionLocal.x *= -1;
-            else if (bounceMode == BounceMode.Wrap && wrapAround) finalPos.x = boundsMax.x + (desiredPos.x - boundsMin.x);
-            else finalPos.x = Mathf.Max(desiredPos.x, boundsMin.x);
-        }
-        else if (desiredPos.x > boundsMax.x)
-        {
-            hitBoundary = true;
-            if (bounceMode == BounceMode.Bounce) moveDirectionLocal.x *= -1;
-            else if (bounceMode == BounceMode.Wrap && wrapAround) finalPos.x = boundsMin.x + (desiredPos.x - boundsMax.x);
-            else finalPos.x = Mathf.Min(desiredPos.x, boundsMax.x);
-        }
-
-        if (desiredPos.y < boundsMin.y)
-        {
-            hitBoundary = true;
-            if (bounceMode == BounceMode.Bounce) moveDirectionLocal.y *= -1;
-            else if (bounceMode == BounceMode.Wrap && wrapAround) finalPos.y = boundsMax.y + (desiredPos.y - boundsMin.y);
-            else finalPos.y = Mathf.Max(desiredPos.y, boundsMin.y);
-        }
-        else if (desiredPos.y > boundsMax.y)
-        {
-            hitBoundary = true;
-            if (bounceMode == BounceMode.Bounce) moveDirectionLocal.y *= -1;
-            else if (bounceMode == BounceMode.Wrap && wrapAround) finalPos.y = boundsMin.y + (desiredPos.y - boundsMax.y);
-            else finalPos.y = Mathf.Min(desiredPos.y, boundsMax.y);
-        }
-
-        // 4. Применяем итоговую локальную позицию → автоматически учтёт поворот, масштаб и т.д.
-        Vector3 newWorldPos = myRect.TransformPoint(finalPos.x, finalPos.y, currentLocalPos.z);
-        scanningPoint.position = newWorldPos;
-
-        // Сохраняем для следующего кадра
-        lastValidPosition = scanningPoint.position;
+        CheckScanPoints(scanningPoint.anchoredPosition);
     }
 
-    // Визуализация границ в редакторе (даже если канвас повёрнут!)
-    private void OnDrawGizmosSelected()
+    private Vector2 ClampToBounds(Vector2 pos)
     {
-        if (myRect == null) return;
+        pos.x = Mathf.Clamp(pos.x, boundsMin.x, boundsMax.x);
+        pos.y = Mathf.Clamp(pos.y, boundsMin.y, boundsMax.y);
+        return pos;
+    }
 
-        Vector3[] corners = new Vector3[4];
-        corners[0] = myRect.TransformPoint(boundsMin.x, boundsMin.y, 0);
-        corners[1] = myRect.TransformPoint(boundsMax.x, boundsMin.y, 0);
-        corners[2] = myRect.TransformPoint(boundsMax.x, boundsMax.y, 0);
-        corners[3] = myRect.TransformPoint(boundsMin.x, boundsMax.y, 0);
+    private void CheckScanPoints(Vector2 scannerPos)
+    {
+        MineralData mineral = MineralScannerManager.Instance?.CurrentMineral;
 
-        Gizmos.color = new Color(0, 1, 1, 0.4f);
-        for (int i = 0; i < 4; i++)
+        if (mineral == null)
         {
-            Gizmos.DrawLine(corners[i], corners[(i + 1) % 4]);
+            if (currentMineral != null)
+            {
+                currentMineral = null;
+                nearestPoint = null;
+                OnProximityChanged?.Invoke(0f);
+                ResetText();
+            }
+            return;
         }
-        Gizmos.DrawLine(corners[0], corners[2]);
-        Gizmos.DrawLine(corners[1], corners[3]);
+
+        if (mineral != currentMineral)
+        {
+            currentMineral = mineral;
+            ResetText();
+        }
+
+        float bestDist = float.MaxValue;
+        ScanPoint closest = null;
+
+        foreach (var point in new[] { mineral.AgePoint, mineral.CrystalPoint, mineral.RadioactivityPoint })
+        {
+            if (point == null) continue;
+
+            Vector3 screen = renderCam.WorldToScreenPoint(point.transform.position);
+            if (screen.z < 0) continue;
+
+            if (RectTransformUtility.ScreenPointToLocalPointInRectangle(myRect, screen, renderCam, out Vector2 local))
+            {
+                float d = Vector2.Distance(scannerPos, local);
+                if (d < bestDist)
+                {
+                    bestDist = d;
+                    closest = point;
+                }
+            }
+        }
+
+        float proximity = closest != null && bestDist <= detectionRadius
+            ? Mathf.InverseLerp(detectionRadius, captureRadius, bestDist)
+            : 0f;
+
+        nearestPoint = closest;
+        OnProximityChanged?.Invoke(proximity);
+    }
+
+    public void TryRecordData()
+    {
+        if (currentMineral == null || nearestPoint == null)
+        {
+            resultText.text = "<color=red>Нет сигнала!</color>\nКрист. решётка: ???\nВозраст: ???\nРадиоактивность: ???";
+            return;
+        }
+
+        Vector2 pointPos = GetPointLocalPos(nearestPoint);
+        float dist = Vector2.Distance(scanningPoint.anchoredPosition, pointPos);
+        float accuracy = Mathf.InverseLerp(detectionRadius, captureRadius, dist);
+
+        UpdateResultText(nearestPoint, accuracy);
+    }
+
+    private Vector2 GetPointLocalPos(ScanPoint point)
+    {
+        Vector3 screen = renderCam.WorldToScreenPoint(point.transform.position);
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(myRect, screen, renderCam, out Vector2 local);
+        return local;
+    }
+
+    private void UpdateResultText(ScanPoint point, float accuracy)
+    {
+        string[] lines = resultText.text.Split('\n');
+
+        for (int i = 0; i < lines.Length; i++)
+        {
+            if (point == currentMineral.AgePoint && lines[i].Contains("Возраст"))
+                lines[i] = $"Возраст: {FormatAge(currentMineral.AgeMya, accuracy)} млн лет";
+            else if (point == currentMineral.RadioactivityPoint && lines[i].Contains("Радиоактивность"))
+                lines[i] = $"Радиоактивность: {FormatRadioactivity(currentMineral.RadioactivityUsv, accuracy)} Бк";
+            else if (point == currentMineral.CrystalPoint && lines[i].Contains("Крист."))
+                lines[i] = $"Крист. решётка: {ScrambleCrystalName(currentMineral.CrystalSystem_, accuracy)}";
+        }
+
+        resultText.text = string.Join("\n", lines);
+    }
+
+    private void ResetText()
+    {
+        resultText.text = "Крист. решётка: ???\nВозраст: ???\nРадиоактивность: ???";
+    }
+
+    private string FormatAge(float real, float acc) =>
+        acc >= 0.9f ? real.ToString("F1") : (real + UnityEngine.Random.Range(-20f, 50f) * (1f - acc)).ToString("F1");
+
+    private string FormatRadioactivity(float real, float acc) =>
+        acc >= 0.9f ? real.ToString("F3") : (real + UnityEngine.Random.Range(-0.1f, 0.4f) * (1f - acc)).ToString("F3");
+
+    private string ScrambleCrystalName(MineralData.CrystalSystem system, float acc)
+    {
+        string name = system switch
+        {
+            MineralData.CrystalSystem.Cubic => "кубическая",
+            MineralData.CrystalSystem.Trigonal => "тригональная",
+            MineralData.CrystalSystem.Monoclinic => "моноклинная",
+            _ => "неизвестно"
+        };
+
+        if (acc >= 0.9f) return name;
+
+        char[] c = name.ToCharArray();
+        int errors = Mathf.CeilToInt((1f - acc) * c.Length * 2.2f);
+        for (int i = 0; i < errors; i++)
+        {
+            int idx = UnityEngine.Random.Range(0, c.Length);
+            if (c[idx] != '?') c[idx] = '?';
+        }
+        return new string(c);
     }
 }

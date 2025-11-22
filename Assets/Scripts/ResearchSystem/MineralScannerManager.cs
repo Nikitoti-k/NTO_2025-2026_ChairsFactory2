@@ -1,49 +1,46 @@
-using UnityEngine;
+п»їusing UnityEngine;
 using UnityEngine.Events;
 
 [RequireComponent(typeof(Camera))]
 public class MineralScannerManager : MonoBehaviour
 {
-    [Header("Ссылки")]
+    public static MineralScannerManager Instance { get; private set; }
+
+    [Header("РЎСЃС‹Р»РєРё")]
     [SerializeField] private SnapZone targetSnapZone;
-    [SerializeField] private Camera mineralCamera;              // Доп. камера с Render Texture
-    [SerializeField] private Renderer screenRenderer;           // Quad с материалом экрана (для fade/glow)
-    [SerializeField] private Material screenMaterial;           // Копия материала (чтобы не ломать общий)
+    [SerializeField] private Camera mineralCamera;
+    [SerializeField] private Renderer screenRenderer;
 
-    [Header("Настройки эффектов")]
+    [Header("Р­С„С„РµРєС‚С‹")]
     [SerializeField] private float fadeDuration = 0.4f;
-    [SerializeField] private Color emissionColor = new Color(0.1f, 0.8f, 1f, 1f);
-    [SerializeField] private bool useEmissionGlow = true;
+    [SerializeField] private Color emissionColor = new Color(0.1f, 0.8f, 1f);
 
-    // События для будущих PointsContainer и т.д.
     public UnityEvent<GrabbableItem> OnMineralScanned;
     public UnityEvent OnMineralRemoved;
 
-    private bool wasOccupied = false;
-    private const string EMISSION_COLOR_PROP = "_EmissionColor";
+    private Material screenMaterial;
+    private bool wasOccupied;
+    private const string EMISSION_PROP = "_EmissionColor";
 
     private void Awake()
     {
-        if (mineralCamera == null)
-            mineralCamera = GetComponent<Camera>();
+        Instance = this;
+        mineralCamera ??= GetComponent<Camera>();
 
-        // Делаем инстанс материала, чтобы не менять общий
-        if (screenRenderer != null && screenMaterial == null)
+        if (screenRenderer != null)
         {
             screenMaterial = screenRenderer.material;
-            if (useEmissionGlow && screenMaterial.HasProperty(EMISSION_COLOR_PROP))
+            if (screenMaterial.HasProperty(EMISSION_PROP))
                 screenMaterial.EnableKeyword("_EMISSION");
         }
 
-        TurnOffScreenImmediate();
+        mineralCamera.enabled = false;
     }
+
+    private void OnDestroy() => Instance = null;
 
     private void Start()
     {
-        // Автопоиск для прототипа (если не назначил в инспекторе)
-        if (targetSnapZone == null)
-            targetSnapZone = FindObjectOfType<SnapZone>();
-
         if (targetSnapZone != null)
             wasOccupied = targetSnapZone.IsOccupied;
     }
@@ -52,85 +49,50 @@ public class MineralScannerManager : MonoBehaviour
     {
         if (targetSnapZone == null) return;
 
-        bool currentlyOccupied = targetSnapZone.IsOccupied;
-
-        if (currentlyOccupied != wasOccupied)
+        bool occupied = targetSnapZone.IsOccupied;
+        if (occupied != wasOccupied)
         {
-            if (currentlyOccupied)
-                TurnOnScreen();
-            else
-                TurnOffScreen();
-
-            wasOccupied = currentlyOccupied;
+            if (occupied) TurnOnScreen();
+            else TurnOffScreen();
+            wasOccupied = occupied;
         }
     }
 
     private void TurnOnScreen()
     {
         mineralCamera.enabled = true;
-
-        if (screenMaterial != null)
-        {
-            StopAllCoroutines();
-            StartCoroutine(FadeEmission(1f));
-        }
-
-        // Если у тебя в будущем будет MineralPointsContainer — вызывай сюда
+        if (screenMaterial != null) StartCoroutine(FadeEmission(1f));
         if (targetSnapZone.IsOccupied)
             OnMineralScanned?.Invoke(targetSnapZone.GetComponentInChildren<GrabbableItem>());
     }
 
     private void TurnOffScreen()
     {
-        if (screenMaterial != null)
-        {
-            StopAllCoroutines();
-            StartCoroutine(FadeEmission(0f));
-        }
-
+        if (screenMaterial != null) StartCoroutine(FadeEmission(0f));
         mineralCamera.enabled = false;
         OnMineralRemoved?.Invoke();
     }
 
-    private void TurnOffScreenImmediate()
-    {
-        mineralCamera.enabled = false;
-        if (screenMaterial != null && screenMaterial.HasProperty(EMISSION_COLOR_PROP))
-            screenMaterial.SetColor(EMISSION_COLOR_PROP, Color.black);
-    }
-
     private System.Collections.IEnumerator FadeEmission(float target)
     {
-        if (!screenMaterial.HasProperty(EMISSION_COLOR_PROP)) yield break;
+        if (screenMaterial == null) yield break;
 
-        Color startColor = screenMaterial.GetColor(EMISSION_COLOR_PROP);
-        Color endColor = emissionColor * Mathf.LinearToGammaSpace(target);
-        endColor.a = 1f;
+        Color start = screenMaterial.GetColor(EMISSION_PROP);
+        Color end = emissionColor * Mathf.LinearToGammaSpace(target);
+        end.a = 1f;
 
         float t = 0f;
         while (t < 1f)
         {
             t += Time.deltaTime / fadeDuration;
-            Color lerped = Color.Lerp(startColor, endColor, t);
-            screenMaterial.SetColor(EMISSION_COLOR_PROP, lerped);
+            screenMaterial.SetColor(EMISSION_PROP, Color.Lerp(start, end, t));
             yield return null;
         }
-
-        screenMaterial.SetColor(EMISSION_COLOR_PROP, endColor);
+        screenMaterial.SetColor(EMISSION_PROP, end);
     }
 
-    // Внешний вызов (если захочешь из SnapZone явно)
-    public void ForceScanUpdate()
-    {
-        wasOccupied = !targetSnapZone.IsOccupied;
-        // Update сработает в следующем кадре
-    }
-
-#if UNITY_EDITOR
-    private void Reset()
-    {
-        mineralCamera = GetComponent<Camera>();
-        screenRenderer = GetComponentInParent<Renderer>();
-    }
-#endif
+    public MineralData CurrentMineral =>
+        targetSnapZone != null && targetSnapZone.IsOccupied
+            ? targetSnapZone.GetComponentInChildren<MineralData>()
+            : null;
 }

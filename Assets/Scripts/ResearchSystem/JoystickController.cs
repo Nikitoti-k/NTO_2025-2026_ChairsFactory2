@@ -1,49 +1,33 @@
 ﻿using UnityEngine;
-using System.Collections;
-using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(ConfigurableJoint))]
 [RequireComponent(typeof(Rigidbody))]
 public class JoystickController : MonoBehaviour
 {
-    [Header("Выход: направление от -1 до 1")]
     public Vector2 CurrentDirection { get; private set; } = Vector2.zero;
 
-    [Header("Настройки джойстика")]
-    [SerializeField] private Transform handle;                    // Ручка (то, что хватают)
+    [Header("Настройки рычага")]
+    [SerializeField] private Transform handle;  // сам рычаг
     [SerializeField] private float maxAngle = 45f;
-    [SerializeField] private float mouseSensitivity = 120f;      // градусов за секунду от мыши
-    [SerializeField] private float gamepadSensitivity = 90f;      // градусов за секунду от стика
-    [SerializeField] private bool smoothReturnOnRelease = true;
-    [SerializeField] private float returnDuration = 0.35f;
-    [SerializeField] private AnimationCurve returnCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
+    [SerializeField] private float mouseSensitivity = 140f;
 
-    private ConfigurableJoint joint;
-    private Rigidbody baseRigidbody;
-    private Rigidbody handleRigidbody;
+    private Rigidbody handleRb;
     private Quaternion initialLocalRotation;
 
-    // Виртуальный курсор в углах наклона
     private Vector2 virtualTilt = Vector2.zero;
-
-    private Coroutine returnCoroutine;
     private bool isGrabbed = false;
-    private bool isVirtualControlActive = false;
 
     public static JoystickController Instance { get; private set; }
 
     private void Awake()
     {
         Instance = this;
-        joint = GetComponent<ConfigurableJoint>();
-        baseRigidbody = GetComponent<Rigidbody>();
-        initialLocalRotation = transform.localRotation;
-
-        if (handle != null)
-            handleRigidbody = handle.GetComponent<Rigidbody>();
 
         if (handle == null)
             handle = transform;
+
+        handleRb = handle.GetComponent<Rigidbody>();
+        initialLocalRotation = handle.localRotation;
     }
 
     private void OnEnable()
@@ -58,133 +42,80 @@ public class JoystickController : MonoBehaviour
         CanGrab.OnReleased -= OnReleased;
     }
 
-    private void OnGrabbed(CanGrab grabber, Rigidbody grabbedRb)
+    private void OnGrabbed(CanGrab grabber, Rigidbody rb)
     {
-        // Проверяем, что схватили именно ручку этого джойстика
-        if (handleRigidbody == null || grabbedRb != handleRigidbody) return;
+        if (rb != handleRb) return;
 
         isGrabbed = true;
-        isVirtualControlActive = true;
 
-        // Делаем ручку кинематической — CanGrab больше не тянет её
-        handleRigidbody.isKinematic = true;
-        handleRigidbody.useGravity = false;
+        // Взят — делаем кинематическим, управление только наше
+        handleRb.isKinematic = true;
+        handleRb.useGravity = false;
 
-        // Синхронизируем виртуальный курсор с текущим положением
-        Quaternion delta = transform.localRotation * Quaternion.Inverse(initialLocalRotation);
-        Vector3 euler = delta.eulerAngles;
-        float tiltX = (euler.x > 180f) ? euler.x - 360f : euler.x;
-        float tiltZ = (euler.z > 180f) ? euler.z - 360f : euler.z;
-
-        virtualTilt = new Vector2(tiltZ, -tiltX); // X = Z-ось, Y = X-ось (инвертируем Y)
-
-        if (returnCoroutine != null)
-        {
-            StopCoroutine(returnCoroutine);
-            returnCoroutine = null;
-        }
+        SyncTiltFromRotation();
     }
 
-    private void OnReleased(CanGrab grabber, Rigidbody grabbedRb)
+    private void OnReleased(CanGrab grabber, Rigidbody rb)
     {
-        if (handleRigidbody == null || grabbedRb != handleRigidbody) return;
+        if (rb != handleRb) return;
 
         isGrabbed = false;
-        isVirtualControlActive = false;
 
-        // Восстанавливаем физику
-        handleRigidbody.isKinematic = false;
-        handleRigidbody.useGravity = true;
-
-        if (smoothReturnOnRelease)
-            returnCoroutine = StartCoroutine(ReturnToCenterSmooth());
-        else
-            transform.localRotation = initialLocalRotation;
+        // МГНОВЕННЫЙ сброс в ноль
+        ResetToCenter();
     }
 
     private void Update()
     {
-        if (!isVirtualControlActive) return;
+        if (!isGrabbed || InputManager.Instance == null) return;
 
-        Vector2 input = Vector2.zero;
+        Vector2 look = InputManager.Instance.Look;
+        Vector2 input = new Vector2(look.x, -look.y);
 
-        // Геймпад — правый стик
-        if (Gamepad.current != null)
-        {
-            input = Gamepad.current.rightStick.ReadValue();
-            virtualTilt += input * gamepadSensitivity * Time.deltaTime;
-        }
-        // Мышь — используем дельту из InputManager (твой Look)
-        else if (InputManager.Instance != null)
-        {
-            Vector2 lookDelta = InputManager.Instance.Look;
-            input = lookDelta * 0.1f; // Look уже в "пикселях", переводим в "угол"
-            virtualTilt += input * mouseSensitivity * Time.deltaTime;
-        }
+        virtualTilt += input * mouseSensitivity * Time.deltaTime;
 
-        // Ограничиваем наклон
         virtualTilt.x = Mathf.Clamp(virtualTilt.x, -maxAngle, maxAngle);
         virtualTilt.y = Mathf.Clamp(virtualTilt.y, -maxAngle, maxAngle);
 
-        // Применяем вращение
-        Quaternion targetRotation = initialLocalRotation * Quaternion.Euler(virtualTilt.y, 0f, virtualTilt.x);
-        transform.localRotation = targetRotation;
+        Quaternion target = Quaternion.Euler(virtualTilt.y, 0f, virtualTilt.x);
+        handle.localRotation = target;
     }
 
     private void FixedUpdate()
     {
-        // Расчёт CurrentDirection — всегда
-        Quaternion delta = transform.localRotation * Quaternion.Inverse(initialLocalRotation);
-        Vector3 euler = delta.eulerAngles;
+        Quaternion delta = handle.localRotation * Quaternion.Inverse(initialLocalRotation);
+        Vector3 e = delta.eulerAngles;
 
-        float tiltX = (euler.x > 180f) ? euler.x - 360f : euler.x;
-        float tiltZ = (euler.z > 180f) ? euler.z - 360f : euler.z;
+        float x = e.x > 180f ? e.x - 360f : e.x;
+        float z = e.z > 180f ? e.z - 360f : e.z;
 
-        float inputX = Mathf.Clamp(tiltZ / maxAngle, -1f, 1f);
-        float inputY = Mathf.Clamp(-tiltX / maxAngle, -1f, 1f);
-
-        CurrentDirection = new Vector2(inputX, inputY);
-
-        // Принудительный возврат, если не схвачен
-        if (!isGrabbed && returnCoroutine == null && !isVirtualControlActive)
-        {
-            transform.localRotation = Quaternion.Slerp(transform.localRotation, initialLocalRotation, 20f * Time.fixedDeltaTime);
-            if (baseRigidbody != null)
-                baseRigidbody.angularVelocity *= 0.9f;
-        }
+        CurrentDirection = new Vector2(
+            Mathf.Clamp(z / maxAngle, -1f, 1f),
+            Mathf.Clamp(-x / maxAngle, -1f, 1f)
+        );
     }
 
-    private IEnumerator ReturnToCenterSmooth()
+    private void ResetToCenter()
     {
-        Quaternion startRot = transform.localRotation;
-        float elapsed = 0f;
+        // ставим ровно в ноль
+        handle.localRotation = initialLocalRotation;
 
-        while (elapsed < returnDuration)
-        {
-            if (isGrabbed) yield break;
+        // возвращаем физику
+        handleRb.isKinematic = false;
+        handleRb.useGravity = true;
 
-            elapsed += Time.deltaTime;
-            float t = Mathf.Clamp01(elapsed / returnDuration);
-            float curveT = returnCurve.Evaluate(t);
-
-            transform.localRotation = Quaternion.SlerpUnclamped(startRot, initialLocalRotation, curveT);
-            yield return null;
-        }
-
-        transform.localRotation = initialLocalRotation;
-        returnCoroutine = null;
+        // обнуляем virtualTilt
+        virtualTilt = Vector2.zero;
     }
 
-    private void OnDrawGizmosSelected()
+    private void SyncTiltFromRotation()
     {
-        if (!Application.isPlaying) return;
-        Gizmos.color = Color.cyan;
-        Gizmos.DrawRay(transform.position, transform.forward * 0.5f);
+        Quaternion delta = handle.localRotation * Quaternion.Inverse(initialLocalRotation);
+        Vector3 e = delta.eulerAngles;
 
-        Gizmos.color = Color.red;
-        Gizmos.DrawRay(transform.position, transform.right * 0.4f * CurrentDirection.x);
+        float x = e.x > 180 ? e.x - 360 : e.x;
+        float z = e.z > 180 ? e.z - 360 : e.z;
 
-        Gizmos.color = Color.green;
-        Gizmos.DrawRay(transform.position, transform.up * 0.4f * CurrentDirection.y);
+        virtualTilt = new Vector2(z, -x);
     }
 }

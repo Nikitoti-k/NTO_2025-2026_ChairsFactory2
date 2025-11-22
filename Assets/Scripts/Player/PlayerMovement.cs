@@ -1,211 +1,169 @@
+using System.Linq;
 using UnityEngine;
-using System.Collections;
 
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerMovement : MonoBehaviour, IControllable
 {
-    [Header("Настройки движения")]
+    [Header("Движение")]
     [SerializeField] private float walkSpeed = 5f;
     [SerializeField, Range(1f, 50f)] private float acceleration = 20f;
     [SerializeField, Range(1f, 50f)] private float deceleration = 30f;
     [SerializeField, Range(1f, 50f)] private float airAcceleration = 8f;
     [SerializeField, Range(0f, 1f)] private float stopThreshold = 0.1f;
 
-    [Header("Проверка земли")]
+    [Header("Земля")]
     [SerializeField] private float groundCheckDistance = 0.2f;
     [SerializeField] private LayerMask groundMask = -1;
 
-    [Header("Разное")]
+    [Header("Посадка в транспорт")]
     [SerializeField] private float mountDistance = 2f;
-    [SerializeField] private LayerMask transportLayerMask = -1;
-    [SerializeField] private float mountSpeed = 10f;
+    [SerializeField] private LayerMask transportMask = -1;
 
-    [Header("Добыча льда")]
+    [Header("Добыча")]
     [SerializeField] private float miningRange = 3f;
-    [SerializeField] private LayerMask miningLayerMask = -1;
+    [SerializeField] private LayerMask miningMask = -1;
     [SerializeField] private Transform miningRayOrigin;
 
-    [Header("Захват объектов")]
+    [Header("Компоненты")]
     [SerializeField] private CanGrab objectGrabber;
 
-    private Rigidbody rb;
-    private InputRouter inputRouter;
-    private bool isMounting = false;
-    private bool isGrounded = true;
-
-    private Vector2 currentMovementInput;
-    private Vector2 currentInput;
+    private Rigidbody _rb;
+    private InputRouter _router;
+    private Vector2 _input;
+    private Vector2 _smoothedInput;
+    private bool _isMounting;
 
     private void Awake()
     {
-        // Инициализация компонентов
-        rb = GetComponent<Rigidbody>();
-        rb.freezeRotation = true;
-        rb.interpolation = RigidbodyInterpolation.Interpolate;
+        _rb = GetComponent<Rigidbody>();
+        _rb.freezeRotation = true;
+        _rb.interpolation = RigidbodyInterpolation.Interpolate;
 
-        inputRouter = FindFirstObjectByType<InputRouter>();
-        if (objectGrabber == null)
-            objectGrabber = FindFirstObjectByType<CanGrab>();
-        if (miningRayOrigin == null)
-            miningRayOrigin = Camera.main ? Camera.main.transform : transform;
+        _router = FindFirstObjectByType<InputRouter>();
+        if (objectGrabber == null) objectGrabber = GetComponent<CanGrab>();
+        if (miningRayOrigin == null) miningRayOrigin = Camera.main ? Camera.main.transform : transform;
     }
 
-    public void HandleMovement(Vector2 input)
-    {
-        // Сохранение ввода
-        currentMovementInput = input;
-    }
+    public void HandleMovement(Vector2 input) => _input = input;
 
     private void FixedUpdate()
     {
-        if (inputRouter?.CurrentController != (object)this || isMounting) return;
-
-        
-        Vector2 input = currentMovementInput;
-        HandleMovementPhysics(input);
+        if (_router?.CurrentController != this || _isMounting) return;
+        Move(_input);
     }
 
-    private void HandleMovementPhysics(Vector2 input)
+    private void Move(Vector2 input)
     {
-        // Проверка земли
-        isGrounded = IsGrounded();
+        bool grounded = IsGrounded();
+        if (input.sqrMagnitude < stopThreshold * stopThreshold) input = Vector2.zero;
 
-        float targetSpeed = input.magnitude;
-        if (targetSpeed < stopThreshold)
-            input = Vector2.zero;
+        float accel = grounded ? acceleration : airAcceleration;
+        float decel = grounded ? deceleration : airAcceleration;
 
-        float currentAccel = isGrounded ? acceleration : airAcceleration;
-        float currentDecel = isGrounded ? deceleration : airAcceleration;
+        _smoothedInput = input.sqrMagnitude > 0.01f
+            ? Vector2.MoveTowards(_smoothedInput, input, accel * Time.fixedDeltaTime)
+            : Vector2.MoveTowards(_smoothedInput, Vector2.zero, decel * Time.fixedDeltaTime);
 
-        if (input.sqrMagnitude > 0.01f)
-        {
-            currentInput = Vector2.MoveTowards(currentInput, input, currentAccel * Time.fixedDeltaTime);
-        }
-        else
-        {
-            currentInput = Vector2.MoveTowards(currentInput, Vector2.zero, currentDecel * Time.fixedDeltaTime);
-        }
+        Vector3 dir = (transform.right * _smoothedInput.x + transform.forward * _smoothedInput.y).normalized;
+        Vector3 target = dir * walkSpeed;
 
-        Vector3 moveDirection = (transform.right * currentInput.x + transform.forward * currentInput.y).normalized;
-        Vector3 desiredVelocity = moveDirection * walkSpeed;
+        Vector3 horiz = new Vector3(_rb.linearVelocity.x, 0f, _rb.linearVelocity.z);
+        horiz = Vector3.MoveTowards(horiz, target, accel * 10f * Time.fixedDeltaTime);
 
-        Vector3 currentHorizontalVel = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
-        Vector3 newHorizontalVel = Vector3.MoveTowards(currentHorizontalVel, desiredVelocity,
-            (isGrounded ? acceleration : airAcceleration) * Time.fixedDeltaTime * 10f);
-
-        rb.linearVelocity = new Vector3(newHorizontalVel.x, rb.linearVelocity.y, newHorizontalVel.z);
+        _rb.linearVelocity = new Vector3(horiz.x, _rb.linearVelocity.y, horiz.z);
     }
 
     private bool IsGrounded()
     {
-        // Проверка сферой
-        Collider col = GetComponent<Collider>();
+        var col = GetComponent<Collider>();
         if (!col) return false;
 
-        Bounds bounds = col.bounds;
-        Vector3 origin = bounds.center;
-        float radius = bounds.extents.x * 0.9f;
-        float distance = bounds.extents.y - radius + groundCheckDistance;
+        var b = col.bounds;
+        float r = b.extents.x * 0.9f;
+        float d = b.extents.y - r + groundCheckDistance;
 
-        return Physics.SphereCast(origin, radius, Vector3.down, out _, distance, groundMask, QueryTriggerInteraction.Ignore);
+        return Physics.SphereCast(b.center, r, Vector3.down, out _, d, groundMask);
     }
 
     public void HandlePhysicalInteract(bool pressed, bool held)
     {
-        // Взаимодействие с захватом или добычей
         objectGrabber?.HandlePhysicalInteract(pressed, held);
-        if (pressed) TryMineIceDeposit();
+        if (pressed) MineIce();
     }
 
-    private void TryMineIceDeposit()
+    private void MineIce()
     {
-        // Рейкаст для льда
-        Ray ray = new Ray(miningRayOrigin.position, miningRayOrigin.forward);
-        if (Physics.Raycast(ray, out RaycastHit hit, miningRange, miningLayerMask, QueryTriggerInteraction.Ignore))
-        {
-            if (hit.collider.TryGetComponent(out IceDeposit deposit))
+        if (Physics.Raycast(miningRayOrigin.position, miningRayOrigin.forward, out RaycastHit hit, miningRange, miningMask))
+            if (hit.collider.TryGetComponent<IceDeposit>(out var deposit))
                 deposit.Hit();
-        }
-    }
-
-    public void HandleRotation(Vector2 mouseDelta) { }
-
-    public void HandleFlare(bool pressed)
-    {
-        // Бросок факела
-        GetComponent<FlareController>()?.ThrowFlare(pressed);
     }
 
     public void HandleInteract(bool pressed)
     {
-        if (!pressed || isMounting) return;
+        if (!pressed || _isMounting) return;
 
-        // Попытка snap если держим объект
-        if (objectGrabber != null && objectGrabber.IsHoldingObject())
+        if (objectGrabber?.IsHoldingObject() == true)
         {
-            GrabbableItem grabbedItem = objectGrabber.GetGrabbedItem();
-            if (grabbedItem != null)
-            {
-                Collider[] hits = Physics.OverlapSphere(transform.position, 2.5f);
-                foreach (Collider col in hits)
-                {
-                    if (col.TryGetComponent<SnapZone>(out SnapZone snapZone) && snapZone.CanSnap(grabbedItem))
-                    {
-                        snapZone.Snap(grabbedItem);
-                        return;
-                    }
-                }
-            }
-
-            Debug.Log("Нельзя сесть на снегоход — у тебя предмет в руках!");
+            TrySnapObject();
             return;
         }
 
-        // Посадка на транспорт
-        Collider[] transportHits = Physics.OverlapSphere(transform.position, mountDistance, transportLayerMask);
-        TransportMovement nearest = null;
-        float bestDist = float.MaxValue;
+        TryMountTransport();
+    }
 
-        foreach (Collider col in transportHits)
-        {
-            if (col.TryGetComponent<TransportMovement>(out TransportMovement transport))
-            {
-                float d = Vector3.Distance(transform.position, transport.transform.position);
-                if (d < bestDist)
-                {
-                    bestDist = d;
-                    nearest = transport;
-                }
-            }
-        }
+    private void TrySnapObject()
+    {
+        var item = objectGrabber.GetGrabbedItem();
+        if (item == null) return;
+
+        var zone = Physics.OverlapSphere(transform.position, 2.5f)
+            .Select(c => c.GetComponent<SnapZone>())
+            .FirstOrDefault(z => z != null && z.CanSnap(item));
+
+        zone?.Snap(item);
+    }
+
+    private void TryMountTransport()
+    {
+        var nearest = Physics.OverlapSphere(transform.position, mountDistance, transportMask)
+            .Select(c => c.GetComponent<TransportMovement>())
+            .OrderBy(t => Vector3.Distance(transform.position, t.transform.position))
+            .FirstOrDefault();
 
         if (nearest != null)
         {
-            isMounting = true;
-            inputRouter.DisableInput();
-            StartCoroutine(MountToTransport(nearest));
+            _isMounting = true;
+            Mount(nearest);
         }
     }
 
-    private IEnumerator MountToTransport(TransportMovement transport)
+    private void Mount(TransportMovement transport)
     {
-        // Анимация посадки
-        transform.SetParent(transport.transform);
-        rb.isKinematic = true;
-        rb.useGravity = false;
-        GetComponent<Collider>().isTrigger = true;
+        _rb.isKinematic = true;
+        _rb.useGravity = false;
+        _rb.linearVelocity = Vector3.zero;
 
-        Vector3 targetPos = transport.GetMountPosition();
-        while (Vector3.Distance(transform.localPosition, targetPos) > 0.01f)
+        var col = GetComponent<Collider>();
+        col.enabled = false;
+
+        Transform seat = transport.seatTransform;
+        if (seat == null)
         {
-            transform.localPosition = Vector3.Lerp(transform.localPosition, targetPos, mountSpeed * Time.deltaTime);
-            transform.localRotation = Quaternion.Slerp(transform.localRotation, Quaternion.identity, mountSpeed * Time.deltaTime);
-            yield return null;
+            seat = new GameObject("PlayerSeat").transform;
+            seat.SetParent(transport.transform, false);
+            seat.localPosition = transport.fallbackMountOffset;
         }
 
-        transform.localPosition = targetPos;
+        transform.SetParent(seat);
+        transform.localPosition = Vector3.zero;
         transform.localRotation = Quaternion.identity;
-        inputRouter.SetController(transport);
-        isMounting = false;
+
+        _router.SetController(transport);
+        _isMounting = false;
     }
+
+    public void HandleFlare(bool pressed)
+        => GetComponent<FlareController>()?.ThrowFlare(pressed);
+
+    public void HandleRotation(Vector2 mouseDelta) { }
 }

@@ -1,27 +1,16 @@
 using UnityEngine;
 
-public enum GrabbableType
-{
-    Mineral,
-    Tool,
-    Resource,
-    Junk
-}
+public enum GrabbableType { Mineral, Tool, Door, Resource, Junk }
 
 public abstract class GrabbableItem : MonoBehaviour
 {
-    [SerializeField] private GrabbableType itemType;
-
+    [SerializeField] protected GrabbableType itemType;
     public GrabbableType ItemType => itemType;
 
-    public static event System.Action<GrabbableItem, Collision> OnGrabbedCollision;
+    public static System.Action<GrabbableItem, Collision> OnCollision;
 
-    private void OnCollisionEnter(Collision collision)
+    private void OnCollisionEnter(Collision col)
     {
-        
-        OnGrabbedCollision?.Invoke(this, collision);
-
-        
+        OnCollision?.Invoke(this, col);
     }
 }
-    

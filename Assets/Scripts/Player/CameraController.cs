@@ -1,116 +1,94 @@
 ﻿using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class CameraController : MonoBehaviour
 {
-    public enum ControlMode
-    {
-        UI,
-        FPS
-    }
+    public enum ControlMode { UI, FPS }
 
-    [Header("Высота глаз")]
+    [Header("Eye & Sensitivity")]
     public float eyeHeight = 1.6f;
-
-    [Header("Чувствительность мыши — обычная")]
     public float mouseSensitivityX = 1.8f;
     public float mouseSensitivityY = 1.8f;
-
-    [Header("Чувствительность при держании инструмента")]
-    public float toolSensitivityMultiplier = 0.4f; // 40% от обычной — точное прицеливание
-
+    public float toolSensitivityMultiplier = 0.4f;
     public float pitchMin = -80f;
     public float pitchMax = 80f;
 
-    [Header("Сглаживание поворота")]
+    [Header("Smoothing")]
     [Range(0.08f, 0.3f)] public float rotationSmoothTime = 0.15f;
 
-    [Header("Текущий режим")]
+    [Header("Vehicle Look Limits")]
+    [Range(30f, 90f)] public float vehicleYawLimit = 70f;  // ±70 градусов относительно транспорта
+
+    [Header("Tool Grab Point")]
+    public float toolPointMoveSpeed = 0.002f;
+
     [SerializeField] private ControlMode currentMode = ControlMode.FPS;
 
-    private float targetYaw = 0f;
-    private float targetPitch = 0f;
-    private float smoothYaw = 0f;
-    private float smoothPitch = 0f;
-    private float yawVelocity = 0f;
-    private float pitchVelocity = 0f;
+    private Transform _target;
+    private Rigidbody _targetRb;
+    private CanGrab _playerGrabber;
+    private InputRouter _router;  // ← НОВОЕ
 
-    private Transform target;
-    private Rigidbody targetRB;
-    private InputRouter inputRouter;
-    private bool justEnteredFPS = false;
+    private float _yaw, _pitch;
+    private float _smoothYaw, _smoothPitch;
+    private float _yawVel, _pitchVel;
+    private float _sensX, _sensY;
+    private bool _justEnteredFps;
 
-    private float currentSensitivityX;
-    private float currentSensitivityY;
-
-    private CanGrab playerGrabber;
-
-    // ===== НОВОЕ =====
-    [Header("Перемещение toolGrabPoint при удержании инструмента")]
-    public float toolPointMoveSpeed = 0.002f; // скорость "руки" по миру XZ
+    // ← НОВОЕ: для транспорта
+    private TransportMovement _currentVehicle;
+    private bool _inVehicle;
 
     private void Start()
     {
-        var playerMovement = FindFirstObjectByType<PlayerMovement>();
-        if (playerMovement != null)
-        {
-            target = playerMovement.transform;
-            targetRB = playerMovement.GetComponent<Rigidbody>();
-            playerGrabber = playerMovement.GetComponent<CanGrab>();
-        }
-        else
-        {
-            Debug.LogError("CameraController: PlayerMovement не найден!");
-        }
+        var player = FindFirstObjectByType<PlayerMovement>();
+        _target = player.transform;
+        _targetRb = player.GetComponent<Rigidbody>();
+        _playerGrabber = player.GetComponent<CanGrab>();
 
-        inputRouter = FindFirstObjectByType<InputRouter>();
+        _router = FindFirstObjectByType<InputRouter>();  // ← ИНИЦИАЛИЗАЦИЯ
 
-        targetYaw = smoothYaw = transform.eulerAngles.y;
-        targetPitch = smoothPitch = UnwrapAngle(transform.eulerAngles.x);
+        _yaw = _smoothYaw = transform.eulerAngles.y;
+        _pitch = _smoothPitch = UnwrapAngle(transform.eulerAngles.x);
 
-        UpdateCurrentSensitivity();
-
+        UpdateSensitivity();
         ApplyMode(currentMode);
 
-        if (playerGrabber != null)
+        if (_playerGrabber != null)
         {
-            CanGrab.OnGrabbed += OnObjectGrabbed;
-            CanGrab.OnReleased += OnObjectReleased;
+            CanGrab.OnGrabbed += OnGrabbed;
+            CanGrab.OnReleased += OnReleased;
         }
     }
 
     private void OnDestroy()
     {
-        if (playerGrabber != null)
+        if (_playerGrabber != null)
         {
-            CanGrab.OnGrabbed -= OnObjectGrabbed;
-            CanGrab.OnReleased -= OnObjectReleased;
+            CanGrab.OnGrabbed -= OnGrabbed;
+            CanGrab.OnReleased -= OnReleased;
         }
     }
 
-    private void OnObjectGrabbed(CanGrab grabber, Rigidbody rb)
+    private void OnGrabbed(CanGrab grabber, Rigidbody rb)
     {
-        if (grabber != playerGrabber) return;
-
+        if (grabber != _playerGrabber) return;
         if (grabber.GetGrabbedItem()?.ItemType == GrabbableType.Tool)
-            UpdateCurrentSensitivity(isHoldingTool: true);
+            UpdateSensitivity(true);
     }
 
-    private void OnObjectReleased(CanGrab grabber, Rigidbody rb)
+    private void OnReleased(CanGrab grabber, Rigidbody rb)
     {
-        if (grabber != playerGrabber) return;
-        UpdateCurrentSensitivity(false);
+        if (grabber != _playerGrabber) return;
+        UpdateSensitivity(false);
     }
 
-    private void UpdateCurrentSensitivity(bool isHoldingTool = false)
+    private void UpdateSensitivity(bool holdingTool = false)
     {
-        float mult = isHoldingTool ? toolSensitivityMultiplier : 1f;
-
-        currentSensitivityX = mouseSensitivityX * mult;
-        currentSensitivityY = mouseSensitivityY * mult;
+        float mult = holdingTool ? toolSensitivityMultiplier : 1f;
+        _sensX = mouseSensitivityX * mult;
+        _sensY = mouseSensitivityY * mult;
     }
-
-    public void EnterFPSMode() => SetMode(ControlMode.FPS);
-    public void EnterUIMode() => SetMode(ControlMode.UI);
 
     public void SetMode(ControlMode mode)
     {
@@ -126,77 +104,92 @@ public class CameraController : MonoBehaviour
             case ControlMode.FPS:
                 Cursor.lockState = CursorLockMode.Locked;
                 Cursor.visible = false;
-                ResetMouseDeltaAndCenter();
-                InputManager.Instance?.ResetLook();
-                justEnteredFPS = true;
+                WarpCursorToCenter();
+                InputManager.ClearLook();
+                _justEnteredFps = true;
                 break;
-
             case ControlMode.UI:
                 Cursor.lockState = CursorLockMode.None;
                 Cursor.visible = true;
-                justEnteredFPS = false;
-                UpdateCurrentSensitivity(false);
+                _justEnteredFps = false;
+                UpdateSensitivity(false);
                 break;
         }
     }
 
-    private void ResetMouseDeltaAndCenter()
+    private void WarpCursorToCenter()
     {
 #if ENABLE_INPUT_SYSTEM
-        var mouse = UnityEngine.InputSystem.Mouse.current;
-        if (mouse != null)
-        {
-            Vector2 center = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
-            mouse.WarpCursorPosition(center);
-        }
+        if (Mouse.current != null)
+            Mouse.current.WarpCursorPosition(new Vector2(Screen.width * 0.5f, Screen.height * 0.5f));
 #endif
     }
 
     private void Update()
     {
-        if (currentMode != ControlMode.FPS || target == null || InputManager.Instance == null)
-            return;
+        if (currentMode != ControlMode.FPS || _target == null || _router == null) return;
 
-        Vector2 mouseDelta = InputManager.Instance.Look;
-
-        if (justEnteredFPS)
+        Vector2 look = InputManager.Instance.Look;
+        if (_justEnteredFps)
         {
-            mouseDelta = Vector2.zero;
-            justEnteredFPS = false;
+            look = Vector2.zero;
+            _justEnteredFps = false;
         }
 
-        // ==== вращение камеры ====
-        targetYaw += mouseDelta.x * currentSensitivityX;
-        targetPitch -= mouseDelta.y * currentSensitivityY;
-
-        targetPitch = Mathf.Clamp(targetPitch, pitchMin, pitchMax);
-        targetYaw = NormalizeAngle(targetYaw);
-
-        smoothYaw = Mathf.SmoothDampAngle(smoothYaw, targetYaw, ref yawVelocity, rotationSmoothTime);
-        smoothPitch = Mathf.SmoothDampAngle(smoothPitch, targetPitch, ref pitchVelocity, rotationSmoothTime);
-
-        transform.rotation = Quaternion.Euler(smoothPitch, smoothYaw, 0f);
-
-        // ====================================================================
-        //                 НОВОЕ: ДВИГАЕМ toolGrabPoint ПО МИРУ
-        // ====================================================================
-        if (playerGrabber != null &&
-            playerGrabber.IsHoldingObject() &&
-            playerGrabber.GetGrabbedItem()?.ItemType == GrabbableType.Tool)
+        // === ЛОГИКА ТРАНСПОРТА ===
+        bool newInVehicle = _router.CurrentController is TransportMovement;
+        if (newInVehicle != _inVehicle)
         {
-            Transform tgp = playerGrabber.toolGrabPoint;
+            if (newInVehicle)
+            {
+                // ПРИ ПОСАДКЕ: выравниваем камеру ВПЕРЁД по транспорту
+                _currentVehicle = (TransportMovement)_router.CurrentController;
+                float vehicleYaw = _currentVehicle.transform.eulerAngles.y;
+                _yaw = NormalizeAngle(vehicleYaw);
+                _smoothYaw = _yaw;
+                _pitch = 0f;
+                _smoothPitch = _pitch;
+            }
+            else
+            {
+                // При выходе: сбрасываем кэш
+                _currentVehicle = null;
+            }
+            _inVehicle = newInVehicle;
+        }
+
+        // Применяем ввод мыши
+        _yaw += look.x * _sensX;
+        _pitch -= look.y * _sensY;
+        _pitch = Mathf.Clamp(_pitch, pitchMin, pitchMax);
+        _yaw = NormalizeAngle(_yaw);
+
+        // === ЛИМИТЫ ПОД ТРАНСПОРТ ===
+        if (_inVehicle && _currentVehicle != null)
+        {
+            float vehicleYaw = _currentVehicle.transform.eulerAngles.y;
+            float relativeYaw = NormalizeAngle(_yaw - vehicleYaw);
+            relativeYaw = Mathf.Clamp(relativeYaw, -vehicleYawLimit, vehicleYawLimit);
+            _yaw = NormalizeAngle(vehicleYaw + relativeYaw);
+        }
+
+        // Сглаживание
+        _smoothYaw = Mathf.SmoothDampAngle(_smoothYaw, _yaw, ref _yawVel, rotationSmoothTime);
+        _smoothPitch = Mathf.SmoothDampAngle(_smoothPitch, _pitch, ref _pitchVel, rotationSmoothTime);
+
+        // Применяем поворот камеры
+        transform.rotation = Quaternion.Euler(_smoothPitch, _smoothYaw, 0f);
+
+        // Tool grab logic (без изменений)
+        if (_playerGrabber?.IsHoldingObject() == true &&
+            _playerGrabber.GetGrabbedItem()?.ItemType == GrabbableType.Tool)
+        {
+            var tgp = _playerGrabber.toolGrabPoint;
             if (tgp != null)
             {
-                // Используем ту же дельту мышки!
-                Vector2 moveDelta = mouseDelta;
-
-                // создаём движение в плоскости XZ
-                Vector3 move = new Vector3(moveDelta.x, 0f, moveDelta.y) * toolPointMoveSpeed;
-
-                // перевод в мировые координаты относительно камеры
+                Vector3 move = new Vector3(look.x, 0f, look.y) * toolPointMoveSpeed;
                 Vector3 worldMove = transform.TransformDirection(move);
-                worldMove.y = 0f; // строго по XZ!
-
+                worldMove.y = 0f;
                 tgp.position += worldMove;
             }
         }
@@ -204,36 +197,31 @@ public class CameraController : MonoBehaviour
 
     private void FixedUpdate()
     {
-        if (targetRB == null || currentMode != ControlMode.FPS) return;
+        if (_targetRb == null || currentMode != ControlMode.FPS) return;
 
-        Quaternion targetPlayerRot = Quaternion.Euler(0f, targetYaw, 0f);
-        targetRB.MoveRotation(targetPlayerRot);
+        // Поворот тела ТОЛЬКО для пешего игрока
+        if (_router != null && _router.CurrentController is PlayerMovement)
+        {
+            _targetRb.MoveRotation(Quaternion.Euler(0f, _yaw, 0f));
+        }
     }
 
     private void LateUpdate()
     {
-        if (target == null) return;
-        transform.position = target.position + Vector3.up * eyeHeight;
+        if (_target != null)
+            transform.position = _target.position + Vector3.up * eyeHeight;
     }
 
-    private static float NormalizeAngle(float angle)
+    private static float NormalizeAngle(float a)
     {
-        while (angle > 180f) angle -= 360f;
-        while (angle < -180f) angle += 360f;
-        return angle;
+        while (a > 180f) a -= 360f;
+        while (a < -180f) a += 360f;
+        return a;
     }
 
-    private static float UnwrapAngle(float angle)
-    {
-        if (angle > 180f) angle -= 360f;
-        return angle;
-    }
+    private static float UnwrapAngle(float a) => a > 180f ? a - 360f : a;
 
 #if UNITY_EDITOR
-    private void OnValidate()
-    {
-        if (Application.isPlaying)
-            ApplyMode(currentMode);
-    }
+    private void OnValidate() => ApplyMode(currentMode);
 #endif
 }

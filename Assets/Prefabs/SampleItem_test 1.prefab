@@ -26,7 +26,7 @@ Transform:
   m_GameObject: {fileID: 726665554688496706}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0.417, y: 0, z: 0.409}
+  m_LocalPosition: {x: -0.336, y: 0, z: 0.31}
   m_LocalScale: {x: 1.6666664, y: 2.2222223, z: 1.6666664}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -215,7 +215,7 @@ Transform:
   m_GameObject: {fileID: 4653218950074286350}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.349, y: 0, z: 0.422}
+  m_LocalPosition: {x: 0.345, y: 0, z: 0.113}
   m_LocalScale: {x: 1.6666664, y: 2.2222223, z: 1.6666664}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -268,7 +268,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 5.11, y: 1.2, z: 4.445187}
-  m_LocalScale: {x: 0.6, y: 0.45, z: 0.6}
+  m_LocalScale: {x: 0.45, y: 0.45, z: 0.45}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 7851824827903482441}
@@ -403,8 +403,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   sampleType: 0
   ageMya: 150
-  crystalSystem: 1
-  radioactivityUsv: 226
+  crystalSystem: 2
+  radioactivityUsv: 250
   agePoint: {fileID: 3803275213914964588}
   crystalPoint: {fileID: 8927344169545434009}
   radioactivityPoint: {fileID: 6215181766725564918}
@@ -434,7 +434,7 @@ Transform:
   m_GameObject: {fileID: 9205873675629105080}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0.063, y: 0, z: -0.388}
+  m_LocalPosition: {x: -0.072, y: 0, z: -0.422}
   m_LocalScale: {x: 1.6666664, y: 2.2222223, z: 1.6666664}
   m_ConstrainProportionsScale: 0
   m_Children: []

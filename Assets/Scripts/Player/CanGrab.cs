@@ -1,212 +1,174 @@
 ﻿using UnityEngine;
+
 [RequireComponent(typeof(PlayerMovement))]
 public class CanGrab : MonoBehaviour
 {
-    [Header("Основные настройки")]
-    [SerializeField] private Transform grabPoint;                    // обычный grab point (для минералов и т.д.)
-    [SerializeField] private float maxGrabDistance = 3.5f;           // дальность для обычных предметов
+    [Header("Основные")]
+    [SerializeField] private Transform grabPoint;
+    [SerializeField] private float maxGrabDistance = 3.5f;
 
-    [Header("Настройки для инструментов")]
-    [SerializeField] public Transform toolGrabPoint;                // отдельная точка захвата инструмента (обычно в руке)
-    [SerializeField] private float toolMaxGrabDistance = 1.8f;       // инструменты берём ближе и точнее
+    [Header("Инструменты")]
+    [SerializeField] public Transform toolGrabPoint;
+    [SerializeField] private float toolMaxGrabDistance = 1.8f;
 
-    [SerializeField] private LayerMask grabbableLayerMask = -1;
+    [Header("Физика")]
+    [SerializeField] private LayerMask grabbableMask = -1;
     [SerializeField] private float pullSpeed = 20f;
-
-    [Header("Отпускание при столкновении")]
     [SerializeField] private bool releaseOnCollision = true;
     [SerializeField] private LayerMask collisionReleaseMask = -1;
 
-    [Header("Физика при отпускании")]
+    [Header("Гравитация")]
     [SerializeField] private bool mineralsHaveGravity = true;
     [SerializeField] private bool toolsHaveGravity = false;
 
     private Camera cam;
-    private Rigidbody currentRB;
-    private Transform currentTransform;
-    private GrabbableItem currentItem;
+    private Rigidbody heldRb;
+    private Transform heldTransform;
+    private GrabbableItem heldItem;
+    private Transform activePoint;
     private Vector3 lockedOffset;
     private Quaternion lockedRotation;
     private bool isPulling = false;
-    private bool isSnappingToZone = false;
+    private bool isSnapping = false;
 
-    // Текущие активные точки — будут переопределяться при захвате
-    private Transform activeGrabPoint;
-    private float activeMaxGrabDistance;
-
-    public delegate void GrabEvent(CanGrab grabber, Rigidbody rb);
-    public static event GrabEvent OnGrabbed;
-    public static event GrabEvent OnReleased;
+    public static System.Action<CanGrab, Rigidbody> OnGrabbed;
+    public static System.Action<CanGrab, Rigidbody> OnReleased;
 
     private void Awake()
     {
         cam = Camera.main;
         if (grabPoint == null) grabPoint = transform;
-        if (toolGrabPoint == null) toolGrabPoint = grabPoint; // fallback на обычный
+        if (toolGrabPoint == null) toolGrabPoint = grabPoint;
     }
 
-    private void OnEnable()
-    {
-        GrabbableItem.OnGrabbedCollision += HandleGrabbedObjectCollision;
-    }
+    //private void OnEnable() => GrabbableItem.OnGrabbedCollision += OnHeldCollision;
+    //private void OnDisable() => GrabbableItem.OnGrabbedCollision -= OnHeldCollision;
 
-    private void OnDisable()
-    {
-        GrabbableItem.OnGrabbedCollision -= HandleGrabbedObjectCollision;
-    }
+    public bool IsHoldingObject() => heldRb != null;
+    public GrabbableItem GetGrabbedItem() => heldItem;
 
-    public bool IsHoldingObject() => currentRB != null;
-    public GrabbableItem GetGrabbedItem() => currentItem;
-
-    public void StartSnappingToZone() => isSnappingToZone = true;
-    public void EndSnappingToZoneComplete() => isSnappingToZone = false;
+    public void StartSnappingToZone() => isSnapping = true;
+    public void EndSnappingToZoneComplete() => isSnapping = false;
 
     public void HandlePhysicalInteract(bool pressed, bool held)
     {
-        if (isSnappingToZone) return;
-
-        if (held && currentRB == null)
-            TryGrabObject();
-        else if (!held && currentRB != null)
-            ReleaseObject();
+        if (isSnapping) return;
+        if (held && heldRb == null) TryGrab();
+        else if (!held && heldRb != null) Release();
     }
 
-    public void ForceRelease() => ReleaseObject(true);
+    public void ForceRelease() => Release(true);
 
-    private void TryGrabObject()
+    private void TryGrab()
     {
-        if (isSnappingToZone) return;
-
-        // Сначала пробуем инструмент — у него приоритет (меньше дистанция, но проверяем первым)
-        if (TryGrabWithSettings(toolGrabPoint, toolMaxGrabDistance, out GrabbableItem toolItem))
+        if (TryGrabAt(toolGrabPoint, toolMaxGrabDistance, out var item) && item.ItemType == GrabbableType.Tool)
         {
-            GrabItem(toolItem, toolGrabPoint);
+            Grab(item, toolGrabPoint);
             return;
         }
 
-        // Если инструмент не найден в радиусе — пробуем обычные предметы
-        if (TryGrabWithSettings(grabPoint, maxGrabDistance, out GrabbableItem regularItem))
-        {
-            GrabItem(regularItem, grabPoint);
-        }
+        if (TryGrabAt(grabPoint, maxGrabDistance, out item))
+            Grab(item, grabPoint);
     }
 
-    private bool TryGrabWithSettings(Transform point, float distance, out GrabbableItem foundItem)
+    private bool TryGrabAt(Transform point, float dist, out GrabbableItem item)
     {
-        foundItem = null;
-
-        if (!Physics.Raycast(cam.transform.position, cam.transform.forward, out RaycastHit hit, distance, grabbableLayerMask))
+        item = null;
+        if (!Physics.Raycast(cam.transform.position, cam.transform.forward, out var hit, dist, grabbableMask))
             return false;
 
-        GrabbableItem item = hit.collider.GetComponent<GrabbableItem>();
+        item = hit.collider.GetComponent<GrabbableItem>();
         if (item == null) return false;
 
-        // Для toolGrabPoint разрешаем только инструменты
-        if (point == toolGrabPoint && item.ItemType != GrabbableType.Tool)
-            return false;
+        if (point == toolGrabPoint && item.ItemType != GrabbableType.Tool) return false;
+        if (point == grabPoint && item.ItemType == GrabbableType.Tool) return false;
 
-        // Для обычного grabPoint — всё кроме инструментов (или можно разрешить, если хочешь)
-        // Если хочешь, чтобы обычный grabPoint тоже мог хватать инструменты с дальней дистанции — убери эту строку:
-        if (point == grabPoint && item.ItemType == GrabbableType.Tool)
-            return false;
-
-        Rigidbody rb = item.GetComponent<Rigidbody>() ?? hit.collider.attachedRigidbody;
-        if (rb == null) return false;
-
-        foundItem = item;
-        return true;
+        var rb = item.GetComponent<Rigidbody>() ?? hit.collider.attachedRigidbody;
+        return rb != null;
     }
 
-    private void GrabItem(GrabbableItem item, Transform usedGrabPoint)
+    private void Grab(GrabbableItem item, Transform point)
     {
-        Rigidbody rb = item.GetComponent<Rigidbody>() ?? item.GetComponentInParent<Rigidbody>();
-
+        var rb = item.GetComponent<Rigidbody>() ?? item.GetComponentInParent<Rigidbody>();
         item.GetComponentInParent<SnapZone>()?.OnItemGrabbedFromZone();
 
-        currentRB = rb;
-        currentTransform = rb.transform;
-        currentItem = item;
+        heldRb = rb;
+        heldTransform = rb.transform;
+        heldItem = item;
+        activePoint = point;
 
-        // Сохраняем, какой grab point используется сейчас
-        activeGrabPoint = usedGrabPoint;
-        activeMaxGrabDistance = usedGrabPoint == toolGrabPoint ? toolMaxGrabDistance : maxGrabDistance;
+        heldRb.useGravity = false;
+        heldRb.linearVelocity = Vector3.zero;
+        heldRb.angularVelocity = Vector3.zero;
 
-        currentRB.useGravity = false;
-        OnGrabbed?.Invoke(this, currentRB);
+        OnGrabbed?.Invoke(this, heldRb);
         isPulling = true;
+
+        if (item.ItemType == GrabbableType.Door)
+            item.GetComponent<Door>()?.OnGrabbed();
     }
 
-    private void ReleaseObject(bool force = false)
+    private void Release(bool force = false)
     {
-        if (currentRB == null) return;
+        if (heldRb == null) return;
 
-        OnReleased?.Invoke(this, currentRB);
+        OnReleased?.Invoke(this, heldRb);
 
-        if (!force && !isSnappingToZone)
+        if (heldItem.ItemType == GrabbableType.Door)
+            heldItem.GetComponent<Door>()?.OnReleased();
+
+        if (!force && !isSnapping)
         {
-            bool shouldHaveGravity = currentItem.ItemType switch
+            bool hasGravity = heldItem.ItemType switch
             {
-                GrabbableType.Mineral => mineralsHaveGravity,
                 GrabbableType.Tool => toolsHaveGravity,
-                GrabbableType.Resource => mineralsHaveGravity,
-                GrabbableType.Junk => mineralsHaveGravity,
-                _ => true
+                _ => mineralsHaveGravity
             };
 
-            currentRB.useGravity = shouldHaveGravity;
+            heldRb.useGravity = hasGravity;
 
-            if (shouldHaveGravity)
-            {
-                Vector3 releaseVelocity = (activeGrabPoint.position - currentTransform.position) / Time.fixedDeltaTime * 0.5f;
-                currentRB.linearVelocity = releaseVelocity;
-            }
-            else
-            {
-                currentRB.linearVelocity = Vector3.zero;
-            }
+            if (isPulling)
+                heldRb.linearVelocity *= 0.3f;
         }
 
-        currentRB = null;
-        currentTransform = null;
-        currentItem = null;
-        activeGrabPoint = null;
+        heldRb = null;
+        heldTransform = null;
+        heldItem = null;
+        activePoint = null;
         isPulling = false;
     }
 
     private void FixedUpdate()
     {
-        if (!isPulling || currentRB == null || isSnappingToZone || activeGrabPoint == null) return;
+        if (!isPulling || heldRb == null || isSnapping || activePoint == null) return;
 
-        Vector3 targetPos = activeGrabPoint.position;
-        Vector3 direction = targetPos - currentTransform.position;
-        float distance = direction.magnitude;
-
-        if (distance < 0.15f)
+        Vector3 dir = activePoint.position - heldTransform.position;
+        if (dir.magnitude < 0.15f)
         {
             isPulling = false;
-            lockedOffset = activeGrabPoint.InverseTransformPoint(currentTransform.position);
-            lockedRotation = Quaternion.Inverse(activeGrabPoint.rotation) * currentTransform.rotation;
+            lockedOffset = activePoint.InverseTransformPoint(heldTransform.position);
+            lockedRotation = Quaternion.Inverse(activePoint.rotation) * heldTransform.rotation;
         }
         else
         {
-            currentRB.linearVelocity = direction.normalized * pullSpeed;
+            heldRb.linearVelocity = dir.normalized * pullSpeed;
         }
     }
 
     private void LateUpdate()
     {
-        if (currentRB == null || isPulling || isSnappingToZone || activeGrabPoint == null) return;
-        if (currentRB.GetComponent<ConfigurableJoint>() != null) return;
+        if (heldRb == null || isPulling || isSnapping || activePoint == null) return;
+        if (heldRb.GetComponent<ConfigurableJoint>()) return;
+        if (heldItem.ItemType == GrabbableType.Door) return;
 
-        currentTransform.position = activeGrabPoint.TransformPoint(lockedOffset);
-        currentTransform.rotation = activeGrabPoint.rotation * lockedRotation;
+        heldTransform.position = activePoint.TransformPoint(lockedOffset);
+        heldTransform.rotation = activePoint.rotation * lockedRotation;
     }
 
-    private void HandleGrabbedObjectCollision(GrabbableItem item, Collision collision)
+    private void OnHeldCollision(GrabbableItem item, Collision col)
     {
-        if (item != currentItem || !releaseOnCollision || isPulling || isSnappingToZone) return;
-        if (((1 << collision.collider.gameObject.layer) & collisionReleaseMask) == 0) return;
-
-        ReleaseObject();
+        if (item != heldItem || !releaseOnCollision || isPulling || isSnapping) return;
+        if (((1 << col.collider.gameObject.layer) & collisionReleaseMask) == 0) return;
+        Release();
     }
 }
