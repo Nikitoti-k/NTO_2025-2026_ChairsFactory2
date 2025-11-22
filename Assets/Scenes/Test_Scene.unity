@@ -1068,7 +1068,7 @@ MonoBehaviour:
   maxAngle: 50
   moveSmooth: 18
   returnSmooth: 12
-  invertX: 1
+  invertX: 0
   invertY: 1
 --- !u!135 &259106623
 SphereCollider:
@@ -1379,6 +1379,7 @@ GameObject:
   - component: {fileID: 330585547}
   - component: {fileID: 330585548}
   - component: {fileID: 330585549}
+  - component: {fileID: 330585550}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -1562,6 +1563,22 @@ MonoBehaviour:
   vehicleYawLimit: 70
   toolPointMoveSpeed: 0.1
   currentMode: 1
+--- !u!114 &330585550
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 330585543}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c49b4cc203aa6414fae5c798d1d0e7d6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_EventMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_MaxRayIntersections: 0
 --- !u!1 &366983022
 GameObject:
   m_ObjectHideFlags: 0
@@ -3638,7 +3655,6 @@ GameObject:
   - component: {fileID: 906960393}
   - component: {fileID: 906960392}
   - component: {fileID: 906960391}
-  - component: {fileID: 906960394}
   m_Layer: 5
   m_Name: Canvas (2)
   m_TagString: Untagged
@@ -3729,18 +3745,6 @@ Canvas:
   m_SortingLayerID: 0
   m_SortingOrder: 0
   m_TargetDisplay: 0
---- !u!114 &906960394
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 906960389}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0fc307cf450169a4fb9daf19200491c1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &915987795
 GameObject:
   m_ObjectHideFlags: 0
@@ -4513,7 +4517,6 @@ GameObject:
   - component: {fileID: 1102787443}
   - component: {fileID: 1102787442}
   - component: {fileID: 1102787441}
-  - component: {fileID: 1102787444}
   m_Layer: 5
   m_Name: Button
   m_TagString: Untagged
@@ -4529,7 +4532,7 @@ RectTransform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1102787439}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: -5}
+  m_LocalPosition: {x: 0, y: 0, z: -46}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -4635,18 +4638,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1102787439}
   m_CullTransparentMesh: 1
---- !u!114 &1102787444
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1102787439}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0fc307cf450169a4fb9daf19200491c1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &1206866900
 GameObject:
   m_ObjectHideFlags: 0
@@ -5577,9 +5568,9 @@ MonoBehaviour:
   resultText: {fileID: 468292069}
   boundsMin: {x: -200, y: -200}
   boundsMax: {x: 200, y: 200}
-  detectionRadius: 80
-  captureRadius: 30
-  scannerSpeed: 580
+  detectionRadius: 40
+  captureRadius: 5
+  scannerSpeed: 50
   renderCam: {fileID: 51107052}
 --- !u!114 &1487938552
 MonoBehaviour:
@@ -6473,7 +6464,7 @@ MonoBehaviour:
   toolMaxGrabDistance: 5
   grabbableMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 128
   pullSpeed: 5
   releaseOnCollision: 1
   collisionReleaseMask:
