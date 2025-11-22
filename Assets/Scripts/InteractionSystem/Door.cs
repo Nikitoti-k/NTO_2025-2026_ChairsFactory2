@@ -16,7 +16,7 @@ public class Door : GrabbableItem
     private void Awake()
     {
         _hinge = GetComponent<HingeJoint>();
-        _rb = GetComponent<Rigidbody>(); // из GrabbableItem
+        _rb = GetComponent<Rigidbody>(); 
 
         // Пружинка закрытия
         _closedSpring = new JointSpring
@@ -26,7 +26,7 @@ public class Door : GrabbableItem
             targetPosition = 0f
         };
 
-        // Свободное состояние (когда держим)
+       
         _freeSpring = new JointSpring
         {
             spring = 0f,
@@ -34,28 +34,27 @@ public class Door : GrabbableItem
             targetPosition = 0f
         };
 
-        // Ограничение угла
+       
         var limits = _hinge.limits;
         limits.min = -maxAngle;
         limits.max = maxAngle;
         _hinge.limits = limits;
         _hinge.useLimits = true;
-
-        // По умолчанию — закрывается
+ 
         _hinge.useSpring = true;
         _hinge.spring = _closedSpring;
     }
 
-    // Вызывается из CanGrab при захвате
+   
     public void OnGrabbed()
     {
         _hinge.useSpring = true;
-        _hinge.spring = _freeSpring; // убираем пружину закрытия
+        _hinge.spring = _freeSpring;
     }
 
     // Вызывается при отпускании
     public void OnReleased()
     {
-        _hinge.spring = _closedSpring; // возвращаем пружину
+        _hinge.spring = _closedSpring;
     }
 }

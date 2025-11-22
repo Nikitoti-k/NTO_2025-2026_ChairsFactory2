@@ -11,7 +11,7 @@ public class SnapZone : MonoBehaviour
     [SerializeField, Min(0.1f)] private float minSnapDuration = 0.3f;
     [SerializeField] private AnimationCurve snapCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
 
-    // ←←← ВАЖНО: сохраняем оригинальный слой объекта!
+    
     private GrabbableItem attachedItem;
     private int originalLayer;
     private Coroutine snapRoutine;
@@ -39,9 +39,8 @@ public class SnapZone : MonoBehaviour
         if (snapRoutine != null) return;
 
         attachedItem = item;
-        originalLayer = item.gameObject.layer;               // ← запоминаем слой
-        item.gameObject.layer = LayerMask.NameToLayer("Ignore Raycast"); // ← убираем из рейкаста на время анимации
-
+        originalLayer = item.gameObject.layer;               
+        item.gameObject.layer = LayerMask.NameToLayer("Ignore Raycast"); 
         snapRoutine = StartCoroutine(Snapping(item));
     }
 

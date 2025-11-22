@@ -35,9 +35,9 @@ public class InputManager : MonoBehaviour
     }
    
 
-    // Статическая обёртка — чтобы можно было писать InputManager.ClearLook()
+    
     public static void ClearLook() => Instance?.ClearLookInput();
-    // Удобная статическая обёртка (чтобы не писать Instance? каждый раз)
+   
     public static void ClearMovement() => Instance?.ClearMovementInput();
     public static void ClearAll() => Instance?.ClearAllInput();
 

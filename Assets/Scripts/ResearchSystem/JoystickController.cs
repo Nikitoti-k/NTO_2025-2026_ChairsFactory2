@@ -1,33 +1,32 @@
 ﻿using UnityEngine;
 
-[RequireComponent(typeof(ConfigurableJoint))]
-[RequireComponent(typeof(Rigidbody))]
 public class JoystickController : MonoBehaviour
 {
-    public Vector2 CurrentDirection { get; private set; } = Vector2.zero;
-
-    [Header("Настройки рычага")]
-    [SerializeField] private Transform handle;  // сам рычаг
-    [SerializeField] private float maxAngle = 45f;
-    [SerializeField] private float mouseSensitivity = 140f;
-
-    private Rigidbody handleRb;
-    private Quaternion initialLocalRotation;
-
-    private Vector2 virtualTilt = Vector2.zero;
-    private bool isGrabbed = false;
-
     public static JoystickController Instance { get; private set; }
+
+    [Header("Визуальный рычаг")]
+    [SerializeField] private Transform handle;
+    [SerializeField] private float maxAngle = 45f;
+
+    [Header("Плавность")]
+    [SerializeField, Range(1f, 30f)] private float moveSmooth = 18f;      
+    [SerializeField, Range(1f, 30f)] private float returnSmooth = 12f;    
+    [Header("Инверсия (настраивай в инспекторе)")]
+    [SerializeField] private bool invertX = true;
+    [SerializeField] private bool invertY = true;
+
+    public Vector2 CurrentDirection { get; private set; } = Vector2.zero;
+    public bool IsGrabbed { get; private set; } = false;
+
+    private Quaternion initialRotation;
+    private Vector2 targetTilt;     
+    private Vector2 currentTilt;     
 
     private void Awake()
     {
         Instance = this;
-
-        if (handle == null)
-            handle = transform;
-
-        handleRb = handle.GetComponent<Rigidbody>();
-        initialLocalRotation = handle.localRotation;
+        if (handle == null) handle = transform.GetChild(0);
+        initialRotation = handle.localRotation;
     }
 
     private void OnEnable()
@@ -44,78 +43,42 @@ public class JoystickController : MonoBehaviour
 
     private void OnGrabbed(CanGrab grabber, Rigidbody rb)
     {
-        if (rb != handleRb) return;
-
-        isGrabbed = true;
-
-        // Взят — делаем кинематическим, управление только наше
-        handleRb.isKinematic = true;
-        handleRb.useGravity = false;
-
-        SyncTiltFromRotation();
+        if (rb != null && (rb.transform.IsChildOf(transform) || rb.transform == transform))
+            IsGrabbed = true;
     }
 
     private void OnReleased(CanGrab grabber, Rigidbody rb)
     {
-        if (rb != handleRb) return;
-
-        isGrabbed = false;
-
-        // МГНОВЕННЫЙ сброс в ноль
-        ResetToCenter();
+        if (rb != null && (rb.transform.IsChildOf(transform) || rb.transform == transform))
+            IsGrabbed = false;
     }
 
     private void Update()
     {
-        if (!isGrabbed || InputManager.Instance == null) return;
+        // 1. Определяем целевой наклон
+        if (IsGrabbed)
+        {
+            Vector2 input = InputManager.Instance.Look;
+            targetTilt += input * 180f * Time.deltaTime; 
+            targetTilt.x = Mathf.Clamp(targetTilt.x, -maxAngle, maxAngle);
+            targetTilt.y = Mathf.Clamp(targetTilt.y, -maxAngle, maxAngle);
+        }
+        else
+        {
+            targetTilt = Vector2.zero;
+        }
 
-        Vector2 look = InputManager.Instance.Look;
-        Vector2 input = new Vector2(look.x, -look.y);
+        
+        float smooth = IsGrabbed ? moveSmooth : returnSmooth;
+        currentTilt = Vector2.Lerp(currentTilt, targetTilt, smooth * Time.deltaTime);
 
-        virtualTilt += input * mouseSensitivity * Time.deltaTime;
+        
+        float rotX = currentTilt.x * (invertX ? -1f : 1f);
+        float rotY = currentTilt.y * (invertY ? -1f : 1f);
 
-        virtualTilt.x = Mathf.Clamp(virtualTilt.x, -maxAngle, maxAngle);
-        virtualTilt.y = Mathf.Clamp(virtualTilt.y, -maxAngle, maxAngle);
+        handle.localRotation = initialRotation * Quaternion.Euler(rotY, 0f, rotX);
 
-        Quaternion target = Quaternion.Euler(virtualTilt.y, 0f, virtualTilt.x);
-        handle.localRotation = target;
-    }
-
-    private void FixedUpdate()
-    {
-        Quaternion delta = handle.localRotation * Quaternion.Inverse(initialLocalRotation);
-        Vector3 e = delta.eulerAngles;
-
-        float x = e.x > 180f ? e.x - 360f : e.x;
-        float z = e.z > 180f ? e.z - 360f : e.z;
-
-        CurrentDirection = new Vector2(
-            Mathf.Clamp(z / maxAngle, -1f, 1f),
-            Mathf.Clamp(-x / maxAngle, -1f, 1f)
-        );
-    }
-
-    private void ResetToCenter()
-    {
-        // ставим ровно в ноль
-        handle.localRotation = initialLocalRotation;
-
-        // возвращаем физику
-        handleRb.isKinematic = false;
-        handleRb.useGravity = true;
-
-        // обнуляем virtualTilt
-        virtualTilt = Vector2.zero;
-    }
-
-    private void SyncTiltFromRotation()
-    {
-        Quaternion delta = handle.localRotation * Quaternion.Inverse(initialLocalRotation);
-        Vector3 e = delta.eulerAngles;
-
-        float x = e.x > 180 ? e.x - 360 : e.x;
-        float z = e.z > 180 ? e.z - 360 : e.z;
-
-        virtualTilt = new Vector2(z, -x);
+        
+        CurrentDirection = currentTilt / maxAngle;
     }
 }

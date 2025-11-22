@@ -17,7 +17,7 @@ public class CameraController : MonoBehaviour
     [Range(0.08f, 0.3f)] public float rotationSmoothTime = 0.15f;
 
     [Header("Vehicle Look Limits")]
-    [Range(30f, 90f)] public float vehicleYawLimit = 70f;  // ±70 градусов относительно транспорта
+    [Range(30f, 90f)] public float vehicleYawLimit = 70f;  
 
     [Header("Tool Grab Point")]
     public float toolPointMoveSpeed = 0.002f;
@@ -35,7 +35,7 @@ public class CameraController : MonoBehaviour
     private float _sensX, _sensY;
     private bool _justEnteredFps;
 
-    // ← НОВОЕ: для транспорта
+    
     private TransportMovement _currentVehicle;
     private bool _inVehicle;
 
@@ -46,7 +46,7 @@ public class CameraController : MonoBehaviour
         _targetRb = player.GetComponent<Rigidbody>();
         _playerGrabber = player.GetComponent<CanGrab>();
 
-        _router = FindFirstObjectByType<InputRouter>();  // ← ИНИЦИАЛИЗАЦИЯ
+        _router = FindFirstObjectByType<InputRouter>(); 
 
         _yaw = _smoothYaw = transform.eulerAngles.y;
         _pitch = _smoothPitch = UnwrapAngle(transform.eulerAngles.x);
@@ -136,13 +136,13 @@ public class CameraController : MonoBehaviour
             _justEnteredFps = false;
         }
 
-        // === ЛОГИКА ТРАНСПОРТА ===
+        
         bool newInVehicle = _router.CurrentController is TransportMovement;
         if (newInVehicle != _inVehicle)
         {
             if (newInVehicle)
             {
-                // ПРИ ПОСАДКЕ: выравниваем камеру ВПЕРЁД по транспорту
+               
                 _currentVehicle = (TransportMovement)_router.CurrentController;
                 float vehicleYaw = _currentVehicle.transform.eulerAngles.y;
                 _yaw = NormalizeAngle(vehicleYaw);
@@ -152,19 +152,19 @@ public class CameraController : MonoBehaviour
             }
             else
             {
-                // При выходе: сбрасываем кэш
+                
                 _currentVehicle = null;
             }
             _inVehicle = newInVehicle;
         }
 
-        // Применяем ввод мыши
+       
         _yaw += look.x * _sensX;
         _pitch -= look.y * _sensY;
         _pitch = Mathf.Clamp(_pitch, pitchMin, pitchMax);
         _yaw = NormalizeAngle(_yaw);
 
-        // === ЛИМИТЫ ПОД ТРАНСПОРТ ===
+       
         if (_inVehicle && _currentVehicle != null)
         {
             float vehicleYaw = _currentVehicle.transform.eulerAngles.y;
@@ -173,14 +173,14 @@ public class CameraController : MonoBehaviour
             _yaw = NormalizeAngle(vehicleYaw + relativeYaw);
         }
 
-        // Сглаживание
+        
         _smoothYaw = Mathf.SmoothDampAngle(_smoothYaw, _yaw, ref _yawVel, rotationSmoothTime);
         _smoothPitch = Mathf.SmoothDampAngle(_smoothPitch, _pitch, ref _pitchVel, rotationSmoothTime);
 
-        // Применяем поворот камеры
+        
         transform.rotation = Quaternion.Euler(_smoothPitch, _smoothYaw, 0f);
 
-        // Tool grab logic (без изменений)
+        
         if (_playerGrabber?.IsHoldingObject() == true &&
             _playerGrabber.GetGrabbedItem()?.ItemType == GrabbableType.Tool)
         {
@@ -199,7 +199,7 @@ public class CameraController : MonoBehaviour
     {
         if (_targetRb == null || currentMode != ControlMode.FPS) return;
 
-        // Поворот тела ТОЛЬКО для пешего игрока
+       
         if (_router != null && _router.CurrentController is PlayerMovement)
         {
             _targetRb.MoveRotation(Quaternion.Euler(0f, _yaw, 0f));

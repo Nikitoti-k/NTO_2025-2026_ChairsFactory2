@@ -29,7 +29,7 @@ public class MineralScanner_Renderer : MonoBehaviour
     [SerializeField] private float scannerSpeed = 580f;
 
     public Camera renderCam;
-
+    private Vector2 velocity; // для разгона точки
     private RectTransform myRect;
     private MineralData currentMineral;
     private ScanPoint nearestPoint;
@@ -56,20 +56,28 @@ public class MineralScanner_Renderer : MonoBehaviour
         recordButtonUI?.onClick.RemoveListener(TryRecordData);
     }
 
+   
+
     private void LateUpdate()
     {
         if (JoystickController.Instance == null) return;
 
-        Vector2 input = JoystickController.Instance.CurrentDirection;
-        currentDirection = input.normalized;
-        float speed = input.sqrMagnitude > 0.01f ? scannerSpeed : 0f;
+        Vector2 joyInput = JoystickController.Instance.CurrentDirection;
 
-        Vector2 pos = scanningPoint.anchoredPosition + currentDirection * speed * Time.deltaTime;
-        scanningPoint.anchoredPosition = ClampToBounds(pos);
+        
+        if (!JoystickController.Instance.IsGrabbed)
+        {
+            CheckScanPoints(scanningPoint.anchoredPosition);
+            return; 
+        }
 
+        // Двигаем только когда держим — плавно и точно
+        Vector2 movement = joyInput * scannerSpeed * Time.deltaTime;
+        Vector2 newPos = scanningPoint.anchoredPosition + movement;
+
+        scanningPoint.anchoredPosition = ClampToBounds(newPos);
         CheckScanPoints(scanningPoint.anchoredPosition);
     }
-
     private Vector2 ClampToBounds(Vector2 pos)
     {
         pos.x = Mathf.Clamp(pos.x, boundsMin.x, boundsMax.x);
