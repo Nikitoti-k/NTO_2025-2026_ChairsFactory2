@@ -63,7 +63,7 @@ public class SnapZone : MonoBehaviour
             rb.angularVelocity = Vector3.zero;
         }
 
-        // Сразу отпускаем из руки
+        
         grabber?.ForceRelease();
 
         Vector3 startPos = item.transform.position;
@@ -82,12 +82,12 @@ public class SnapZone : MonoBehaviour
             yield return null;
         }
 
-        // Финальная привязка
+        
         item.transform.SetParent(snapPoint);
         item.transform.localPosition = Vector3.zero;
         item.transform.localRotation = Quaternion.identity;
 
-        // Возвращаем коллайдер и физику
+        
         if (col) col.isTrigger = false;
         if (rb)
         {
@@ -97,23 +97,23 @@ public class SnapZone : MonoBehaviour
             rb.angularVelocity = Vector3.zero;
         }
 
-        // ←←← ВОЗВРАЩАЕМ ОРИГИНАЛЬНЫЙ СЛОЙ (чтобы можно было снова взять!)
+        
         item.gameObject.layer = originalLayer;
 
         snapRoutine = null;
         grabber?.EndSnappingToZoneComplete();
     }
 
-    // ←←← ЭТО САМОЕ ГЛАВНОЕ! Вызывается при взятии объекта из зоны
+    
     public void OnItemGrabbedFromZone()
     {
         if (attachedItem != null)
         {
-            // Если объект ещё не успел улететь — отрываем от зоны
+           
             attachedItem.transform.SetParent(null);
         }
 
-        attachedItem = null;        // ← зона снова свободна!
+        attachedItem = null;      
         if (snapRoutine != null)
         {
             StopCoroutine(snapRoutine);

@@ -29,11 +29,11 @@ public class MineralScanner_Renderer : MonoBehaviour
     [SerializeField] private float scannerSpeed = 580f;
 
     public Camera renderCam;
-    private Vector2 velocity; // для разгона точки
+   
     private RectTransform myRect;
     private MineralData currentMineral;
     private ScanPoint nearestPoint;
-    private Vector2 currentDirection;
+    
 
     private void Awake()
     {
@@ -71,7 +71,7 @@ public class MineralScanner_Renderer : MonoBehaviour
             return; 
         }
 
-        // Двигаем только когда держим — плавно и точно
+        
         Vector2 movement = joyInput * scannerSpeed * Time.deltaTime;
         Vector2 newPos = scanningPoint.anchoredPosition + movement;
 

@@ -169,8 +169,6 @@ MonoBehaviour:
   targetSnapZone: {fileID: 759975754}
   mineralCamera: {fileID: 51107052}
   screenRenderer: {fileID: 759975756}
-  fadeDuration: 0.4
-  emissionColor: {r: 1, g: 1, b: 1, a: 1}
   OnMineralScanned:
     m_PersistentCalls:
       m_Calls: []
