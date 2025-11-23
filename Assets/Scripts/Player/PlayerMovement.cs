@@ -10,16 +10,23 @@ public class PlayerMovement : MonoBehaviour, IControllable
     [SerializeField, Range(1f, 50f)] private float deceleration = 30f;
     [SerializeField, Range(1f, 50f)] private float airAcceleration = 8f;
     [SerializeField, Range(0f, 1f)] private float stopThreshold = 0.1f;
+
     [Header("Земля")]
     [SerializeField] private float groundCheckDistance = 0.2f;
     [SerializeField] private LayerMask groundMask = -1;
+
     [Header("Посадка в транспорт")]
     [SerializeField] private float mountDistance = 2f;
     [SerializeField] private LayerMask transportMask = -1;
+
     [Header("Добыча")]
     [SerializeField] private float miningRange = 3f;
     [SerializeField] private LayerMask miningMask = -1;
     [SerializeField] private Transform miningRayOrigin;
+
+    [Header("Сон")]
+    [SerializeField] private SleepSystem sleepSystem;
+
     [Header("Компоненты")]
     [SerializeField] private CanGrab objectGrabber;
 
@@ -28,6 +35,7 @@ public class PlayerMovement : MonoBehaviour, IControllable
     private Vector2 _input;
     private Vector2 _smoothedInput;
     private bool _isMounting;
+    private bool _isSleeping;
 
     private void Awake()
     {
@@ -43,7 +51,7 @@ public class PlayerMovement : MonoBehaviour, IControllable
 
     private void FixedUpdate()
     {
-        if (_router?.CurrentController != this || _isMounting) return;
+        if (_router?.CurrentController != this || _isMounting || _isSleeping) return;
         Move(_input);
     }
 
@@ -88,13 +96,28 @@ public class PlayerMovement : MonoBehaviour, IControllable
 
     public void HandleInteract(bool pressed)
     {
-        if (!pressed || _isMounting) return;
+        if (!pressed || _isMounting || _isSleeping) return;
+
         if (objectGrabber?.IsHoldingObject() == true)
         {
             TrySnapObject();
             return;
         }
+
+        if (sleepSystem != null && sleepSystem.CanSleepNow())
+        {
+            Debug.Log("Пыьаемся заснуть!");
+            _isSleeping = true;
+            sleepSystem.StartSleep();
+            return;
+        }
+
         TryMountTransport();
+    }
+
+    public void EndSleep()
+    {
+        _isSleeping = false;
     }
 
     private void TrySnapObject()
@@ -114,7 +137,6 @@ public class PlayerMovement : MonoBehaviour, IControllable
             .Where(t => t != null)
             .OrderBy(t => Vector3.Distance(transform.position, t.transform.position))
             .FirstOrDefault();
-
         if (nearest != null)
         {
             _isMounting = true;
