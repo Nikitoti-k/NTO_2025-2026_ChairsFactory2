@@ -5,6 +5,7 @@ TagManager:
   serializedVersion: 3
   tags:
   - DoorHandle
+  - ScannerJoystick
   layers:
   - Default
   - TransparentFX

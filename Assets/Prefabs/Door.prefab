@@ -323,8 +323,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   itemType: 2
   maxAngle: 110
-  closeSpring: 80
-  closeDamper: 12
+  closeSpring: 0
+  closeDamper: 0
 --- !u!59 &8960037329213923421
 HingeJoint:
   m_ObjectHideFlags: 0

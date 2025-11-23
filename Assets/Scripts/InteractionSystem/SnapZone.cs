@@ -11,18 +11,19 @@ public class SnapZone : MonoBehaviour
     [SerializeField, Min(0.1f)] private float minSnapDuration = 0.3f;
     [SerializeField] private AnimationCurve snapCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
 
-    
     private GrabbableItem attachedItem;
     private int originalLayer;
     private Coroutine snapRoutine;
 
     public bool IsOccupied => attachedItem != null;
 
+    
+    public GameObject CurrentSnappedObject => attachedItem != null ? attachedItem.gameObject : null;
+
     private void Awake()
     {
         if (TryGetComponent<Collider>(out var col))
             col.isTrigger = true;
-
         if (snapPoint == null) snapPoint = transform;
     }
 
@@ -37,10 +38,9 @@ public class SnapZone : MonoBehaviour
     public void Snap(GrabbableItem item)
     {
         if (snapRoutine != null) return;
-
         attachedItem = item;
-        originalLayer = item.gameObject.layer;               
-        item.gameObject.layer = LayerMask.NameToLayer("Ignore Raycast"); 
+        originalLayer = item.gameObject.layer;
+        item.gameObject.layer = LayerMask.NameToLayer("Ignore Raycast");
         snapRoutine = StartCoroutine(Snapping(item));
     }
 
@@ -48,13 +48,10 @@ public class SnapZone : MonoBehaviour
     {
         CanGrab grabber = FindFirstObjectByType<CanGrab>();
         grabber?.StartSnappingToZone();
-
         Rigidbody rb = item.GetComponent<Rigidbody>();
         Collider col = item.GetComponent<Collider>();
-
         bool wasKinematic = rb ? rb.isKinematic : true;
         bool hadGravity = rb ? rb.useGravity : true;
-
         if (col) col.isTrigger = true;
         if (rb)
         {
@@ -63,15 +60,11 @@ public class SnapZone : MonoBehaviour
             rb.angularVelocity = Vector3.zero;
         }
 
-        
         grabber?.ForceRelease();
-
         Vector3 startPos = item.transform.position;
         Quaternion startRot = item.transform.rotation;
-
         float distance = Vector3.Distance(startPos, snapPoint.position);
         float duration = Mathf.Max(minSnapDuration, distance / snapSpeed);
-
         float t = 0f;
         while (t < 1f)
         {
@@ -82,12 +75,10 @@ public class SnapZone : MonoBehaviour
             yield return null;
         }
 
-        
         item.transform.SetParent(snapPoint);
         item.transform.localPosition = Vector3.zero;
         item.transform.localRotation = Quaternion.identity;
 
-        
         if (col) col.isTrigger = false;
         if (rb)
         {
@@ -97,23 +88,18 @@ public class SnapZone : MonoBehaviour
             rb.angularVelocity = Vector3.zero;
         }
 
-        
         item.gameObject.layer = originalLayer;
-
         snapRoutine = null;
         grabber?.EndSnappingToZoneComplete();
     }
 
-    
     public void OnItemGrabbedFromZone()
     {
         if (attachedItem != null)
         {
-           
             attachedItem.transform.SetParent(null);
         }
-
-        attachedItem = null;      
+        attachedItem = null;
         if (snapRoutine != null)
         {
             StopCoroutine(snapRoutine);

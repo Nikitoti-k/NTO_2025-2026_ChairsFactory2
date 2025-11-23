@@ -1,11 +1,12 @@
 ﻿using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
 
 public class CameraController : MonoBehaviour
 {
     public enum ControlMode { UI, FPS }
 
-    [Header("Eye & Sensitivity")]
+    [Header("Высота глаз + чувствителность")]
     public float eyeHeight = 1.6f;
     public float mouseSensitivityX = 1.8f;
     public float mouseSensitivityY = 1.8f;
@@ -13,40 +14,51 @@ public class CameraController : MonoBehaviour
     public float pitchMin = -80f;
     public float pitchMax = 80f;
 
-    [Header("Smoothing")]
+    [Header("Сглаживание")]
     [Range(0.08f, 0.3f)] public float rotationSmoothTime = 0.15f;
 
-    [Header("Vehicle Look Limits")]
-    [Range(30f, 90f)] public float vehicleYawLimit = 70f;  
+    [Header("Огрнаничение поворота головы для транспорта")]
+    [Range(30f, 90f)] public float vehicleYawLimit = 70f;
 
-    [Header("Tool Grab Point")]
+    [Header("Точка захвата инструментов")]
     public float toolPointMoveSpeed = 0.002f;
+
+    [Header("Для нажимания кнопок в world space")]
+    [SerializeField] private LayerMask uiLayer;
+    [SerializeField] private float uiRayDistance = 4f;
+
+    private GameObject uiHoverObj;
+
 
     [SerializeField] private ControlMode currentMode = ControlMode.FPS;
 
     private Transform _target;
     private Rigidbody _targetRb;
     private CanGrab _playerGrabber;
-    private InputRouter _router;  // ← НОВОЕ
+    private InputRouter _router;
 
     private float _yaw, _pitch;
     private float _smoothYaw, _smoothPitch;
     private float _yawVel, _pitchVel;
     private float _sensX, _sensY;
+
     private bool _justEnteredFps;
 
-    
     private TransportMovement _currentVehicle;
     private bool _inVehicle;
+    public static CameraController Instance { get; private set; }
 
-    private void Start()
+    private void Awake()
+    {
+        Instance = this;
+    }
+        private void Start()
     {
         var player = FindFirstObjectByType<PlayerMovement>();
         _target = player.transform;
         _targetRb = player.GetComponent<Rigidbody>();
         _playerGrabber = player.GetComponent<CanGrab>();
-
-        _router = FindFirstObjectByType<InputRouter>(); 
+        _router = FindFirstObjectByType<InputRouter>();
 
         _yaw = _smoothYaw = transform.eulerAngles.y;
         _pitch = _smoothPitch = UnwrapAngle(transform.eulerAngles.x);
@@ -108,6 +120,7 @@ public class CameraController : MonoBehaviour
                 InputManager.ClearLook();
                 _justEnteredFps = true;
                 break;
+
             case ControlMode.UI:
                 Cursor.lockState = CursorLockMode.None;
                 Cursor.visible = true;
@@ -127,79 +140,82 @@ public class CameraController : MonoBehaviour
 
     private void Update()
     {
-        if (currentMode != ControlMode.FPS || _target == null || _router == null) return;
+       
 
-        Vector2 look = InputManager.Instance.Look;
-        if (_justEnteredFps)
+        if (currentMode == ControlMode.FPS && _target != null && _router != null)
         {
-            look = Vector2.zero;
-            _justEnteredFps = false;
-        }
+            Vector2 look = InputManager.Instance.Look;
 
-        
-        bool newInVehicle = _router.CurrentController is TransportMovement;
-        if (newInVehicle != _inVehicle)
-        {
-            if (newInVehicle)
+            if (_justEnteredFps)
             {
-               
-                _currentVehicle = (TransportMovement)_router.CurrentController;
+                look = Vector2.zero;
+                _justEnteredFps = false;
+            }
+
+            bool newInVehicle = _router.CurrentController is TransportMovement;
+
+            if (newInVehicle != _inVehicle)
+            {
+                if (newInVehicle)
+                {
+                    _currentVehicle = (TransportMovement)_router.CurrentController;
+                    float vehicleYaw = _currentVehicle.transform.eulerAngles.y;
+                    _yaw = NormalizeAngle(vehicleYaw);
+                    _smoothYaw = _yaw;
+                    _pitch = 0f;
+                    _smoothPitch = _pitch;
+                }
+                else
+                {
+                    _currentVehicle = null;
+                }
+
+                _inVehicle = newInVehicle;
+            }
+
+            _yaw += look.x * _sensX;
+            _pitch -= look.y * _sensY;
+
+            _pitch = Mathf.Clamp(_pitch, pitchMin, pitchMax);
+
+            _yaw = NormalizeAngle(_yaw);
+
+            if (_inVehicle && _currentVehicle != null)
+            {
                 float vehicleYaw = _currentVehicle.transform.eulerAngles.y;
-                _yaw = NormalizeAngle(vehicleYaw);
-                _smoothYaw = _yaw;
-                _pitch = 0f;
-                _smoothPitch = _pitch;
+                float relativeYaw = NormalizeAngle(_yaw - vehicleYaw);
+                relativeYaw = Mathf.Clamp(relativeYaw, -vehicleYawLimit, vehicleYawLimit);
+                _yaw = NormalizeAngle(vehicleYaw + relativeYaw);
             }
-            else
+
+            _smoothYaw = Mathf.SmoothDampAngle(_smoothYaw, _yaw, ref _yawVel, rotationSmoothTime);
+            _smoothPitch = Mathf.SmoothDampAngle(_smoothPitch, _pitch, ref _pitchVel, rotationSmoothTime);
+
+            transform.rotation = Quaternion.Euler(_smoothPitch, _smoothYaw, 0f);
+
+            if (_playerGrabber?.IsHoldingObject() == true &&
+                _playerGrabber.GetGrabbedItem()?.ItemType == GrabbableType.Tool)
             {
-                
-                _currentVehicle = null;
-            }
-            _inVehicle = newInVehicle;
-        }
+                var tgp = _playerGrabber.toolGrabPoint;
 
-       
-        _yaw += look.x * _sensX;
-        _pitch -= look.y * _sensY;
-        _pitch = Mathf.Clamp(_pitch, pitchMin, pitchMax);
-        _yaw = NormalizeAngle(_yaw);
-
-       
-        if (_inVehicle && _currentVehicle != null)
-        {
-            float vehicleYaw = _currentVehicle.transform.eulerAngles.y;
-            float relativeYaw = NormalizeAngle(_yaw - vehicleYaw);
-            relativeYaw = Mathf.Clamp(relativeYaw, -vehicleYawLimit, vehicleYawLimit);
-            _yaw = NormalizeAngle(vehicleYaw + relativeYaw);
-        }
-
-        
-        _smoothYaw = Mathf.SmoothDampAngle(_smoothYaw, _yaw, ref _yawVel, rotationSmoothTime);
-        _smoothPitch = Mathf.SmoothDampAngle(_smoothPitch, _pitch, ref _pitchVel, rotationSmoothTime);
-
-        
-        transform.rotation = Quaternion.Euler(_smoothPitch, _smoothYaw, 0f);
-
-        
-        if (_playerGrabber?.IsHoldingObject() == true &&
-            _playerGrabber.GetGrabbedItem()?.ItemType == GrabbableType.Tool)
-        {
-            var tgp = _playerGrabber.toolGrabPoint;
-            if (tgp != null)
-            {
-                Vector3 move = new Vector3(look.x, 0f, look.y) * toolPointMoveSpeed;
-                Vector3 worldMove = transform.TransformDirection(move);
-                worldMove.y = 0f;
-                tgp.position += worldMove;
+                if (tgp != null)
+                {
+                    Vector3 move = new Vector3(look.x, 0f, look.y) * toolPointMoveSpeed;
+                    Vector3 worldMove = transform.TransformDirection(move);
+                    worldMove.y = 0f;
+                    tgp.position += worldMove;
+                }
             }
         }
+
+     
+        HandleFPS_UIRaycast();
     }
 
     private void FixedUpdate()
     {
         if (_targetRb == null || currentMode != ControlMode.FPS) return;
 
-       
         if (_router != null && _router.CurrentController is PlayerMovement)
         {
             _targetRb.MoveRotation(Quaternion.Euler(0f, _yaw, 0f));
@@ -210,6 +226,31 @@ public class CameraController : MonoBehaviour
     {
         if (_target != null)
             transform.position = _target.position + Vector3.up * eyeHeight;
+    }
+
+   
+
+    private void HandleFPS_UIRaycast()
+    {
+        if (currentMode != ControlMode.FPS) return;
+
+        Ray ray = new Ray(transform.position, transform.forward);
+
+        if (Physics.Raycast(ray, out RaycastHit hit, uiRayDistance, uiLayer))
+        {
+            uiHoverObj = hit.collider.gameObject;
+
+            if (Mouse.current.leftButton.wasPressedThisFrame)
+            {
+                var btn = uiHoverObj.GetComponent<Button>();
+                if (btn != null)
+                    btn.onClick.Invoke();
+            }
+        }
+        else
+        {
+            uiHoverObj = null;
+        }
     }
 
     private static float NormalizeAngle(float a)

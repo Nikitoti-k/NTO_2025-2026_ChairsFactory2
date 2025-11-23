@@ -7,7 +7,6 @@ public class FlareController : MonoBehaviour
     [SerializeField] private Transform handHoldPoint;
     [SerializeField] private Transform throwPoint;
     [SerializeField] private float maxThrowDistance = 50f;
-    [SerializeField] private LayerMask flareTargetMask = -1;
     [SerializeField] private float scatterAmount = 1.5f;
     [SerializeField] private float cooldownTime = 1.5f;
 
@@ -22,7 +21,6 @@ public class FlareController : MonoBehaviour
 
     void Awake()
     {
-        // Инициализация
         cam = Camera.main;
         playerMovement = GetComponent<PlayerMovement>();
         canGrab = GetComponent<CanGrab>();
@@ -36,7 +34,6 @@ public class FlareController : MonoBehaviour
 
     void Update()
     {
-        // Обновление кулдауна
         UpdateCooldown();
     }
 
@@ -58,7 +55,6 @@ public class FlareController : MonoBehaviour
 
     private void SpawnHeldFlare()
     {
-        // Спавн в руке
         FlareObject flare = flarePool.GetFlare(handHoldPoint.position);
         if (flare == null) return;
 
@@ -78,7 +74,6 @@ public class FlareController : MonoBehaviour
     {
         if (heldFlare == null) return;
 
-        // Бросок
         heldFlare.transform.SetParent(null);
 
         Rigidbody rb = heldFlare.GetComponent<Rigidbody>();
@@ -86,8 +81,9 @@ public class FlareController : MonoBehaviour
             rb.isKinematic = false;
 
         Vector3 targetPoint;
-        if (Physics.Raycast(cam.transform.position, cam.transform.forward,
-            out RaycastHit hit, maxThrowDistance, flareTargetMask))
+
+        
+        if (Physics.Raycast(cam.transform.position, cam.transform.forward, out RaycastHit hit, maxThrowDistance))
         {
             targetPoint = hit.point + hit.normal * 0.1f;
         }

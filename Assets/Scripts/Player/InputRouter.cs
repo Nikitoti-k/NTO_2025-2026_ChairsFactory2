@@ -35,19 +35,18 @@ public class InputRouter : MonoBehaviour
 
         var im = InputManager.Instance;
 
-        // УБИРАЕМ ПРОВЕРКУ НА ФАКЕЛ ТОЛЬКО ДЛЯ ИГРОКА!
-        // Теперь проверяем: если текущий контроллер — игрок И он держит факел → тогда бросаем
+      
         if (CurrentController is PlayerMovement playerMovement)
         {
             var flareCtrl = playerMovement.GetComponent<FlareController>();
             if (flareCtrl != null && flareCtrl.IsHoldingFlare)
             {
                 CurrentController.HandleFlare(im.Flare);
-                // НЕ return! Пусть остальные действия тоже пройдут (например, выход из машины)
+             
             }
         }
 
-        // Нормальная передача ввода — всегда!
+      
         CurrentController.HandleInteract(im.Interact);
         CurrentController.HandlePhysicalInteract(im.Physical, im.PhysicalHeld);
         CurrentController.HandleFlare(im.Flare);

@@ -18,7 +18,7 @@ public class Door : GrabbableItem
         _hinge = GetComponent<HingeJoint>();
         _rb = GetComponent<Rigidbody>(); 
 
-        // Пружинка закрытия
+        
         _closedSpring = new JointSpring
         {
             spring = closeSpring,
@@ -52,7 +52,7 @@ public class Door : GrabbableItem
         _hinge.spring = _freeSpring;
     }
 
-    // Вызывается при отпускании
+    
     public void OnReleased()
     {
         _hinge.spring = _closedSpring;

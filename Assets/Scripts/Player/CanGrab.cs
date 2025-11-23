@@ -41,8 +41,7 @@ public class CanGrab : MonoBehaviour
         if (toolGrabPoint == null) toolGrabPoint = grabPoint;
     }
 
-    //private void OnEnable() => GrabbableItem.OnGrabbedCollision += OnHeldCollision;
-    //private void OnDisable() => GrabbableItem.OnGrabbedCollision -= OnHeldCollision;
+  
 
     public bool IsHoldingObject() => heldRb != null;
     public GrabbableItem GetGrabbedItem() => heldItem;

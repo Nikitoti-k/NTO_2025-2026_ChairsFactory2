@@ -1,36 +1,49 @@
 ﻿using UnityEngine;
 
-[DisallowMultipleComponent]
+[RequireComponent(typeof(MineralPointSpawner))]
 public class MineralData : MonoBehaviour
 {
-    public enum SampleType { Ore, Fossil, Anomaly }
-    public enum CrystalSystem { None, Cubic, Trigonal, Monoclinic }
+    public enum CrystalSystem { Cubic, Trigonal, Monoclinic, Tetragonal, Hexagonal, Orthorhombic, Triclinic }
 
-    [Header("Тип образца")]
-    [SerializeField] private SampleType sampleType = SampleType.Ore;
-    [SerializeField] private float ageMya = 150f;
-    [SerializeField] private CrystalSystem crystalSystem = CrystalSystem.Cubic;
-    [SerializeField] private float radioactivityUsv = 0.12f;
+    // Реальные значения (скрытые)
+    private float realAge;
+    private float realRadioactivity;
 
-    [Header("Точки сканирования")]
-    [SerializeField] private ScanPoint agePoint;
-    [SerializeField] private ScanPoint crystalPoint;
-    [SerializeField] private ScanPoint radioactivityPoint;
+    [Header("Точки сканирования (авто или вручную)")]
+    public ScanPoint AgePoint;
+    public ScanPoint CrystalPoint;
+    public ScanPoint RadioactivityPoint;
 
-    public SampleType Type => sampleType;
-    public float AgeMya => ageMya;
-    public CrystalSystem CrystalSystem_ => crystalSystem;
-    public float RadioactivityUsv => radioactivityUsv;
+    [Header("КЛАСС — перетащи нужный .asset сюда!")]
+    [SerializeField] private MineralClass mineralClass;
 
-    public ScanPoint AgePoint => agePoint;
-    public ScanPoint CrystalPoint => crystalPoint;
-    public ScanPoint RadioactivityPoint => radioactivityPoint;
+    // Публичные геттеры с погрешностью
+    public float AgeMya => realAge + Random.Range(-mineralClass.ageError, mineralClass.ageError);
+    public float RadioactivityUsv => realRadioactivity + Random.Range(-mineralClass.radioactivityError, mineralClass.radioactivityError);
+    public CrystalSystem CrystalSystem_ => mineralClass.crystalSystem;
 
-    public ScanPoint GetPoint(int index) => index switch
+    public string ClassName => mineralClass.className;
+    public string AgeUnitText => mineralClass.ageUnit == MineralClass.AgeUnit.Days ? "дней" : "млн лет";
+    public MineralClass MineralClassSO => mineralClass;
+    
+    public void GenerateData()
     {
-        0 => agePoint,
-        1 => crystalPoint,
-        2 => radioactivityPoint,
-        _ => null
-    };
+        if (mineralClass == null)
+        {
+            Debug.LogError("[MineralData] Не назначен MineralClass SO!");
+            return;
+        }
+
+        realAge = Random.Range(mineralClass.ageMin, mineralClass.ageMax);
+        realRadioactivity = Random.Range(mineralClass.radioactivityMin, mineralClass.radioactivityMax);
+
+        Debug.Log($"Сгенерирован минерал: <color=cyan>{mineralClass.className}</color>\n" +
+                  $"Возраст: {realAge:F1} ±{mineralClass.ageError} {AgeUnitText}\n" +
+                  $"Радиация: {realRadioactivity:F3} ±{mineralClass.radioactivityError} Бк");
+    }
+
+#if UNITY_EDITOR
+    [ContextMenu("Сгенерировать данные (тест)")]
+    private void EditorGenerate() => GenerateData();
+#endif
 }
