@@ -8,11 +8,9 @@ public interface IControllable
     void HandleFlare(bool pressed);
 }
 
-
 public class InputRouter : MonoBehaviour
 {
     public static InputRouter Instance { get; private set; }
-
     [SerializeField] private bool showLogs = true;
     public IControllable CurrentController { get; private set; }
 
@@ -28,25 +26,20 @@ public class InputRouter : MonoBehaviour
         if (player != null) SetController(player);
     }
 
-  
-   private void Update()
+    private void Update()
     {
         if (CurrentController == null || InputManager.Instance == null) return;
-
         var im = InputManager.Instance;
 
-      
         if (CurrentController is PlayerMovement playerMovement)
         {
             var flareCtrl = playerMovement.GetComponent<FlareController>();
             if (flareCtrl != null && flareCtrl.IsHoldingFlare)
             {
                 CurrentController.HandleFlare(im.Flare);
-             
             }
         }
 
-      
         CurrentController.HandleInteract(im.Interact);
         CurrentController.HandlePhysicalInteract(im.Physical, im.PhysicalHeld);
         CurrentController.HandleFlare(im.Flare);

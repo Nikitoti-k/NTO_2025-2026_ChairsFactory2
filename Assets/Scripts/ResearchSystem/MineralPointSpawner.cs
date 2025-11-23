@@ -35,16 +35,15 @@ public class MineralPointSpawner : MonoBehaviour
         data.CrystalPoint = CreatePoint("Крист. решётка", positions[1], Color.magenta);
         data.RadioactivityPoint = CreatePoint("Радиоактивность", positions[2], Color.red);
 
-        Debug.Log($"<color=cyan>Точки спавн в XZ-плоскости на расстоянии {minDistanceFromCenter:F2}–{spawnRadius:F2} от центра</color>");
+        
     }
 
-    // ГЛАВНЫЙ МЕТОД — плоский круг + защита от кучкования
     private Vector3[] GenerateFlatCirclePoints(int count, float radius, float minFromCenter, float minBetween)
     {
         List<Vector3> points = new List<Vector3>();
         List<float> angles = new List<float>();
 
-        // Пробуем до 50 раз — чтобы не зависнуть
+       
         for (int i = 0; i < 50 && points.Count < count; i++)
         {
             float angle = Random.Range(0f, 360f);
@@ -53,11 +52,10 @@ public class MineralPointSpawner : MonoBehaviour
 
             bool tooClose = false;
 
-            // Проверка: не слишком близко к центру?
             if (candidate.magnitude < minFromCenter)
                 tooClose = true;
 
-            // Проверка: не слишком близко к другим точкам?
+            
             foreach (Vector3 p in points)
             {
                 if (Vector3.Distance(p, candidate) < minBetween)
@@ -74,7 +72,7 @@ public class MineralPointSpawner : MonoBehaviour
             }
         }
 
-        // Если не получилось идеально — просто распределяем равномерно (запасной вариант)
+       
         if (points.Count < count)
         {
             points.Clear();

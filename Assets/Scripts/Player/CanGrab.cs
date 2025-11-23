@@ -3,21 +3,14 @@
 [RequireComponent(typeof(PlayerMovement))]
 public class CanGrab : MonoBehaviour
 {
-    [Header("Основные")]
     [SerializeField] private Transform grabPoint;
     [SerializeField] private float maxGrabDistance = 3.5f;
-
-    [Header("Инструменты")]
     [SerializeField] public Transform toolGrabPoint;
     [SerializeField] private float toolMaxGrabDistance = 1.8f;
-
-    [Header("Физика")]
     [SerializeField] private LayerMask grabbableMask = -1;
     [SerializeField] private float pullSpeed = 20f;
     [SerializeField] private bool releaseOnCollision = true;
     [SerializeField] private LayerMask collisionReleaseMask = -1;
-
-    [Header("Гравитация")]
     [SerializeField] private bool mineralsHaveGravity = true;
     [SerializeField] private bool toolsHaveGravity = false;
 
@@ -30,6 +23,7 @@ public class CanGrab : MonoBehaviour
     private Quaternion lockedRotation;
     private bool isPulling = false;
     private bool isSnapping = false;
+    private bool wasTriggerBeforeGrab = false;
 
     public static System.Action<CanGrab, Rigidbody> OnGrabbed;
     public static System.Action<CanGrab, Rigidbody> OnReleased;
@@ -41,11 +35,8 @@ public class CanGrab : MonoBehaviour
         if (toolGrabPoint == null) toolGrabPoint = grabPoint;
     }
 
-  
-
     public bool IsHoldingObject() => heldRb != null;
     public GrabbableItem GetGrabbedItem() => heldItem;
-
     public void StartSnappingToZone() => isSnapping = true;
     public void EndSnappingToZoneComplete() => isSnapping = false;
 
@@ -65,7 +56,6 @@ public class CanGrab : MonoBehaviour
             Grab(item, toolGrabPoint);
             return;
         }
-
         if (TryGrabAt(grabPoint, maxGrabDistance, out item))
             Grab(item, grabPoint);
     }
@@ -78,7 +68,6 @@ public class CanGrab : MonoBehaviour
 
         item = hit.collider.GetComponent<GrabbableItem>();
         if (item == null) return false;
-
         if (point == toolGrabPoint && item.ItemType != GrabbableType.Tool) return false;
         if (point == grabPoint && item.ItemType == GrabbableType.Tool) return false;
 
@@ -100,6 +89,13 @@ public class CanGrab : MonoBehaviour
         heldRb.linearVelocity = Vector3.zero;
         heldRb.angularVelocity = Vector3.zero;
 
+        var col = item.GetComponent<Collider>();
+        if (col)
+        {
+            wasTriggerBeforeGrab = col.isTrigger;
+            col.isTrigger = true;
+        }
+
         OnGrabbed?.Invoke(this, heldRb);
         isPulling = true;
 
@@ -116,18 +112,22 @@ public class CanGrab : MonoBehaviour
         if (heldItem.ItemType == GrabbableType.Door)
             heldItem.GetComponent<Door>()?.OnReleased();
 
+        var col = heldItem.GetComponent<Collider>();
+
         if (!force && !isSnapping)
         {
-            bool hasGravity = heldItem.ItemType switch
-            {
-                GrabbableType.Tool => toolsHaveGravity,
-                _ => mineralsHaveGravity
-            };
+            
+            if (col)
+                col.isTrigger = wasTriggerBeforeGrab;
 
+            bool hasGravity = heldItem.ItemType == GrabbableType.Tool ? toolsHaveGravity : mineralsHaveGravity;
             heldRb.useGravity = hasGravity;
-
-            if (isPulling)
-                heldRb.linearVelocity *= 0.3f;
+            heldRb.linearVelocity *= 0.3f;
+            heldRb.angularVelocity *= 0.3f;
+        }
+        else if (force && isSnapping)
+        {
+           
         }
 
         heldRb = null;
@@ -135,39 +135,43 @@ public class CanGrab : MonoBehaviour
         heldItem = null;
         activePoint = null;
         isPulling = false;
+        wasTriggerBeforeGrab = false;
     }
 
     private void FixedUpdate()
     {
-        if (!isPulling || heldRb == null || isSnapping || activePoint == null) return;
+        if (heldRb == null || isSnapping || activePoint == null) return;
 
-        Vector3 dir = activePoint.position - heldTransform.position;
-        if (dir.magnitude < 0.15f)
+        Vector3 targetPos = activePoint.position;
+        Vector3 currentPos = heldTransform.position;
+        Vector3 direction = targetPos - currentPos;
+
+        if (isPulling)
         {
-            isPulling = false;
-            lockedOffset = activePoint.InverseTransformPoint(heldTransform.position);
-            lockedRotation = Quaternion.Inverse(activePoint.rotation) * heldTransform.rotation;
+            if (direction.sqrMagnitude < 0.15f * 0.15f)
+            {
+                heldRb.linearVelocity = Vector3.zero;
+                isPulling = false;
+                lockedOffset = activePoint.InverseTransformPoint(currentPos);
+                lockedRotation = Quaternion.Inverse(activePoint.rotation) * heldTransform.rotation;
+            }
+            else
+            {
+                heldRb.linearVelocity = direction.normalized * pullSpeed;
+            }
         }
         else
         {
-            heldRb.linearVelocity = dir.normalized * pullSpeed;
+            heldRb.linearVelocity = Vector3.zero;
         }
     }
 
     private void LateUpdate()
     {
         if (heldRb == null || isPulling || isSnapping || activePoint == null) return;
-        if (heldRb.GetComponent<ConfigurableJoint>()) return;
         if (heldItem.ItemType == GrabbableType.Door) return;
 
         heldTransform.position = activePoint.TransformPoint(lockedOffset);
         heldTransform.rotation = activePoint.rotation * lockedRotation;
-    }
-
-    private void OnHeldCollision(GrabbableItem item, Collision col)
-    {
-        if (item != heldItem || !releaseOnCollision || isPulling || isSnapping) return;
-        if (((1 << col.collider.gameObject.layer) & collisionReleaseMask) == 0) return;
-        Release();
     }
 }
