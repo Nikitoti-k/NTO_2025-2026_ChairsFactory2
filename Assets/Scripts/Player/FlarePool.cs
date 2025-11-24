@@ -26,6 +26,18 @@ public class FlarePool : MonoBehaviour
             GameObject flareObj = Instantiate(flarePrefab, transform);
             flareObj.SetActive(false);
             FlareObject flare = flareObj.GetComponent<FlareObject>();
+
+            SaveableObject saveable = flareObj.GetComponent<SaveableObject>();
+            if (saveable == null)
+            {
+                saveable = flareObj.AddComponent<SaveableObject>();
+            }
+            saveable.SetPrefabIdentifier("Flare");
+
+            // Явно задаём свойства (если триггер не нужен)
+            Collider col = flareObj.GetComponent<Collider>();
+            if (col) col.isTrigger = false;  // Или true, в зависимости от логики
+
             pool.Enqueue(flare);
         }
     }
@@ -51,6 +63,17 @@ public class FlarePool : MonoBehaviour
     {
         GameObject flareObj = Instantiate(flarePrefab, position, Quaternion.identity, transform);
         FlareObject flare = flareObj.GetComponent<FlareObject>();
+
+        SaveableObject saveable = flareObj.GetComponent<SaveableObject>();
+        if (saveable == null)
+        {
+            saveable = flareObj.AddComponent<SaveableObject>();
+        }
+        saveable.SetPrefabIdentifier("Flare");
+
+        Collider col = flareObj.GetComponent<Collider>();
+        if (col) col.isTrigger = false;  // Исправление по умолчанию
+
         return flare;
     }
 
