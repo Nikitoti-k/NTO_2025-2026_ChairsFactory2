@@ -98,21 +98,46 @@ public class PlayerMovement : MonoBehaviour, IControllable
     {
         if (!pressed || _isMounting || _isSleeping) return;
 
+        // 1. Если держим объект — пытаемся вставить в SnapZone
         if (objectGrabber?.IsHoldingObject() == true)
         {
             TrySnapObject();
             return;
         }
 
+        // 2. Пытаемся лечь спать
         if (sleepSystem != null && sleepSystem.CanSleepNow())
         {
-            Debug.Log("Пыьаемся заснуть!");
+            Debug.Log("[Player] Засыпаем...");
             _isSleeping = true;
             sleepSystem.StartSleep();
             return;
         }
 
+        // 3. Пытаемся сесть в транспорт
         TryMountTransport();
+
+        // 4. НОВАЯ ФУНКЦИЯ: ОТКРЫВАЕМ ТЕРМИНАЛ С ОТЧЁТАМИ!
+        if (TryOpenResearchReport())
+            return;
+
+        // Если ничего не сработало — просто логируем
+        Debug.Log("[Player] Нечего интерактировать поблизости.");
+    }
+
+    private bool TryOpenResearchReport()
+    {
+        var viewers = Physics.OverlapSphere(transform.position, 3f)
+            .Select(c => c.GetComponent<ResearchReportViewer>())
+            .Where(v => v != null);
+
+        var nearest = viewers.FirstOrDefault();
+        if (nearest != null)
+        {
+            nearest.TogglePanel();
+            return true;
+        }
+        return false;
     }
 
     public void EndSleep()

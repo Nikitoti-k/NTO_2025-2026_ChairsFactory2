@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.Events;
 using System.Collections;
+using System.Collections.Generic;
 
 [RequireComponent(typeof(Camera))]
 public class MineralScannerManager : MonoBehaviour
@@ -12,17 +13,14 @@ public class MineralScannerManager : MonoBehaviour
     [SerializeField] private Camera mineralCamera;
     [SerializeField] private Renderer screenRenderer;
 
-  //  [Header("Эффекты")]
-   // [SerializeField] private float fadeDuration = 0.4f;
-   // [SerializeField] private Color emissionColor = new Color(0.1f, 0.8f, 1f);
-
-  
     public UnityEvent<GameObject> OnMineralScanned;
     public UnityEvent OnMineralRemoved;
 
     private Material screenMaterial;
-    private bool wasOccupied;
-    private const string EMISSION_PROP = "_EmissionColor";
+    private bool wasOccupied = false;
+
+    
+    private readonly HashSet<string> broughtTodayMineralIDs = new();
 
     private void Awake()
     {
@@ -32,13 +30,11 @@ public class MineralScannerManager : MonoBehaviour
         if (screenRenderer != null)
         {
             screenMaterial = screenRenderer.material;
-            if (screenMaterial.HasProperty(EMISSION_PROP))
+            if (screenMaterial.HasProperty("_EmissionColor"))
                 screenMaterial.EnableKeyword("_EMISSION");
         }
         mineralCamera.enabled = false;
     }
-
-    private void OnDestroy() => Instance = null;
 
     private void Start()
     {
@@ -52,54 +48,73 @@ public class MineralScannerManager : MonoBehaviour
 
         bool occupied = targetSnapZone.IsOccupied;
 
-        if (occupied != wasOccupied)
+        if (occupied && !wasOccupied)
         {
-            if (occupied)
-                TurnOnScreen();
-            else
-                TurnOffScreen();
-
-            wasOccupied = occupied;
+           
+            TurnOnScreen();
         }
+        else if (!occupied && wasOccupied)
+        {
+            
+            TurnOffScreen();
+        }
+
+        wasOccupied = occupied;
     }
 
     private void TurnOnScreen()
     {
         mineralCamera.enabled = true;
-        if (screenMaterial != null) StartCoroutine(FadeEmission(1f));
 
-       
         GameObject mineralObject = targetSnapZone.CurrentSnappedObject;
         if (mineralObject != null)
-            OnMineralScanned?.Invoke(mineralObject);
+        {
+            var mineralData = mineralObject.GetComponentInChildren<MineralData>();
+            if (mineralData != null)
+            {
+                string uniqueID = mineralData.UniqueInstanceID;
+
+                
+                if (broughtTodayMineralIDs.Add(uniqueID))
+                {
+                    GameDayManager.Instance.RegisterMineralBrought(mineralObject);
+                    Debug.Log($"<color=purple>[Scanner] Новый минерал принесён: {mineralObject.name}</color>");
+                }
+                else
+                {
+                    Debug.Log($"<color=gray>[Scanner] Этот минерал уже был принесён сегодня — не считаем повторно</color>");
+                }
+            }
+        }
+
+        OnMineralScanned?.Invoke(mineralObject);
     }
 
     private void TurnOffScreen()
     {
-        if (screenMaterial != null) StartCoroutine(FadeEmission(0f));
         mineralCamera.enabled = false;
         OnMineralRemoved?.Invoke();
     }
 
-    private IEnumerator FadeEmission(float target)
+   
+    private void OnEnable()
     {
-        if (screenMaterial == null) yield break;
-
-        Color start = screenMaterial.GetColor(EMISSION_PROP);
-        //Color end = emissionColor * Mathf.LinearToGammaSpace(target);
-      //  end.a = 1f;
-
-        float t = 0f;
-        while (t < 1f)
-        {
-          //  t += Time.deltaTime / fadeDuration;
-         //   screenMaterial.SetColor(EMISSION_PROP, Color.Lerp(start, end, t));
-            yield return null;
-        }
-       // screenMaterial.SetColor(EMISSION_PROP, end);
+        if (GameDayManager.Instance)
+            GameDayManager.Instance.OnDayFullyCompleted.AddListener(ClearBroughtToday);
     }
 
-    // Удобный геттер — возвращает MineralData из текущего объекта в слоте
+    private void OnDisable()
+    {
+        if (GameDayManager.Instance)
+            GameDayManager.Instance.OnDayFullyCompleted.RemoveListener(ClearBroughtToday);
+    }
+
+    private void ClearBroughtToday()
+    {
+        broughtTodayMineralIDs.Clear();
+        Debug.Log("<color=yellow>[MineralScannerManager] Список принесённых минералов очищен — новый день!</color>");
+    }
+
     public MineralData CurrentMineral
     {
         get

@@ -108,7 +108,7 @@ public class MineralPointSpawner : MonoBehaviour
     private void Respawn() => SpawnDistributedPoints();
 #endif
 
-    // ВИЗУАЛИЗАЦИЯ В SCENE VIEW
+   
     private void OnDrawGizmosSelected()
     {
         Gizmos.color = new Color(0.3f, 0.7f, 1f, 0.3f);

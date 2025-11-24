@@ -94,12 +94,11 @@ public class MineralScanner_Renderer : MonoBehaviour
             return;
         }
 
-        string mineralID = mineralObj.name; 
-
        
+        string mineralID = currentMineral.UniqueInstanceID;
+
         if (studiedMinerals.Contains(mineralID))
         {
-            
             isReportSubmitted = true;
             reportButton.interactable = false;
             recordButtonUI.interactable = false;
@@ -111,22 +110,18 @@ public class MineralScanner_Renderer : MonoBehaviour
             return;
         }
 
-        
+       
         isReportSubmitted = false;
         reportButton.interactable = true;
         recordButtonUI.interactable = true;
-
         noConnectionOverlay.SetActive(false);
 
-        
         scanningPoint.anchoredPosition = Vector2.zero;
-
         lastSuccessfulScan = null;
         crystalLetterOrder.Remove(currentMineral);
         ResetText();
         GenerateCrystalLetterOrder(currentMineral);
     }
-
     private void OnMineralRemoved()
     {
         currentMineral = null;
@@ -142,7 +137,10 @@ public class MineralScanner_Renderer : MonoBehaviour
         crystalLetterOrder.Clear();
         ResetText();
     }
+   
 
+   
+   
     private void OnReportSubmitted(bool correct)
     {
         isReportSubmitted = true;
@@ -151,18 +149,17 @@ public class MineralScanner_Renderer : MonoBehaviour
 
         CameraController.Instance.SetMode(CameraController.ControlMode.FPS);
 
-        resultText.text = correct
-            ? "<color=lime>ИССЛЕДОВАНИЕ ОКОНЧЕНО</color>\nПравильная классификация"
-            : "<color=red>ИССЛЕДОВАНИЕ ОКОНЧЕНО</color>\nОшибка в классификации";
-
-       
         if (currentMineral != null)
         {
-            string id = currentMineral.transform.root.name; 
-            studiedMinerals.Add(id);
+            string mineralID = currentMineral.UniqueInstanceID;
+            studiedMinerals.Add(mineralID); 
+
+            string displayName = currentMineral.transform.name.Replace("(Clone)", "").Trim();
+           
+            ResearchReportViewer.LogResearchResult(displayName, correct);
+            GameDayManager.Instance.RegisterMineralResearched(currentMineral);
         }
     }
-
     private void OnReportCancelled()
     {
         CameraController.Instance.SetMode(CameraController.ControlMode.FPS);

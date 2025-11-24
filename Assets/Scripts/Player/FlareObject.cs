@@ -4,7 +4,7 @@ public class FlareObject : MonoBehaviour
     [Header("Как бросаем факел")]
     public float throwForce = 15f;
     public float upwardForce = 8f;
-    public AnimationCurve scatterPattern = AnimationCurve.Linear(0, 0, 1, 1); //кривая для небольшого разброса 
+    public AnimationCurve scatterPattern = AnimationCurve.Linear(0, 0, 1, 1); 
     private Collider col;
     private Rigidbody rb;
   

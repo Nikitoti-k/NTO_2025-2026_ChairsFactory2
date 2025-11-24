@@ -160,17 +160,29 @@ public class SnapZone : MonoBehaviour
         grabber?.EndSnappingToZoneComplete();
     }
 
-    public void OnItemGrabbedFromZone()
+    public void OnItemGrabbedFromZone(GrabbableItem grabbedItem)
     {
-        if (!isMultiSlot && attachedItem != null)
+        if (grabbedItem == null) return;
+
+        if (!isMultiSlot)
         {
-            RestorePhysicsAndRelease(attachedItem);
-            attachedItem = null;
-            if (snapRoutine != null) { StopCoroutine(snapRoutine); snapRoutine = null; }
+            if (attachedItem == grabbedItem)
+            {
+                RestorePhysicsAndRelease(attachedItem);
+                attachedItem = null;
+                if (snapRoutine != null)
+                {
+                    StopCoroutine(snapRoutine);
+                    snapRoutine = null;
+                }
+            }
         }
-        else if (isMultiSlot && attachedItems.Count > 0)
+        else 
         {
-            ReleaseItem(attachedItems[0]);
+            if (attachedItems.Contains(grabbedItem))
+            {
+                ReleaseItem(grabbedItem); 
+            }
         }
     }
 

@@ -78,7 +78,8 @@ public class CanGrab : MonoBehaviour
     private void Grab(GrabbableItem item, Transform point)
     {
         var rb = item.GetComponent<Rigidbody>() ?? item.GetComponentInParent<Rigidbody>();
-        item.GetComponentInParent<SnapZone>()?.OnItemGrabbedFromZone();
+        var snapZone = item.GetComponentInParent<SnapZone>();
+        snapZone?.OnItemGrabbedFromZone(item); // ← передаём item!
 
         heldRb = rb;
         heldTransform = rb.transform;

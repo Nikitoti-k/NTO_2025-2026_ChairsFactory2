@@ -5,7 +5,7 @@ public class MineralData : MonoBehaviour
 {
     public enum CrystalSystem { Cubic, Trigonal, Monoclinic, Tetragonal, Hexagonal, Orthorhombic, Triclinic }
 
-    // Реальные значения (скрытые)
+    
     private float realAge;
     private float realRadioactivity;
 
@@ -17,7 +17,7 @@ public class MineralData : MonoBehaviour
     [Header("КЛАСС — перетащи нужный .asset сюда!")]
     [SerializeField] private MineralClass mineralClass;
 
-    // Публичные геттеры с погрешностью
+   
     public float AgeMya => realAge + Random.Range(-mineralClass.ageError, mineralClass.ageError);
     public float RadioactivityUsv => realRadioactivity + Random.Range(-mineralClass.radioactivityError, mineralClass.radioactivityError);
     public CrystalSystem CrystalSystem_ => mineralClass.crystalSystem;
@@ -25,7 +25,17 @@ public class MineralData : MonoBehaviour
     public string ClassName => mineralClass.className;
     public string AgeUnitText => mineralClass.ageUnit == MineralClass.AgeUnit.Days ? "дней" : "млн лет";
     public MineralClass MineralClassSO => mineralClass;
-    
+    [HideInInspector] public string UniqueInstanceID;
+
+    private void Awake()
+    {
+        // Генерируем уникальный ID при первом запуске
+        if (string.IsNullOrEmpty(UniqueInstanceID))
+        {
+            UniqueInstanceID = System.Guid.NewGuid().ToString();
+            Debug.Log($"[MineralData] Назначен уникальный ID: {UniqueInstanceID}");
+        }
+    }
     public void GenerateData()
     {
         if (mineralClass == null)

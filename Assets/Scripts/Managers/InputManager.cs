@@ -6,7 +6,7 @@ public class InputManager : MonoBehaviour
 {
     public static InputManager Instance { get; private set; }
 
-    // === Чтение ввода (доступно всем) ===
+    
     public Vector2 Move => _move;
     public Vector2 Look => _look;
     public bool Interact => _interact;
@@ -14,7 +14,7 @@ public class InputManager : MonoBehaviour
     public bool PhysicalHeld => _physicalHeld;
     public bool Flare => _flare;
 
-    // === Приватные поля (внутри только мы меняем) ===
+   
     private Vector2 _move;
     private Vector2 _look;
     private bool _interact;
@@ -22,7 +22,7 @@ public class InputManager : MonoBehaviour
     private bool _physicalHeld;
     private bool _flare;
 
-    // ==== Публичные методы для принудительного сброса ====
+    
     public void ClearMovementInput() => _move = Vector2.zero;
     public void ClearLookInput() => _look = Vector2.zero;
     public void ClearAllInput()
@@ -56,7 +56,7 @@ public class InputManager : MonoBehaviour
         _actions = new PlayerControls();
         _actions.Player.Enable();
 
-        // === Подписки ===
+      
         _actions.Player.Move.performed += ctx => _move = ctx.ReadValue<Vector2>();
         _actions.Player.Move.canceled += _ => _move = Vector2.zero;
 

@@ -26,6 +26,7 @@ public class IceDeposit : MonoBehaviour
                 spawnPoint ? spawnPoint.position : transform.position,
                 Quaternion.identity
             );
+            GameDayManager.Instance.RegisterDepositBroken();
         }
 
         gameObject.SetActive(false);
