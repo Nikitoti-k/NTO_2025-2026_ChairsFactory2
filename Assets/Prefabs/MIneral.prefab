@@ -252,9 +252,9 @@ GameObject:
   - component: {fileID: 635253388403995613}
   - component: {fileID: 634889202932440264}
   - component: {fileID: 1350920083297470534}
-  - component: {fileID: -1365350689654692632}
+  - component: {fileID: 3016100991106257421}
   m_Layer: 7
-  m_Name: SampleItem_test 1
+  m_Name: MIneral
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -425,7 +425,7 @@ MonoBehaviour:
   minDistanceBetweenPoints: 0.3
   spawnPointsOnStart: 1
   generateDataOnStart: 1
---- !u!114 &-1365350689654692632
+--- !u!114 &3016100991106257421
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -437,8 +437,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 55b45e13712f3564aa3b982d9b129e74, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  uniqueID: 1
-  prefabIdentifier: SampleItem_test 1
+  uniqueID: 03f20801-4d3e-4597-ad34-b833842eab04
+  prefabIdentifier: Mineral
 --- !u!1 &9205873675629105080
 GameObject:
   m_ObjectHideFlags: 0

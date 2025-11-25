@@ -76,13 +76,7 @@ public class FlareController : MonoBehaviour
 
         heldFlare.transform.SetParent(null);
 
-        Rigidbody rb = heldFlare.GetComponent<Rigidbody>();
-        if (rb != null)
-            rb.isKinematic = false;
-
         Vector3 targetPoint;
-
-        
         if (Physics.Raycast(cam.transform.position, cam.transform.forward, out RaycastHit hit, maxThrowDistance))
         {
             targetPoint = hit.point + hit.normal * 0.1f;
@@ -94,8 +88,11 @@ public class FlareController : MonoBehaviour
 
         Vector3 spawnPos = throwPoint.position;
         Vector3 throwDirection = (targetPoint - spawnPos).normalized;
+
+        // ← ВОТ ЭТА СТРОКА теперь правильная
         heldFlare.Initialize(throwDirection, scatterAmount);
 
+        // Сброс состояния
         heldFlare = null;
         isHolding = false;
         cooldownTimer = cooldownTime;

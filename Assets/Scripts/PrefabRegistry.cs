@@ -1,7 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-[CreateAssetMenu(fileName = "PrefabRegistry", menuName = "SaveSystem/PrefabRegistry")]
+[CreateAssetMenu(menuName = "SaveSystem/PrefabRegistry")]
 public class PrefabRegistry : ScriptableObject
 {
     public List<PrefabEntry> prefabs = new List<PrefabEntry>();
@@ -14,8 +14,5 @@ public class PrefabRegistry : ScriptableObject
     }
 
     public GameObject GetPrefab(string identifier)
-    {
-        var entry = prefabs.Find(e => e.identifier == identifier);
-        return entry != null ? entry.prefab : null;
-    }
+        => prefabs.Find(e => e.identifier == identifier)?.prefab;
 }

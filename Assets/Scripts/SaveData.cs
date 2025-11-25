@@ -1,5 +1,5 @@
-using UnityEngine;
 using System;
+using UnityEngine;
 
 [Serializable]
 public class SaveData
@@ -12,11 +12,10 @@ public class SaveData
     public Vector3 angularVelocity;
     public bool isActive = true;
     public string parentPath;
+    public int customInt1;
 
-    public int customInt1;  // Уже есть для hits
-
-    // Новое: Для коллайдера и rigidbody
-    public bool isTrigger;  // Collider.isTrigger
-    public bool useGravity;  // Rigidbody.useGravity
-    public int constraints;  // (int)RigidbodyConstraints (для заморозки осей, e.g., FreezePositionY)
+    // Для физики и коллайдеров
+    public bool isTrigger;
+    public bool useGravity;
+    public int constraints;
 }

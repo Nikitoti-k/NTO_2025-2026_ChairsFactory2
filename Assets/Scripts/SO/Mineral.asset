@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5d986dedf50d0634ba7fb95238247b6b, type: 3}
+  m_Name: Mineral
+  m_EditorClassIdentifier: 
+  prefabs:
+  - identifier: Mineral
+    prefab: {fileID: 5941508467737296759, guid: 8d5726580eec5f04e808a63fb618b3d0, type: 3}
+  - identifier: Mineral
+    prefab: {fileID: 5941508467737296759, guid: faf7dd68918ef2842af12aa70f777c4a, type: 3}
+  - identifier: Mineral
+    prefab: {fileID: 5941508467737296759, guid: f4b4fa9bb7428f04795470bd6f7ee780, type: 3}

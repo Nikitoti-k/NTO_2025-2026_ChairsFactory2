@@ -1,4 +1,4 @@
-using UnityEngine;
+п»їusing UnityEngine;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -9,10 +9,9 @@ public class SaveManager : MonoBehaviour
 {
     public static SaveManager Instance { get; private set; }
 
-    [SerializeField] private PrefabRegistry prefabRegistry;
+    [SerializeField] private PrefabRegistry prefabRegistry; // в†ђ РћР‘РЇР—РђРўР•Р›Р¬РќРћ РЅР°Р·РЅР°С‡РёС‚СЊ РІ СЃС†РµРЅРµ!
 
     private string saveFilePath;
-    private List<SaveData> saveDataList = new List<SaveData>();
 
     void Awake()
     {
@@ -20,7 +19,7 @@ public class SaveManager : MonoBehaviour
         {
             Instance = this;
             DontDestroyOnLoad(gameObject);
-            saveFilePath = Application.persistentDataPath + "/save.json";
+            saveFilePath = Path.Combine(Application.persistentDataPath, "save.json");
             SceneManager.sceneLoaded += OnSceneLoaded;
         }
         else
@@ -29,106 +28,73 @@ public class SaveManager : MonoBehaviour
         }
     }
 
-    void OnDestroy()
-    {
-        SceneManager.sceneLoaded -= OnSceneLoaded;
-    }
+    void OnDestroy() => SceneManager.sceneLoaded -= OnSceneLoaded;
 
     public void SaveGame()
     {
-        saveDataList.Clear();
-        var saveables = FindObjectsOfType<MonoBehaviour>(true).OfType<ISaveable>().ToList();
-        Debug.Log("Saving objects:");  // Дебаг: Список сохраняемых
+        var saveDataList = new List<SaveData>();
+        var saveables = FindObjectsOfType<MonoBehaviour>(true).OfType<ISaveable>();
+
         foreach (var saveable in saveables)
-        {
-            var data = saveable.GetSaveData();
-            Debug.Log($"Saving ID: {data.uniqueID}, Prefab: {data.prefabIdentifier}, Type: {saveable.GetType().Name}");
-            saveDataList.Add(data);
-        }
+            saveDataList.Add(saveable.GetSaveData());
 
         string json = JsonUtility.ToJson(new SaveWrapper { saves = saveDataList }, true);
         File.WriteAllText(saveFilePath, json);
-        Debug.Log("Game saved. Objects: " + saveDataList.Count);
+        Debug.Log($"Game saved! Objects: {saveDataList.Count}");
     }
 
-    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-    {
-        StartCoroutine(LoadGameAfterSpawn());
-    }
+    public void LoadGame() => StartCoroutine(LoadGameAfterSpawn());
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode) => StartCoroutine(LoadGameAfterSpawn());
 
     private IEnumerator LoadGameAfterSpawn()
     {
-        for (int i = 0; i < 5; i++) yield return null;
+        // Р–РґС‘Рј, РїРѕРєР° РІСЃС‘ С‚РѕС‡РЅРѕ Р·Р°СЃРїР°РІРЅРёС‚СЃСЏ Рё Awake/Start РѕС‚СЂР°Р±РѕС‚Р°СЋС‚
+        for (int i = 0; i < 10; i++) yield return null;
         yield return new WaitForFixedUpdate();
 
         if (!File.Exists(saveFilePath))
         {
-            Debug.Log("No save file");
+            Debug.Log("No save file found");
             yield break;
         }
 
         string json = File.ReadAllText(saveFilePath);
         SaveWrapper wrapper = JsonUtility.FromJson<SaveWrapper>(json);
-        saveDataList = wrapper.saves ?? new List<SaveData>();
+        var saveDataList = wrapper.saves ?? new List<SaveData>();
 
-        // Дебаг: Список загружаемых данных
-        Debug.Log("Loaded save data:");
-        foreach (var data in saveDataList)
+        // 1. Р—Р°РіСЂСѓР¶Р°РµРј СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёРµ РѕР±СЉРµРєС‚С‹ РІ СЃС†РµРЅРµ
+        var existingSaveables = FindObjectsOfType<MonoBehaviour>(true).OfType<ISaveable>().ToList();
+        var remainingData = new List<SaveData>(saveDataList);
+
+        foreach (var saveable in existingSaveables)
         {
-            Debug.Log($"Loaded Data ID: {data.uniqueID}, Prefab: {data.prefabIdentifier}");
-        }
-
-        var saveables = FindObjectsOfType<MonoBehaviour>(true).OfType<ISaveable>().ToList();
-        // Дебаг: Список existing объектов
-        Debug.Log("Existing saveables on scene:");
-        foreach (var saveable in saveables)
-        {
-            Debug.Log($"Existing ID: {saveable.GetUniqueID()}, Type: {saveable.GetType().Name}");
-        }
-
-        List<SaveData> remainingData = new List<SaveData>(saveDataList);
-        int loadedExisting = 0;
-
-        foreach (var saveable in saveables)
-        {
-            SaveData data = remainingData.FirstOrDefault(d => d.uniqueID == saveable.GetUniqueID());
+            var data = remainingData.Find(d => d.uniqueID == saveable.GetUniqueID());
             if (data != null)
             {
-                Debug.Log($"Matching and loading existing ID: {data.uniqueID}");
                 saveable.LoadFromSaveData(data);
                 remainingData.Remove(data);
-                loadedExisting++;
             }
         }
 
-        // Дебаг: Оставшиеся для спавна
-        Debug.Log("Remaining data for spawn:");
-        foreach (var data in remainingData)
-        {
-            Debug.Log($"To spawn ID: {data.uniqueID}, Prefab: {data.prefabIdentifier}");
-        }
-
+        // 2. РЎРїР°РІРЅРёРј С‚Рµ, РєРѕС‚РѕСЂС‹С… РЅРµС‚ РІ СЃС†РµРЅРµ
         int spawned = 0;
         foreach (var data in remainingData)
         {
-            if (string.IsNullOrEmpty(data.prefabIdentifier)) continue;
+            if (string.IsNullOrEmpty(data.prefabIdentifier))
+                continue;
 
             GameObject prefab = prefabRegistry?.GetPrefab(data.prefabIdentifier);
             if (prefab == null)
             {
-                prefab = Resources.Load<GameObject>(data.prefabIdentifier);
-            }
-            if (prefab == null)
-            {
-                Debug.LogWarning("Prefab not found: " + data.prefabIdentifier);
+                Debug.LogError($"[SaveManager] Prefab not found in Registry: {data.prefabIdentifier} (ID: {data.uniqueID})");
                 continue;
             }
 
-            Vector3 raisedPosition = data.position + new Vector3(0, 0.1f, 0);
-            GameObject newObj = Instantiate(prefab, raisedPosition, data.rotation);
+            GameObject newObj = Instantiate(prefab, data.position, data.rotation);
 
-            Rigidbody newRb = newObj.GetComponent<Rigidbody>();
-            if (newRb) newRb.isKinematic = true;
+            Rigidbody rb = newObj.GetComponent<Rigidbody>();
+            if (rb) rb.isKinematic = true;
 
             ISaveable saveable = newObj.GetComponent<ISaveable>();
             if (saveable != null)
@@ -141,14 +107,24 @@ public class SaveManager : MonoBehaviour
                     if (parent) newObj.transform.SetParent(parent);
                 }
 
-                if (newRb) newRb.isKinematic = false;
-
+                StartCoroutine(ActivatePhysicsAfterFrame(newObj, rb));
                 spawned++;
             }
         }
 
+        yield return new WaitForFixedUpdate();
         Physics.SyncTransforms();
-        Debug.Log($"Loaded: Existing {loadedExisting}, Spawned {spawned}, Total saveables now {FindObjectsOfType<MonoBehaviour>(true).OfType<ISaveable>().Count()}");
+        Debug.Log($"Load complete! Spawned new objects: {spawned}");
+    }
+
+    private IEnumerator ActivatePhysicsAfterFrame(GameObject obj, Rigidbody rb)
+    {
+        yield return new WaitForFixedUpdate();
+        if (rb != null && obj != null)
+        {
+            rb.isKinematic = false;
+            rb.WakeUp();
+        }
     }
 }
 

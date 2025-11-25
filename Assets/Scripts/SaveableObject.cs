@@ -1,21 +1,26 @@
 using UnityEngine;
-using System;
 
 public class SaveableObject : MonoBehaviour, ISaveable
 {
-    [SerializeField] private string uniqueID;
-    [SerializeField] private string prefabIdentifier;
+    [SerializeField] private string uniqueID = "";
+    [SerializeField] private string prefabIdentifier = ""; // ← ОБЯЗАТЕЛЬНО задать в префабе!
 
     private Rigidbody rb;
-    private Collider col;  // Универсально для любого коллайдера
+    private Collider col;
 
     void Awake()
     {
         rb = GetComponent<Rigidbody>();
-        col = GetComponent<Collider>();  // Или GetComponentInChildren, если коллайдер в childs
+        col = GetComponentInChildren<Collider>();
+
         if (string.IsNullOrEmpty(uniqueID))
+            uniqueID = System.Guid.NewGuid().ToString();
+
+        // ← НОВАЯ ПРОВЕРКА
+        if (string.IsNullOrEmpty(prefabIdentifier))
         {
-            uniqueID = Guid.NewGuid().ToString();
+            Debug.LogWarning($"[SaveableObject] PrefabIdentifier пустой на {gameObject.name}! Установите в инспекторе или через SetPrefabIdentifier()", this);
+            prefabIdentifier = gameObject.name; // на крайний случай
         }
     }
 
@@ -23,9 +28,7 @@ public class SaveableObject : MonoBehaviour, ISaveable
     private void OnValidate()
     {
         if (string.IsNullOrEmpty(uniqueID) && !Application.isPlaying)
-        {
-            uniqueID = Guid.NewGuid().ToString();
-        }
+            uniqueID = System.Guid.NewGuid().ToString();
     }
 #endif
 
@@ -42,10 +45,10 @@ public class SaveableObject : MonoBehaviour, ISaveable
             velocity = rb ? rb.linearVelocity : Vector3.zero,
             angularVelocity = rb ? rb.angularVelocity : Vector3.zero,
             isActive = gameObject.activeSelf,
-            parentPath = GetParentPath(),
-            customInt1 = 0,  // Для кастомных
+            parentPath = transform.parent ? transform.parent.GetPath() : "",
+            customInt1 = 0,
             isTrigger = col ? col.isTrigger : false,
-            useGravity = rb ? rb.useGravity : false,
+            useGravity = rb ? rb.useGravity : true,
             constraints = rb ? (int)rb.constraints : 0
         };
     }
@@ -54,43 +57,32 @@ public class SaveableObject : MonoBehaviour, ISaveable
     {
         transform.position = data.position;
         transform.rotation = data.rotation;
+        gameObject.SetActive(data.isActive);
+
         if (rb)
         {
             rb.linearVelocity = data.velocity;
             rb.angularVelocity = data.angularVelocity;
             rb.useGravity = data.useGravity;
             rb.constraints = (RigidbodyConstraints)data.constraints;
+            rb.Sleep();
         }
-        if (col)
-        {
-            col.isTrigger = data.isTrigger;
-        }
-        gameObject.SetActive(data.isActive);
 
-        // Синхронизация физики сразу
+        if (col)
+            col.isTrigger = data.isTrigger;
+
         Physics.SyncTransforms();
     }
 
-    private string GetParentPath()
-    {
-        Transform parent = transform.parent;
-        return parent ? parent.GetPath() : "";
-    }
-
-    public void SetPrefabIdentifier(string id)
-    {
-        prefabIdentifier = id;
-    }
+    public void SetPrefabIdentifier(string id) => prefabIdentifier = id;
 }
 
-// TransformExtensions без изменений
 
-// Расширение для Transform (можно вынести в отдельный файл Utilities.cs)
 public static class TransformExtensions
 {
-    public static string GetPath(this Transform current)
+    public static string GetPath(this Transform t)
     {
-        if (current.parent == null) return current.name;
-        return current.parent.GetPath() + "/" + current.name;
+        if (t.parent == null) return t.name;
+        return t.parent.GetPath() + "/" + t.name;
     }
 }
