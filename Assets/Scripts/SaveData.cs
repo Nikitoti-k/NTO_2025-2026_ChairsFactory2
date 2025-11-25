@@ -18,4 +18,6 @@ public class SaveData
     public bool isTrigger;
     public bool useGravity;
     public int constraints;
+    public string seatedInTransportID = "";
+    public string controllingTransportID = "";
 }
