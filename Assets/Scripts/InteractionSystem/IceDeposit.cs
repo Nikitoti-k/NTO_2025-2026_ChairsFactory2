@@ -37,7 +37,7 @@ public class IceDeposit : MonoBehaviour, ISaveable
 
             var saveable = mineral.GetComponent<SaveableObject>();
             if (saveable == null) saveable = mineral.AddComponent<SaveableObject>();
-            saveable.SetPrefabIdentifier("Mineral"); // ← ДОЛЖНО СОВПАДАТЬ с реестром!
+            //saveable.SetPrefabIdentifier("Mineral"); // ← ДОЛЖНО СОВПАДАТЬ с реестром!
 
             Debug.Log($"[IceDeposit] Spawned mineral ID: {saveable.GetUniqueID()}");
         }

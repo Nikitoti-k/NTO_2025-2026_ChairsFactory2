@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Mineral
   m_EditorClassIdentifier: 
   prefabs:
-  - identifier: Mineral
+  - identifier: Min_1
     prefab: {fileID: 5941508467737296759, guid: 8d5726580eec5f04e808a63fb618b3d0, type: 3}
-  - identifier: Mineral
+  - identifier: MIn_2
     prefab: {fileID: 5941508467737296759, guid: faf7dd68918ef2842af12aa70f777c4a, type: 3}
-  - identifier: Mineral
+  - identifier: Min_3
     prefab: {fileID: 5941508467737296759, guid: f4b4fa9bb7428f04795470bd6f7ee780, type: 3}

@@ -14,7 +14,7 @@ public class SaveableObject : MonoBehaviour, ISaveable
 
     public bool IsPlayer => gameObject.CompareTag("Player");
 
-    void Awake()
+    private void Awake()
     {
         rb = GetComponent<Rigidbody>();
         col = GetComponentInChildren<Collider>();
@@ -54,8 +54,19 @@ public class SaveableObject : MonoBehaviour, ISaveable
             controllingTransportID = "",
             snappedZoneID = "",
             snapPointIndex = -1
-        };
 
+        };
+        var mineralData = GetComponent<MineralData>();
+        if (mineralData != null)
+        {
+            var mData = mineralData.GetMineralSaveData();
+            data.customFloat1 = mData.realAge;
+            data.customFloat2 = mData.realRadioactivity;
+            data.customVector1 = mData.agePointLocalPos;
+            data.customVector2 = mData.crystalPointLocalPos;
+            data.customVector3 = mData.radioactivityPointLocalPos;
+            data.customBool1 = mData.isResearched;
+        }
         // === СНАП В ЗОНУ ===
         var grabbable = GetComponent<GrabbableItem>();
         if (grabbable != null && transform.parent != null)
@@ -110,7 +121,32 @@ public class SaveableObject : MonoBehaviour, ISaveable
             rb.constraints = (RigidbodyConstraints)data.constraints;
             rb.Sleep();
         }
+        var mineral = GetComponent<MineralData>();
+        if (mineral != null)
+        {
+            var mData = new MineralData.MineralSaveData
+            {
+                realAge = data.customFloat1,
+                realRadioactivity = data.customFloat2,
+                agePointLocalPos = data.customVector1,
+                crystalPointLocalPos = data.customVector2,
+                radioactivityPointLocalPos = data.customVector3,
+                isResearched = data.customBool1
+            };
 
+            mineral.LoadMineralSaveData(mData); // ← восстанавливаем параметры
+
+            // ← ГЛАВНОЕ: ВОССТАНАВЛИВАЕМ ТОЧКИ ЧЕРЕЗ SPAWNER!
+            var spawner = GetComponent<MineralPointSpawner>();
+            if (spawner != null)
+            {
+                spawner.RestorePointsFromSaveData(
+                    mData.agePointLocalPos,
+                    mData.crystalPointLocalPos,
+                    mData.radioactivityPointLocalPos
+                );
+            }
+        }
         if (col)
             col.isTrigger = data.isTrigger;
 

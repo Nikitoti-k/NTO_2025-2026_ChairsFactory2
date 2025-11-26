@@ -88,29 +88,26 @@ public class MineralScanner_Renderer : MonoBehaviour
     private void OnMineralPlaced(GameObject mineralObj)
     {
         currentMineral = mineralObj.GetComponentInChildren<MineralData>();
-        if (currentMineral == null)
-        {
-            Debug.LogError($"[MineralScanner] Нет MineralData на {mineralObj.name}");
-            return;
-        }
+        if (currentMineral == null) return;
 
-       
-        string mineralID = currentMineral.UniqueInstanceID;
-
-        if (studiedMinerals.Contains(mineralID))
+        // ← ТЕПЕРЬ ИСПОЛЬЗУЕМ isResearched ИЗ MineralData!
+        if (currentMineral.isResearched)
         {
             isReportSubmitted = true;
             reportButton.interactable = false;
             recordButtonUI.interactable = false;
-
             noConnectionOverlay.SetActive(true);
             noConnectionText.text = "ОБРАЗЕЦ УЖЕ ИЗУЧЕН\nОтчёт по нему отправлен.";
-
             resultText.text = "<color=#888888>Исследование завершено ранее</color>";
             return;
         }
 
-       
+        isReportSubmitted = false;
+        reportButton.interactable = true;
+        recordButtonUI.interactable = true;
+        noConnectionOverlay.SetActive(false);
+
+
         isReportSubmitted = false;
         reportButton.interactable = true;
         recordButtonUI.interactable = true;
@@ -137,25 +134,22 @@ public class MineralScanner_Renderer : MonoBehaviour
         crystalLetterOrder.Clear();
         ResetText();
     }
-   
 
-   
-   
+
+
+
     private void OnReportSubmitted(bool correct)
     {
         isReportSubmitted = true;
         reportButton.interactable = false;
         recordButtonUI.interactable = false;
-
         CameraController.Instance.SetMode(CameraController.ControlMode.FPS);
 
         if (currentMineral != null)
         {
-            string mineralID = currentMineral.UniqueInstanceID;
-            studiedMinerals.Add(mineralID); 
+            currentMineral.isResearched = true; // ← ВОТ ТАК!
 
             string displayName = currentMineral.transform.name.Replace("(Clone)", "").Trim();
-           
             ResearchReportViewer.LogResearchResult(displayName, correct);
             GameDayManager.Instance.RegisterMineralResearched(currentMineral);
         }

@@ -403,11 +403,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 88d1d150cb6793349aadf4e28d23b24d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  realAge: 0
+  realRadioactivity: 0
   AgePoint: {fileID: 0}
   CrystalPoint: {fileID: 0}
   RadioactivityPoint: {fileID: 0}
   mineralClass: {fileID: 11400000, guid: e943060233ffd8341a64c82f7d2d3a7c, type: 2}
   UniqueInstanceID: 
+  isResearched: 0
 --- !u!114 &1350920083297470534
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -438,7 +441,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   uniqueID: 4a944f58-4b0e-460a-b8e4-87cb3c078e1b
-  prefabIdentifier: 
+  prefabIdentifier: MIn_3
 --- !u!1 &9205873675629105080
 GameObject:
   m_ObjectHideFlags: 0
