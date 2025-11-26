@@ -4,7 +4,7 @@ public class IceDeposit : MonoBehaviour, ISaveable
 {
     [Header("Настройки депозита")]
     [SerializeField] private int hitsRequired = 3;
-    [SerializeField] private GameObject mineralPrefab;     // ← Должен быть с SaveableObject!
+    [SerializeField] private GameObject mineralPrefab;   
     [SerializeField] private Transform spawnPoint;
 
     private int currentHits = 0;

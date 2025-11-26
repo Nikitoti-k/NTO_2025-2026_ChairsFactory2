@@ -1,4 +1,4 @@
-// FlareObject.cs — ФИНАЛЬНАЯ ВЕРСИЯ (работает с сохранением + не проваливается)
+
 using UnityEngine;
 
 public class FlareObject : MonoBehaviour
@@ -6,7 +6,7 @@ public class FlareObject : MonoBehaviour
     [Header("Бросок")]
     public float throwForce = 15f;
     public float upwardForce = 8f;
-    public AnimationCurve scatterPattern = AnimationCurve.Linear(0, 0, 1, 1); // опционально
+    public AnimationCurve scatterPattern = AnimationCurve.Linear(0, 0, 1, 1); 
 
     private Rigidbody rb;
     private Collider col;
@@ -17,16 +17,16 @@ public class FlareObject : MonoBehaviour
         col = GetComponentInChildren<Collider>();
     }
 
-    // Этот метод теперь используется и при броске, и при загрузке игры
+   
     public void Initialize(Vector3 throwDirection, float scatterAmount = 1f)
     {
         if (rb == null) return;
 
-        // Важно: сначала выключаем триггер и кинематику
+        
         col.isTrigger = false;
         rb.isKinematic = false;
 
-        // Рассеивание (scatter)
+        
         Vector3 scatter = Vector3.zero;
         if (scatterAmount > 0.01f)
         {
@@ -42,13 +42,13 @@ public class FlareObject : MonoBehaviour
         rb.interpolation = RigidbodyInterpolation.Interpolate;
         rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
 
-        rb.WakeUp(); // критично при загрузке!
+        rb.WakeUp(); 
     }
 
     public void SetHeld(bool held)
     {
         if (rb) rb.isKinematic = held;
-        if (col) col.isTrigger = held; // true = в руке, проходит сквозь всё
+        if (col) col.isTrigger = held; 
     }
 
     public void ReturnToPool()

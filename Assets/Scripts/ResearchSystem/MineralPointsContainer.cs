@@ -16,15 +16,12 @@ public class MineralData : MonoBehaviour
         public bool isResearched;
     }
 
-    public float realAge;
-    public float realRadioactivity;
-
     [Header("Точки сканирования")]
     public ScanPoint AgePoint;
     public ScanPoint CrystalPoint;
     public ScanPoint RadioactivityPoint;
 
-    [Header("КЛАСС — перетащи нужный .asset сюда!")]
+    [Header("Класс минерала")]
     [SerializeField] private MineralClass mineralClass;
 
     public float AgeMya => realAge + Random.Range(-mineralClass.ageError, mineralClass.ageError);
@@ -34,8 +31,14 @@ public class MineralData : MonoBehaviour
     public string AgeUnitText => mineralClass.ageUnit == MineralClass.AgeUnit.Days ? "дней" : "млн лет";
     public MineralClass MineralClassSO => mineralClass;
 
-    [HideInInspector] public string UniqueInstanceID;
-    [HideInInspector] public bool isResearched = false; // ← теперь сохраняется!
+    public float realAge;
+    public float realRadioactivity;
+    public string UniqueInstanceID;
+    public bool isResearched = false;
+
+    [HideInInspector] public string savedAgeLine = "";
+    [HideInInspector] public string savedRadioactivityLine = "";
+    [HideInInspector] public string savedCrystalLine = "";
 
     private void Awake()
     {
@@ -45,7 +48,7 @@ public class MineralData : MonoBehaviour
 
     public void GenerateData()
     {
-        if (mineralClass == null) { Debug.LogError("[MineralData] Нет MineralClass!"); return; }
+        if (mineralClass == null) return;
 
         realAge = Random.Range(mineralClass.ageMin, mineralClass.ageMax);
         realRadioactivity = Random.Range(mineralClass.radioactivityMin, mineralClass.radioactivityMax);
@@ -76,7 +79,7 @@ public class MineralData : MonoBehaviour
     }
 
 #if UNITY_EDITOR
-    [ContextMenu("Сгенерировать данные (тест)")]
+    [ContextMenu("Сгенерировать данные")]
     private void EditorGenerate() => GenerateData();
 #endif
 }

@@ -89,10 +89,9 @@ public class FlareController : MonoBehaviour
         Vector3 spawnPos = throwPoint.position;
         Vector3 throwDirection = (targetPoint - spawnPos).normalized;
 
-        // ← ВОТ ЭТА СТРОКА теперь правильная
         heldFlare.Initialize(throwDirection, scatterAmount);
 
-        // Сброс состояния
+        
         heldFlare = null;
         isHolding = false;
         cooldownTimer = cooldownTime;

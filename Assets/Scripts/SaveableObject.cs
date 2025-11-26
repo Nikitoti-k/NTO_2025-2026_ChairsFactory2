@@ -1,38 +1,34 @@
 ﻿using UnityEngine;
-
-using UnityEngine;
 using System.Collections;
 using System.Linq;
+using System.Collections.Generic;
 
 public class SaveableObject : MonoBehaviour, ISaveable
 {
     [SerializeField] private string uniqueID = "";
     [SerializeField] private string prefabIdentifier = "";
-
     private Rigidbody rb;
     private Collider col;
-
     public bool IsPlayer => gameObject.CompareTag("Player");
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
         col = GetComponentInChildren<Collider>();
-
         if (string.IsNullOrEmpty(uniqueID))
             uniqueID = System.Guid.NewGuid().ToString();
-        Debug.Log($"[SaveableObject] Awake: {gameObject.name}, uniqueID: {uniqueID}, prefabIdentifier: {prefabIdentifier}");
     }
 
 #if UNITY_EDITOR
     private void OnValidate()
     {
-        if (string.IsNullOrEmpty(uniqueID) && !Application.isPlaying)
+        if (!Application.isPlaying && string.IsNullOrEmpty(uniqueID))
             uniqueID = System.Guid.NewGuid().ToString();
     }
 #endif
 
     public string GetUniqueID() => uniqueID;
+    public void SetPrefabIdentifier(string id) => prefabIdentifier = id;
 
     public SaveData GetSaveData()
     {
@@ -46,71 +42,52 @@ public class SaveableObject : MonoBehaviour, ISaveable
             angularVelocity = rb ? rb.angularVelocity : Vector3.zero,
             isActive = gameObject.activeSelf,
             parentPath = transform.parent ? transform.parent.GetPath() : "",
-            customInt1 = 0,
             isTrigger = col ? col.isTrigger : false,
             useGravity = rb ? rb.useGravity : true,
             constraints = rb ? (int)rb.constraints : 0,
-            isKinematic = rb ? rb.isKinematic : false, // ← НОВОЕ
-            seatedInTransportID = "",
-            controllingTransportID = "",
-            snappedZoneID = "",
-            snapPointIndex = -1
-
+            isKinematic = rb ? rb.isKinematic : false
         };
-        var mineralData = GetComponent<MineralData>();
-        if (mineralData != null)
+
+        var mineral = GetComponent<MineralData>();
+        if (mineral != null)
         {
-            var snapZone = GetComponentInParent<SnapZone>();
-            if (snapZone != null && MineralScannerManager.Instance != null)
-            {
-                if (snapZone == MineralScannerManager.Instance.targetSnapZone)
-                {
-                    data.wasInScannerZone = true;
-                    Debug.Log($"[Save] Минерал {gameObject.name} был в сканере — пометили!");
-                }
-            }
-            var mData = mineralData.GetMineralSaveData();
-            data.customFloat1 = mData.realAge;
-            data.customFloat2 = mData.realRadioactivity;
-            data.customVector1 = mData.agePointLocalPos;
-            data.customVector2 = mData.crystalPointLocalPos;
-            data.customVector3 = mData.radioactivityPointLocalPos;
-            data.customBool1 = mData.isResearched;
+            if (GetComponentInParent<SnapZone>() == MineralScannerManager.Instance?.targetSnapZone)
+                data.wasInScannerZone = true;
+
+            var m = mineral.GetMineralSaveData();
+            data.customFloat1 = m.realAge;
+            data.customFloat2 = m.realRadioactivity;
+            data.customVector1 = m.agePointLocalPos;
+            data.customVector2 = m.crystalPointLocalPos;
+            data.customVector3 = m.radioactivityPointLocalPos;
+            data.customBool1 = m.isResearched;
+            data.customString1 = mineral.savedAgeLine;
+            data.customString2 = mineral.savedRadioactivityLine;
+            data.customString3 = mineral.savedCrystalLine;
         }
-        // === СНАП В ЗОНУ ===
+
         var grabbable = GetComponent<GrabbableItem>();
-        if (grabbable != null && transform.parent != null)
+        if (grabbable && transform.parent != null)
         {
-            var snapZone = transform.parent.GetComponentInParent<SnapZone>();
-            if (snapZone != null)
+            var zone = transform.parent.GetComponentInParent<SnapZone>();
+            var zoneSaveable = zone?.GetComponent<SaveableObject>();
+            if (zoneSaveable != null)
             {
-                var zoneSaveable = snapZone.GetComponent<SaveableObject>();
-                if (zoneSaveable != null)
-                {
-                    data.snappedZoneID = zoneSaveable.GetUniqueID();
-                    if (snapZone.isMultiSlot)
-                        data.snapPointIndex = snapZone.multiSnapPoints.IndexOf(transform.parent);
-                    data.parentPath = ""; // чистим — используем snappedZoneID
-                }
+                data.snappedZoneID = zoneSaveable.GetUniqueID();
+                if (zone.isMultiSlot)
+                    data.snapPointIndex = zone.multiSnapPoints.IndexOf(transform.parent);
+                data.parentPath = "";
             }
         }
 
-        // === ИГРОК В ТРАНСПОРТЕ ===
         if (IsPlayer)
         {
-            if (InputRouter.Instance?.CurrentController is TransportMovement transportCtrl)
-            {
-                var ctrlSaveable = transportCtrl.GetComponent<SaveableObject>();
-                if (ctrlSaveable != null)
-                    data.controllingTransportID = ctrlSaveable.GetUniqueID();
-            }
+            if (InputRouter.Instance?.CurrentController is TransportMovement transport)
+                if (transport.GetComponent<SaveableObject>() is SaveableObject ctrl)
+                    data.controllingTransportID = ctrl.GetUniqueID();
 
-            if (transform.parent != null)
-            {
-                var parentSaveable = transform.parent.GetComponentInParent<SaveableObject>();
-                if (parentSaveable != null)
-                    data.seatedInTransportID = parentSaveable.GetUniqueID();
-            }
+            if (transform.parent?.GetComponentInParent<SaveableObject>() is SaveableObject parent)
+                data.seatedInTransportID = parent.GetUniqueID();
         }
 
         return data;
@@ -124,17 +101,20 @@ public class SaveableObject : MonoBehaviour, ISaveable
 
         if (rb)
         {
-            rb.isKinematic = data.isKinematic;     // ← ВОССТАНАВЛИВАЕМ КИНЕМАТИК СРАЗУ!
+            rb.isKinematic = data.isKinematic;
             rb.linearVelocity = data.velocity;
             rb.angularVelocity = data.angularVelocity;
             rb.useGravity = data.useGravity;
             rb.constraints = (RigidbodyConstraints)data.constraints;
             rb.Sleep();
         }
+
+        if (col) col.isTrigger = data.isTrigger;
+
         var mineral = GetComponent<MineralData>();
         if (mineral != null)
         {
-            var mData = new MineralData.MineralSaveData
+            mineral.LoadMineralSaveData(new MineralData.MineralSaveData
             {
                 realAge = data.customFloat1,
                 realRadioactivity = data.customFloat2,
@@ -142,29 +122,18 @@ public class SaveableObject : MonoBehaviour, ISaveable
                 crystalPointLocalPos = data.customVector2,
                 radioactivityPointLocalPos = data.customVector3,
                 isResearched = data.customBool1
-            };
+            });
 
-            mineral.LoadMineralSaveData(mData); // ← восстанавливаем параметры
+            mineral.savedAgeLine = data.customString1 ?? "";
+            mineral.savedRadioactivityLine = data.customString2 ?? "";
+            mineral.savedCrystalLine = data.customString3 ?? "";
 
-            // ← ГЛАВНОЕ: ВОССТАНАВЛИВАЕМ ТОЧКИ ЧЕРЕЗ SPAWNER!
-            var spawner = GetComponent<MineralPointSpawner>();
-            if (spawner != null)
-            {
-                spawner.RestorePointsFromSaveData(
-                    mData.agePointLocalPos,
-                    mData.crystalPointLocalPos,
-                    mData.radioactivityPointLocalPos
-                );
-            }
+            GetComponent<MineralPointSpawner>()?.RestorePointsFromSaveData(
+                data.customVector1, data.customVector2, data.customVector3);
         }
-        if (col)
-            col.isTrigger = data.isTrigger;
 
-        // === ВОССТАНАВЛИВАЕМ СНАП ИЛИ ТРАНСПОРТ ===
         if (!string.IsNullOrEmpty(data.snappedZoneID) || !string.IsNullOrEmpty(data.seatedInTransportID) || !string.IsNullOrEmpty(data.controllingTransportID))
-        {
-            StartCoroutine(RestoreStateAfterLoad(data));
-        }
+            StartCoroutine(RestoreRelations(data));
         else if (!string.IsNullOrEmpty(data.parentPath))
         {
             Transform parent = GameObject.Find(data.parentPath)?.transform;
@@ -174,65 +143,43 @@ public class SaveableObject : MonoBehaviour, ISaveable
         Physics.SyncTransforms();
     }
 
-    private IEnumerator RestoreStateAfterLoad(SaveData data)
+    private IEnumerator RestoreRelations(SaveData data)
     {
         yield return new WaitForEndOfFrame();
+        var all = FindObjectsOfType<SaveableObject>(true);
 
-        var allSaveables = FindObjectsOfType<SaveableObject>(true);
-
-        // 1. SnapZone
         if (!string.IsNullOrEmpty(data.snappedZoneID))
         {
-            var zoneSaveable = allSaveables.FirstOrDefault(s => s.GetUniqueID() == data.snappedZoneID);
-            var snapZone = zoneSaveable?.GetComponent<SnapZone>();
-            var grabbable = GetComponent<GrabbableItem>();
-            if (snapZone && grabbable)
-            {
-                snapZone.LoadSnappedItem(grabbable, data.snapPointIndex);
-            }
+            var zoneObj = all.FirstOrDefault(x => x.GetUniqueID() == data.snappedZoneID);
+            if (zoneObj && zoneObj.TryGetComponent<SnapZone>(out var zone) && TryGetComponent<GrabbableItem>(out var grabbable))
+                zone.LoadSnappedItem(grabbable, data.snapPointIndex);
         }
 
-        // 2. Посадка в транспорт + управление
         if (IsPlayer)
         {
             if (!string.IsNullOrEmpty(data.seatedInTransportID))
             {
-                var transport = allSaveables
-                    .FirstOrDefault(s => s.GetUniqueID() == data.seatedInTransportID)?
-                    .GetComponent<TransportMovement>();
-
-                if (transport)
+                var transport = all.FirstOrDefault(x => x.GetUniqueID() == data.seatedInTransportID)?.GetComponent<TransportMovement>();
+                if (transport && TryGetComponent<PlayerMovement>(out var pm))
                 {
-                    var playerMovement = GetComponent<PlayerMovement>();
-                    playerMovement.GetType()
-                        .GetMethod("Mount", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-                        ?.Invoke(playerMovement, new object[] { transport });
+                    var method = pm.GetType().GetMethod("Mount", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    method?.Invoke(pm, new object[] { transport });
                 }
             }
 
             if (!string.IsNullOrEmpty(data.controllingTransportID))
             {
-                var controller = allSaveables
-                    .FirstOrDefault(s => s.GetUniqueID() == data.controllingTransportID)?
-                    .GetComponent<IControllable>();
-
-                if (controller != null)
-                    InputRouter.Instance?.SetController(controller);
+                var ctrl = all.FirstOrDefault(x => x.GetUniqueID() == data.controllingTransportID)?.GetComponent<IControllable>();
+                if (ctrl != null) InputRouter.Instance?.SetController(ctrl);
             }
-            else
-            {
-                InputRouter.Instance?.SetController(GetComponent<IControllable>());
-            }
+            else if (TryGetComponent<IControllable>(out var playerCtrl))
+                InputRouter.Instance?.SetController(playerCtrl);
         }
     }
-
-    public void SetPrefabIdentifier(string id) => prefabIdentifier = id;
 }
+
 public static class TransformExtensions
 {
     public static string GetPath(this Transform t)
-    {
-        if (t.parent == null) return t.name;
-        return t.parent.GetPath() + "/" + t.name;
-    }
+        => t.parent == null ? t.name : t.parent.GetPath() + "/" + t.name;
 }

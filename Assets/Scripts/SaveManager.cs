@@ -8,65 +8,49 @@ using System.Collections;
 public class SaveManager : MonoBehaviour
 {
     public static SaveManager Instance { get; private set; }
-
-    [SerializeField] private PrefabRegistry prefabRegistry; // ← ОБЯЗАТЕЛЬНО назначить в инспекторе!
-
+    [SerializeField] private PrefabRegistry prefabRegistry;
     private string saveFilePath;
 
-    void Awake()
+    private void Awake()
     {
-        if (Instance == null)
-        {
-            Instance = this;
-            DontDestroyOnLoad(gameObject);
-            saveFilePath = Path.Combine(Application.persistentDataPath, "save.json");
-            SceneManager.sceneLoaded += OnSceneLoaded;
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
+        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+        saveFilePath = Path.Combine(Application.persistentDataPath, "save.json");
+        SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
-    void OnDestroy() => SceneManager.sceneLoaded -= OnSceneLoaded;
+    private void OnDestroy()
+    {
+        if (Instance == this) SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
 
     public void SaveGame()
     {
         var saveDataList = new List<SaveData>();
-        var saveables = FindObjectsOfType<MonoBehaviour>(true).OfType<ISaveable>();
-
-        foreach (var saveable in saveables)
+        foreach (var saveable in FindObjectsOfType<MonoBehaviour>(true).OfType<ISaveable>())
             saveDataList.Add(saveable.GetSaveData());
 
         string json = JsonUtility.ToJson(new SaveWrapper { saves = saveDataList }, true);
         File.WriteAllText(saveFilePath, json);
-        Debug.Log($"[SaveManager] Игра сохранена! Объектов: {saveDataList.Count}");
     }
 
     public void LoadGame() => StartCoroutine(LoadGameAfterSpawn());
-
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode) => StartCoroutine(LoadGameAfterSpawn());
 
     private IEnumerator LoadGameAfterSpawn()
     {
-        // Ждём полной инициализации сцены
-        for (int i = 0; i < 10; i++) yield return null;
+        yield return new WaitForSeconds(0.1f);
         yield return new WaitForFixedUpdate();
 
-        if (!File.Exists(saveFilePath))
-        {
-            Debug.Log("[SaveManager] Сохранения нет");
-            yield break;
-        }
+        if (!File.Exists(saveFilePath)) yield break;
 
         string json = File.ReadAllText(saveFilePath);
         SaveWrapper wrapper = JsonUtility.FromJson<SaveWrapper>(json);
         var saveDataList = wrapper.saves ?? new List<SaveData>();
-
         var existingSaveables = FindObjectsOfType<MonoBehaviour>(true).OfType<ISaveable>().ToList();
         var remainingData = new List<SaveData>(saveDataList);
 
-        // 1. Загружаем уже существующие в сцене
         foreach (var saveable in existingSaveables)
         {
             var data = remainingData.Find(d => d.uniqueID == saveable.GetUniqueID());
@@ -77,86 +61,47 @@ public class SaveManager : MonoBehaviour
             }
         }
 
-        // 2. Спавним отсутствующие
-        int spawned = 0;
         foreach (var data in remainingData)
         {
             if (string.IsNullOrEmpty(data.prefabIdentifier)) continue;
-
             GameObject prefab = prefabRegistry?.GetPrefab(data.prefabIdentifier);
-            if (prefab == null)
-            {
-                Debug.LogError($"[SaveManager] Prefab not found: {data.prefabIdentifier} (ID: {data.uniqueID})");
-                continue;
-            }
+            if (!prefab) continue;
 
-            GameObject newObj = Instantiate(prefab, data.position, data.rotation);
-            Debug.Log($"[SaveManager] Заспавнен объект: {newObj.name}, uniqueID: {data.uniqueID}, prefabID: {data.prefabIdentifier}");
-            Rigidbody rb = newObj.GetComponent<Rigidbody>();
-            if (rb) rb.isKinematic = true; // ← временно, чтобы не упал
+            GameObject obj = Instantiate(prefab, data.position, data.rotation);
+            if (obj.TryGetComponent<Rigidbody>(out var rb)) rb.isKinematic = true;
 
-            ISaveable saveable = newObj.GetComponent<ISaveable>();
-            if (saveable != null)
+            if (obj.TryGetComponent<ISaveable>(out var saveable))
             {
                 saveable.LoadFromSaveData(data);
-
                 if (!string.IsNullOrEmpty(data.parentPath))
                 {
                     Transform parent = GameObject.Find(data.parentPath)?.transform;
-                    if (parent) newObj.transform.SetParent(parent);
+                    if (parent) obj.transform.SetParent(parent);
                 }
-
-                StartCoroutine(ActivatePhysicsAfterFrame(newObj, rb));
-                spawned++;
+                if (rb) StartCoroutine(ActivatePhysicsNextFrame(obj, rb));
             }
         }
 
         yield return new WaitForFixedUpdate();
-        yield return new WaitForEndOfFrame(); // ← для корутин в RestoreStateAfterLoad
-        Physics.SyncTransforms();
         yield return new WaitForEndOfFrame();
-        yield return null;
+        Physics.SyncTransforms();
 
-        // ← ГЛАВНОЕ: Ищем минерал, который был в сканере
-        SaveData scannerMineralData = wrapper.saves.Find(d => d.wasInScannerZone);
-        if (scannerMineralData != null)
+        SaveData scannerMineral = wrapper.saves.Find(d => d.wasInScannerZone);
+        if (scannerMineral != null)
         {
-            // Ищем объект с этим uniqueID
-            var saveable = FindObjectsOfType<SaveableObject>()
-                .FirstOrDefault(s => s.GetUniqueID() == scannerMineralData.uniqueID);
-
-            if (saveable != null)
+            var saveable = FindObjectsOfType<SaveableObject>().FirstOrDefault(s => s.GetUniqueID() == scannerMineral.uniqueID);
+            if (saveable != null && saveable.TryGetComponent<GrabbableItem>(out var grabbable))
             {
-                GameObject mineral = saveable.gameObject;
-                SnapZone scannerZone = MineralScannerManager.Instance?.targetSnapZone;
-
-                if (scannerZone != null)
-                {
-                    var grabbable = mineral.GetComponent<GrabbableItem>();
-                    if (grabbable != null)
-                    {
-                        Debug.Log($"<color=magenta>[SaveManager] Восстанавливаем минерал в сканере: {mineral.name}</color>");
-                        scannerZone.LoadSnappedItem(grabbable, scannerMineralData.snapPointIndex);
-
-                        // Принудительно включаем сканер
-                        MineralScannerManager.Instance?.ForceScanCurrentMineral();
-                    }
-                }
+                MineralScannerManager.Instance?.targetSnapZone?.LoadSnappedItem(grabbable, scannerMineral.snapPointIndex);
+                MineralScannerManager.Instance?.ForceScanCurrentMineral();
             }
         }
     }
-        private IEnumerator ActivatePhysicsAfterFrame(GameObject obj, Rigidbody rb)
+
+    private IEnumerator ActivatePhysicsNextFrame(GameObject obj, Rigidbody rb)
     {
         yield return new WaitForFixedUpdate();
-
-        if (rb != null && obj != null)
-        {
-            // ← ВАЖНО: НЕ ЛОМАЕМ isKinematic! Он уже восстановлен из SaveData
-            if (!rb.isKinematic) // только динамические объекты будим
-            {
-                rb.WakeUp();
-            }
-        }
+        if (rb && obj && !rb.isKinematic) rb.WakeUp();
     }
 }
 
