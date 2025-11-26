@@ -91,6 +91,7 @@ public class SaveManager : MonoBehaviour
             }
 
             GameObject newObj = Instantiate(prefab, data.position, data.rotation);
+            Debug.Log($"[SaveManager] Заспавнен объект: {newObj.name}, uniqueID: {data.uniqueID}, prefabID: {data.prefabIdentifier}");
             Rigidbody rb = newObj.GetComponent<Rigidbody>();
             if (rb) rb.isKinematic = true; // ← временно, чтобы не упал
 
@@ -113,11 +114,38 @@ public class SaveManager : MonoBehaviour
         yield return new WaitForFixedUpdate();
         yield return new WaitForEndOfFrame(); // ← для корутин в RestoreStateAfterLoad
         Physics.SyncTransforms();
+        yield return new WaitForEndOfFrame();
+        yield return null;
 
-        Debug.Log($"[SaveManager] Загрузка завершена! Спаун: {spawned}, Осталось необработанных: {remainingData.Count}");
+        // ← ГЛАВНОЕ: Ищем минерал, который был в сканере
+        SaveData scannerMineralData = wrapper.saves.Find(d => d.wasInScannerZone);
+        if (scannerMineralData != null)
+        {
+            // Ищем объект с этим uniqueID
+            var saveable = FindObjectsOfType<SaveableObject>()
+                .FirstOrDefault(s => s.GetUniqueID() == scannerMineralData.uniqueID);
+
+            if (saveable != null)
+            {
+                GameObject mineral = saveable.gameObject;
+                SnapZone scannerZone = MineralScannerManager.Instance?.targetSnapZone;
+
+                if (scannerZone != null)
+                {
+                    var grabbable = mineral.GetComponent<GrabbableItem>();
+                    if (grabbable != null)
+                    {
+                        Debug.Log($"<color=magenta>[SaveManager] Восстанавливаем минерал в сканере: {mineral.name}</color>");
+                        scannerZone.LoadSnappedItem(grabbable, scannerMineralData.snapPointIndex);
+
+                        // Принудительно включаем сканер
+                        MineralScannerManager.Instance?.ForceScanCurrentMineral();
+                    }
+                }
+            }
+        }
     }
-
-    private IEnumerator ActivatePhysicsAfterFrame(GameObject obj, Rigidbody rb)
+        private IEnumerator ActivatePhysicsAfterFrame(GameObject obj, Rigidbody rb)
     {
         yield return new WaitForFixedUpdate();
 

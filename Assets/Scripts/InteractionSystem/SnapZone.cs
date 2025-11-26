@@ -200,6 +200,32 @@ public class SnapZone : MonoBehaviour
             attachedItem = item;
         else if (!attachedItems.Contains(item))
             attachedItems.Add(item);
+        // ← Принудительно уведомляем сканер (через задержку, если Instance ещё null)
+        if (MineralScannerManager.Instance != null)
+        {
+            if (this == MineralScannerManager.Instance.targetSnapZone)
+            {
+                MineralScannerManager.Instance.ForceScanCurrentMineral();
+            }
+        }
+        else
+        {
+            // Если Instance ещё null — вызовем позже
+            StartCoroutine(DelayedScannerCheck());
+        }
+    }
+
+    private IEnumerator DelayedScannerCheck()
+    {
+        yield return new WaitForEndOfFrame();
+        yield return null; // ещё один кадр
+
+        if (MineralScannerManager.Instance != null &&
+            this == MineralScannerManager.Instance.targetSnapZone &&
+            IsOccupied)
+        {
+            MineralScannerManager.Instance.ForceScanCurrentMineral();
+        }
     }
 
     public void OnItemGrabbedFromZone(GrabbableItem grabbedItem)

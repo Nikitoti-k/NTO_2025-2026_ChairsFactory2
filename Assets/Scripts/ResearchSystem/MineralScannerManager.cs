@@ -9,7 +9,7 @@ public class MineralScannerManager : MonoBehaviour
     public static MineralScannerManager Instance { get; private set; }
 
     [Header("Ссылки")]
-    [SerializeField] private SnapZone targetSnapZone;
+    [SerializeField] public SnapZone targetSnapZone;
     [SerializeField] private Camera mineralCamera;
     [SerializeField] private Renderer screenRenderer;
 
@@ -47,18 +47,20 @@ public class MineralScannerManager : MonoBehaviour
         if (targetSnapZone == null) return;
 
         bool occupied = targetSnapZone.IsOccupied;
+        GameObject snapped = targetSnapZone.CurrentSnappedObject;
+
+        Debug.Log($"[Scanner Debug] IsOccupied: {occupied}, SnappedObject: {(snapped != null ? snapped.name : "null")}, WasOccupied: {wasOccupied}");
 
         if (occupied && !wasOccupied)
         {
-           
+            Debug.Log($"[Scanner] ВКЛЮЧАЕМ! Минерал: {snapped.name}, MineralData: {snapped.GetComponentInChildren<MineralData>() != null}");
             TurnOnScreen();
         }
         else if (!occupied && wasOccupied)
         {
-            
+            Debug.Log($"[Scanner] ВЫКЛЮЧАЕМ!");
             TurnOffScreen();
         }
-
         wasOccupied = occupied;
     }
 
@@ -89,7 +91,26 @@ public class MineralScannerManager : MonoBehaviour
 
         OnMineralScanned?.Invoke(mineralObject);
     }
+    // Добавь в конец класса MineralScannerManager:
+    public void ForceScanCurrentMineral()
+    {
+        if (targetSnapZone == null || !targetSnapZone.IsOccupied) return;
 
+        GameObject mineralObject = targetSnapZone.CurrentSnappedObject;
+        if (mineralObject == null) return;
+
+        // Принудительно включаем экран
+        mineralCamera.enabled = true;
+        wasOccupied = true;
+
+        // Имитируем событие "минерал вставлен"
+        OnMineralScanned?.Invoke(mineralObject);
+
+        // Уведомляем MineralScanner_Renderer вручную
+        MineralScanner_Renderer.Instance?.OnMineralPlaced(mineralObject);
+
+        Debug.Log("<color=green>[Scanner] Принудительно включён сканер — минерал был в слоте при загрузке!</color>");
+    }
     private void TurnOffScreen()
     {
         mineralCamera.enabled = false;

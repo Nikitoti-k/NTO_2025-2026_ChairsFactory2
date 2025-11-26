@@ -21,6 +21,7 @@ public class SaveableObject : MonoBehaviour, ISaveable
 
         if (string.IsNullOrEmpty(uniqueID))
             uniqueID = System.Guid.NewGuid().ToString();
+        Debug.Log($"[SaveableObject] Awake: {gameObject.name}, uniqueID: {uniqueID}, prefabIdentifier: {prefabIdentifier}");
     }
 
 #if UNITY_EDITOR
@@ -59,6 +60,15 @@ public class SaveableObject : MonoBehaviour, ISaveable
         var mineralData = GetComponent<MineralData>();
         if (mineralData != null)
         {
+            var snapZone = GetComponentInParent<SnapZone>();
+            if (snapZone != null && MineralScannerManager.Instance != null)
+            {
+                if (snapZone == MineralScannerManager.Instance.targetSnapZone)
+                {
+                    data.wasInScannerZone = true;
+                    Debug.Log($"[Save] Минерал {gameObject.name} был в сканере — пометили!");
+                }
+            }
             var mData = mineralData.GetMineralSaveData();
             data.customFloat1 = mData.realAge;
             data.customFloat2 = mData.realRadioactivity;

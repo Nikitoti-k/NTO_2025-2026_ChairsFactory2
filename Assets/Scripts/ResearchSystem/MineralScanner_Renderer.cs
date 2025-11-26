@@ -85,12 +85,11 @@ public class MineralScanner_Renderer : MonoBehaviour
         MineralScannerManager.Instance.OnMineralRemoved.AddListener(OnMineralRemoved);
     }
 
-    private void OnMineralPlaced(GameObject mineralObj)
+    public void OnMineralPlaced(GameObject mineralObj)
     {
         currentMineral = mineralObj.GetComponentInChildren<MineralData>();
         if (currentMineral == null) return;
 
-        // ← ТЕПЕРЬ ИСПОЛЬЗУЕМ isResearched ИЗ MineralData!
         if (currentMineral.isResearched)
         {
             isReportSubmitted = true;
@@ -102,12 +101,7 @@ public class MineralScanner_Renderer : MonoBehaviour
             return;
         }
 
-        isReportSubmitted = false;
-        reportButton.interactable = true;
-        recordButtonUI.interactable = true;
-        noConnectionOverlay.SetActive(false);
-
-
+        // ← ОДНО РАЗ ВКЛЮЧАЕМ ВСЁ
         isReportSubmitted = false;
         reportButton.interactable = true;
         recordButtonUI.interactable = true;

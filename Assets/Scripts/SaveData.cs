@@ -27,7 +27,10 @@ public class SaveData
     // SnapZone привязка
     public string snappedZoneID = "";
     public int snapPointIndex = -1;
-    
+
+    // ← НОВОЕ ПОЛЕ!
+    public bool wasInScannerZone = false; // ← ВОТ ЭТО ГЛАВНОЕ!
+
     public float customFloat1, customFloat2;
     public Vector3 customVector1, customVector2, customVector3;
     public bool customBool1;
