@@ -24,6 +24,7 @@ public class CanGrab : MonoBehaviour
     private bool isPulling = false;
     private bool isSnapping = false;
     private bool wasTriggerBeforeGrab = false;
+    private bool wasKinematicBeforeGrab = false;
 
     public static System.Action<CanGrab, Rigidbody> OnGrabbed;
     public static System.Action<CanGrab, Rigidbody> OnReleased;
@@ -79,23 +80,26 @@ public class CanGrab : MonoBehaviour
     {
         var rb = item.GetComponent<Rigidbody>() ?? item.GetComponentInParent<Rigidbody>();
         var snapZone = item.GetComponentInParent<SnapZone>();
-        snapZone?.OnItemGrabbedFromZone(item); // ← передаём item!
+        snapZone?.OnItemGrabbedFromZone(item);
 
         heldRb = rb;
         heldTransform = rb.transform;
         heldItem = item;
         activePoint = point;
 
-        heldRb.useGravity = false;
-        heldRb.linearVelocity = Vector3.zero;
-        heldRb.angularVelocity = Vector3.zero;
-
+        wasKinematicBeforeGrab = rb.isKinematic;
+        wasTriggerBeforeGrab = false;
         var col = item.GetComponent<Collider>();
         if (col)
         {
             wasTriggerBeforeGrab = col.isTrigger;
             col.isTrigger = true;
         }
+
+        rb.isKinematic = false;
+        rb.useGravity = false;
+        rb.linearVelocity = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
 
         OnGrabbed?.Invoke(this, heldRb);
         isPulling = true;
@@ -117,18 +121,14 @@ public class CanGrab : MonoBehaviour
 
         if (!force && !isSnapping)
         {
-            
-            if (col)
-                col.isTrigger = wasTriggerBeforeGrab;
+            if (col) col.isTrigger = false;//wasTriggerBeforeGrab;
 
             bool hasGravity = heldItem.ItemType == GrabbableType.Tool ? toolsHaveGravity : mineralsHaveGravity;
             heldRb.useGravity = hasGravity;
+            heldRb.isKinematic = false;//wasKinematicBeforeGrab;
+
             heldRb.linearVelocity *= 0.3f;
             heldRb.angularVelocity *= 0.3f;
-        }
-        else if (force && isSnapping)
-        {
-           
         }
 
         heldRb = null;
@@ -137,6 +137,7 @@ public class CanGrab : MonoBehaviour
         activePoint = null;
         isPulling = false;
         wasTriggerBeforeGrab = false;
+        wasKinematicBeforeGrab = false;
     }
 
     private void FixedUpdate()

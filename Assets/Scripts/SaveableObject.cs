@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 using UnityEngine;
 using System.Collections;
@@ -21,10 +21,15 @@ public class SaveableObject : MonoBehaviour, ISaveable
 
         if (string.IsNullOrEmpty(uniqueID))
             uniqueID = System.Guid.NewGuid().ToString();
-
-        if (string.IsNullOrEmpty(prefabIdentifier))
-            prefabIdentifier = gameObject.name;
     }
+
+#if UNITY_EDITOR
+    private void OnValidate()
+    {
+        if (string.IsNullOrEmpty(uniqueID) && !Application.isPlaying)
+            uniqueID = System.Guid.NewGuid().ToString();
+    }
+#endif
 
     public string GetUniqueID() => uniqueID;
 
@@ -44,17 +49,39 @@ public class SaveableObject : MonoBehaviour, ISaveable
             isTrigger = col ? col.isTrigger : false,
             useGravity = rb ? rb.useGravity : true,
             constraints = rb ? (int)rb.constraints : 0,
+            isKinematic = rb ? rb.isKinematic : false, // ← НОВОЕ
             seatedInTransportID = "",
-            controllingTransportID = ""
+            controllingTransportID = "",
+            snappedZoneID = "",
+            snapPointIndex = -1
         };
 
+        // === СНАП В ЗОНУ ===
+        var grabbable = GetComponent<GrabbableItem>();
+        if (grabbable != null && transform.parent != null)
+        {
+            var snapZone = transform.parent.GetComponentInParent<SnapZone>();
+            if (snapZone != null)
+            {
+                var zoneSaveable = snapZone.GetComponent<SaveableObject>();
+                if (zoneSaveable != null)
+                {
+                    data.snappedZoneID = zoneSaveable.GetUniqueID();
+                    if (snapZone.isMultiSlot)
+                        data.snapPointIndex = snapZone.multiSnapPoints.IndexOf(transform.parent);
+                    data.parentPath = ""; // чистим — используем snappedZoneID
+                }
+            }
+        }
+
+        // === ИГРОК В ТРАНСПОРТЕ ===
         if (IsPlayer)
         {
-            if (InputRouter.Instance != null && InputRouter.Instance.CurrentController is TransportMovement transportCtrl)
+            if (InputRouter.Instance?.CurrentController is TransportMovement transportCtrl)
             {
-                var saveable = transportCtrl.GetComponent<SaveableObject>();
-                if (saveable != null)
-                    data.controllingTransportID = saveable.GetUniqueID();
+                var ctrlSaveable = transportCtrl.GetComponent<SaveableObject>();
+                if (ctrlSaveable != null)
+                    data.controllingTransportID = ctrlSaveable.GetUniqueID();
             }
 
             if (transform.parent != null)
@@ -76,6 +103,7 @@ public class SaveableObject : MonoBehaviour, ISaveable
 
         if (rb)
         {
+            rb.isKinematic = data.isKinematic;     // ← ВОССТАНАВЛИВАЕМ КИНЕМАТИК СРАЗУ!
             rb.linearVelocity = data.velocity;
             rb.angularVelocity = data.angularVelocity;
             rb.useGravity = data.useGravity;
@@ -86,53 +114,74 @@ public class SaveableObject : MonoBehaviour, ISaveable
         if (col)
             col.isTrigger = data.isTrigger;
 
-        if (IsPlayer)
-            StartCoroutine(RestorePlayerControlAfterLoad(data.seatedInTransportID, data.controllingTransportID));
+        // === ВОССТАНАВЛИВАЕМ СНАП ИЛИ ТРАНСПОРТ ===
+        if (!string.IsNullOrEmpty(data.snappedZoneID) || !string.IsNullOrEmpty(data.seatedInTransportID) || !string.IsNullOrEmpty(data.controllingTransportID))
+        {
+            StartCoroutine(RestoreStateAfterLoad(data));
+        }
+        else if (!string.IsNullOrEmpty(data.parentPath))
+        {
+            Transform parent = GameObject.Find(data.parentPath)?.transform;
+            if (parent) transform.SetParent(parent);
+        }
 
         Physics.SyncTransforms();
     }
 
-    private IEnumerator RestorePlayerControlAfterLoad(string seatedID, string controllingID)
+    private IEnumerator RestoreStateAfterLoad(SaveData data)
     {
         yield return new WaitForEndOfFrame();
 
-        var allSaveables = FindObjectsOfType<SaveableObject>();
+        var allSaveables = FindObjectsOfType<SaveableObject>(true);
 
-        if (!string.IsNullOrEmpty(seatedID))
+        // 1. SnapZone
+        if (!string.IsNullOrEmpty(data.snappedZoneID))
         {
-            var transport = allSaveables
-                .FirstOrDefault(s => s.GetUniqueID() == seatedID)?
-                .GetComponent<TransportMovement>();
-
-            if (transport != null)
+            var zoneSaveable = allSaveables.FirstOrDefault(s => s.GetUniqueID() == data.snappedZoneID);
+            var snapZone = zoneSaveable?.GetComponent<SnapZone>();
+            var grabbable = GetComponent<GrabbableItem>();
+            if (snapZone && grabbable)
             {
-                var playerMovement = GetComponent<PlayerMovement>();
-                playerMovement.GetType()
-                    .GetMethod("Mount", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-                    ?.Invoke(playerMovement, new object[] { transport });
+                snapZone.LoadSnappedItem(grabbable, data.snapPointIndex);
             }
         }
 
-        if (!string.IsNullOrEmpty(controllingID))
+        // 2. Посадка в транспорт + управление
+        if (IsPlayer)
         {
-            var controller = allSaveables
-                .FirstOrDefault(s => s.GetUniqueID() == controllingID)?
-                .GetComponent<IControllable>();
-
-            if (controller != null)
+            if (!string.IsNullOrEmpty(data.seatedInTransportID))
             {
-                InputRouter.Instance?.SetController(controller);
-                yield break;
+                var transport = allSaveables
+                    .FirstOrDefault(s => s.GetUniqueID() == data.seatedInTransportID)?
+                    .GetComponent<TransportMovement>();
+
+                if (transport)
+                {
+                    var playerMovement = GetComponent<PlayerMovement>();
+                    playerMovement.GetType()
+                        .GetMethod("Mount", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                        ?.Invoke(playerMovement, new object[] { transport });
+                }
+            }
+
+            if (!string.IsNullOrEmpty(data.controllingTransportID))
+            {
+                var controller = allSaveables
+                    .FirstOrDefault(s => s.GetUniqueID() == data.controllingTransportID)?
+                    .GetComponent<IControllable>();
+
+                if (controller != null)
+                    InputRouter.Instance?.SetController(controller);
+            }
+            else
+            {
+                InputRouter.Instance?.SetController(GetComponent<IControllable>());
             }
         }
-
-        InputRouter.Instance?.SetController(GetComponent<IControllable>());
     }
 
     public void SetPrefabIdentifier(string id) => prefabIdentifier = id;
 }
-
-
 public static class TransformExtensions
 {
     public static string GetPath(this Transform t)

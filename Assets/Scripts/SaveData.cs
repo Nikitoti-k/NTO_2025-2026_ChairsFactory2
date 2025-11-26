@@ -1,5 +1,5 @@
+﻿using UnityEngine;
 using System;
-using UnityEngine;
 
 [Serializable]
 public class SaveData
@@ -14,10 +14,17 @@ public class SaveData
     public string parentPath;
     public int customInt1;
 
-    // ��� ������ � �����������
+    // Физика и коллайдеры
     public bool isTrigger;
     public bool useGravity;
     public int constraints;
+    public bool isKinematic; // ← НОВОЕ: сохраняем kinematic состояние!
+
+    // Посадка в транспорт
     public string seatedInTransportID = "";
     public string controllingTransportID = "";
+
+    // SnapZone привязка
+    public string snappedZoneID = "";
+    public int snapPointIndex = -1;
 }

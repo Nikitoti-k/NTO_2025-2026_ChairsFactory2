@@ -5,12 +5,12 @@ using System.Linq;
 using UnityEngine.SceneManagement;
 using System.Collections;
 
-
-
 public class SaveManager : MonoBehaviour
 {
     public static SaveManager Instance { get; private set; }
-    [SerializeField] private PrefabRegistry prefabRegistry;
+
+    [SerializeField] private PrefabRegistry prefabRegistry; // ← ОБЯЗАТЕЛЬНО назначить в инспекторе!
+
     private string saveFilePath;
 
     void Awake()
@@ -22,7 +22,10 @@ public class SaveManager : MonoBehaviour
             saveFilePath = Path.Combine(Application.persistentDataPath, "save.json");
             SceneManager.sceneLoaded += OnSceneLoaded;
         }
-        else Destroy(gameObject);
+        else
+        {
+            Destroy(gameObject);
+        }
     }
 
     void OnDestroy() => SceneManager.sceneLoaded -= OnSceneLoaded;
@@ -31,20 +34,30 @@ public class SaveManager : MonoBehaviour
     {
         var saveDataList = new List<SaveData>();
         var saveables = FindObjectsOfType<MonoBehaviour>(true).OfType<ISaveable>();
-        foreach (var s in saveables) saveDataList.Add(s.GetSaveData());
+
+        foreach (var saveable in saveables)
+            saveDataList.Add(saveable.GetSaveData());
 
         string json = JsonUtility.ToJson(new SaveWrapper { saves = saveDataList }, true);
         File.WriteAllText(saveFilePath, json);
+        Debug.Log($"[SaveManager] Игра сохранена! Объектов: {saveDataList.Count}");
     }
+
+    public void LoadGame() => StartCoroutine(LoadGameAfterSpawn());
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode) => StartCoroutine(LoadGameAfterSpawn());
 
     private IEnumerator LoadGameAfterSpawn()
     {
+        // Ждём полной инициализации сцены
         for (int i = 0; i < 10; i++) yield return null;
         yield return new WaitForFixedUpdate();
 
-        if (!File.Exists(saveFilePath)) yield break;
+        if (!File.Exists(saveFilePath))
+        {
+            Debug.Log("[SaveManager] Сохранения нет");
+            yield break;
+        }
 
         string json = File.ReadAllText(saveFilePath);
         SaveWrapper wrapper = JsonUtility.FromJson<SaveWrapper>(json);
@@ -53,6 +66,7 @@ public class SaveManager : MonoBehaviour
         var existingSaveables = FindObjectsOfType<MonoBehaviour>(true).OfType<ISaveable>().ToList();
         var remainingData = new List<SaveData>(saveDataList);
 
+        // 1. Загружаем уже существующие в сцене
         foreach (var saveable in existingSaveables)
         {
             var data = remainingData.Find(d => d.uniqueID == saveable.GetUniqueID());
@@ -63,6 +77,8 @@ public class SaveManager : MonoBehaviour
             }
         }
 
+        // 2. Спавним отсутствующие
+        int spawned = 0;
         foreach (var data in remainingData)
         {
             if (string.IsNullOrEmpty(data.prefabIdentifier)) continue;
@@ -74,11 +90,11 @@ public class SaveManager : MonoBehaviour
                 continue;
             }
 
-            GameObject obj = Instantiate(prefab, data.position, data.rotation);
-            Rigidbody rb = obj.GetComponent<Rigidbody>();
-            if (rb) rb.isKinematic = true;
+            GameObject newObj = Instantiate(prefab, data.position, data.rotation);
+            Rigidbody rb = newObj.GetComponent<Rigidbody>();
+            if (rb) rb.isKinematic = true; // ← временно, чтобы не упал
 
-            var saveable = obj.GetComponent<ISaveable>();
+            ISaveable saveable = newObj.GetComponent<ISaveable>();
             if (saveable != null)
             {
                 saveable.LoadFromSaveData(data);
@@ -86,24 +102,32 @@ public class SaveManager : MonoBehaviour
                 if (!string.IsNullOrEmpty(data.parentPath))
                 {
                     Transform parent = GameObject.Find(data.parentPath)?.transform;
-                    if (parent) obj.transform.SetParent(parent);
+                    if (parent) newObj.transform.SetParent(parent);
                 }
 
-                StartCoroutine(ActivatePhysics(obj, rb));
+                StartCoroutine(ActivatePhysicsAfterFrame(newObj, rb));
+                spawned++;
             }
         }
 
         yield return new WaitForFixedUpdate();
+        yield return new WaitForEndOfFrame(); // ← для корутин в RestoreStateAfterLoad
         Physics.SyncTransforms();
+
+        Debug.Log($"[SaveManager] Загрузка завершена! Спаун: {spawned}, Осталось необработанных: {remainingData.Count}");
     }
 
-    private IEnumerator ActivatePhysics(GameObject obj, Rigidbody rb)
+    private IEnumerator ActivatePhysicsAfterFrame(GameObject obj, Rigidbody rb)
     {
         yield return new WaitForFixedUpdate();
+
         if (rb != null && obj != null)
         {
-            rb.isKinematic = false;
-            rb.WakeUp();
+            // ← ВАЖНО: НЕ ЛОМАЕМ isKinematic! Он уже восстановлен из SaveData
+            if (!rb.isKinematic) // только динамические объекты будим
+            {
+                rb.WakeUp();
+            }
         }
     }
 }
