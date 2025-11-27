@@ -4,7 +4,7 @@ public class IceDeposit : MonoBehaviour, ISaveable
 {
     [Header("Настройки депозита")]
     [SerializeField] private int hitsRequired = 3;
-    [SerializeField] private GameObject mineralPrefab;   
+    [SerializeField] private GameObject mineralPrefab;
     [SerializeField] private Transform spawnPoint;
 
     private int currentHits = 0;
@@ -13,7 +13,7 @@ public class IceDeposit : MonoBehaviour, ISaveable
 
     private Rigidbody rb;
 
-    void Awake()
+    void OnEnable()
     {
         rb = GetComponent<Rigidbody>();
         if (string.IsNullOrEmpty(uniqueID))
@@ -35,14 +35,37 @@ public class IceDeposit : MonoBehaviour, ISaveable
                 spawnPoint ? spawnPoint.position : transform.position,
                 Quaternion.identity);
 
-            var saveable = mineral.GetComponent<SaveableObject>();
-            if (saveable == null) saveable = mineral.AddComponent<SaveableObject>();
-            //saveable.SetPrefabIdentifier("Mineral"); // ← ДОЛЖНО СОВПАДАТЬ с реестром!
+            // КРИТИЧЕСКИ ВАЖНО: устанавливаем prefabIdentifier
+            var saveable = mineral.GetComponent<MineralSaveableObject>();
+            if (saveable == null)
+                saveable = mineral.AddComponent<MineralSaveableObject>();
 
-            Debug.Log($"[IceDeposit] Spawned mineral ID: {saveable.GetUniqueID()}");
+            string identifier = GetPrefabIdentifier(mineralPrefab);
+            saveable.SetPrefabIdentifier(identifier);
+
+            Debug.Log($"[IceDeposit] Заспавнен минерал: {mineralPrefab.name} → prefabIdentifier = \"{identifier}\" | uniqueID = {saveable.GetUniqueID()}");
         }
 
         gameObject.SetActive(false);
+    }
+
+    // Универсальный метод — определяет identifier по реестру или имени
+    private string GetPrefabIdentifier(GameObject prefab)
+    {
+        if (SaveManager.Instance?.prefabRegistry != null)
+        {
+            foreach (var entry in SaveManager.Instance.prefabRegistry.prefabs)
+            {
+                if (entry.prefab == prefab)
+                    return entry.identifier;
+            }
+        }
+
+        // Если не нашёл в реестре — берём имя префаба (например, Min_2)
+        string name = prefab.name;
+        if (name.Contains("(Clone)")) name = name.Replace("(Clone)", "");
+        Debug.LogWarning($"[IceDeposit] Identifier не найден в реестре для {prefab.name}, используем имя: {name}");
+        return name.Trim();
     }
 
     // ─── ISaveable ───
@@ -58,7 +81,7 @@ public class IceDeposit : MonoBehaviour, ISaveable
             rotation = transform.rotation,
             isActive = gameObject.activeSelf,
             parentPath = transform.parent ? transform.parent.GetPath() : "",
-            customInt1 = currentHits
+            deposit = new SaveData.DepositBlock { currentHits = currentHits }
         };
     }
 
@@ -67,6 +90,8 @@ public class IceDeposit : MonoBehaviour, ISaveable
         transform.position = data.position;
         transform.rotation = data.rotation;
         gameObject.SetActive(data.isActive);
-        currentHits = data.customInt1;
+        if (data.deposit != null) currentHits = data.deposit.currentHits;
+
+        Debug.Log($"[IceDeposit] Загружен депозит | hits: {currentHits} | active: {data.isActive}");
     }
 }

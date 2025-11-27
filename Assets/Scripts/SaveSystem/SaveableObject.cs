@@ -1,17 +1,17 @@
 ﻿using UnityEngine;
 using System.Collections;
 using System.Linq;
-using System.Collections.Generic;
+using System.Reflection;
 
 public class SaveableObject : MonoBehaviour, ISaveable
 {
-    [SerializeField] private string uniqueID = "";
+    [SerializeField] public string uniqueID = "";
     [SerializeField] private string prefabIdentifier = "";
-    private Rigidbody rb;
-    private Collider col;
+    public Rigidbody rb;
+    public Collider col;
     public bool IsPlayer => gameObject.CompareTag("Player");
 
-    private void Awake()
+    protected virtual void Awake()
     {
         rb = GetComponent<Rigidbody>();
         col = GetComponentInChildren<Collider>();
@@ -22,15 +22,14 @@ public class SaveableObject : MonoBehaviour, ISaveable
 #if UNITY_EDITOR
     private void OnValidate()
     {
-        if (!Application.isPlaying && string.IsNullOrEmpty(uniqueID))
-            uniqueID = System.Guid.NewGuid().ToString();
+        // NO GENERATION HERE! To avoid dubs in prefabs
     }
 #endif
 
     public string GetUniqueID() => uniqueID;
     public void SetPrefabIdentifier(string id) => prefabIdentifier = id;
 
-    public SaveData GetSaveData()
+    public virtual SaveData GetSaveData()
     {
         var data = new SaveData
         {
@@ -47,24 +46,6 @@ public class SaveableObject : MonoBehaviour, ISaveable
             constraints = rb ? (int)rb.constraints : 0,
             isKinematic = rb ? rb.isKinematic : false
         };
-
-        var mineral = GetComponent<MineralData>();
-        if (mineral != null)
-        {
-            if (GetComponentInParent<SnapZone>() == MineralScannerManager.Instance?.targetSnapZone)
-                data.wasInScannerZone = true;
-
-            var m = mineral.GetMineralSaveData();
-            data.customFloat1 = m.realAge;
-            data.customFloat2 = m.realRadioactivity;
-            data.customVector1 = m.agePointLocalPos;
-            data.customVector2 = m.crystalPointLocalPos;
-            data.customVector3 = m.radioactivityPointLocalPos;
-            data.customBool1 = m.isResearched;
-            data.customString1 = mineral.savedAgeLine;
-            data.customString2 = mineral.savedRadioactivityLine;
-            data.customString3 = mineral.savedCrystalLine;
-        }
 
         var grabbable = GetComponent<GrabbableItem>();
         if (grabbable && transform.parent != null)
@@ -93,8 +74,10 @@ public class SaveableObject : MonoBehaviour, ISaveable
         return data;
     }
 
-    public void LoadFromSaveData(SaveData data)
+    public virtual void LoadFromSaveData(SaveData data)
     {
+        uniqueID = data.uniqueID;  // ← ФИКС: Восстанавливаем ID из сохранения
+
         transform.position = data.position;
         transform.rotation = data.rotation;
         gameObject.SetActive(data.isActive);
@@ -111,27 +94,6 @@ public class SaveableObject : MonoBehaviour, ISaveable
 
         if (col) col.isTrigger = data.isTrigger;
 
-        var mineral = GetComponent<MineralData>();
-        if (mineral != null)
-        {
-            mineral.LoadMineralSaveData(new MineralData.MineralSaveData
-            {
-                realAge = data.customFloat1,
-                realRadioactivity = data.customFloat2,
-                agePointLocalPos = data.customVector1,
-                crystalPointLocalPos = data.customVector2,
-                radioactivityPointLocalPos = data.customVector3,
-                isResearched = data.customBool1
-            });
-
-            mineral.savedAgeLine = data.customString1 ?? "";
-            mineral.savedRadioactivityLine = data.customString2 ?? "";
-            mineral.savedCrystalLine = data.customString3 ?? "";
-
-            GetComponent<MineralPointSpawner>()?.RestorePointsFromSaveData(
-                data.customVector1, data.customVector2, data.customVector3);
-        }
-
         if (!string.IsNullOrEmpty(data.snappedZoneID) || !string.IsNullOrEmpty(data.seatedInTransportID) || !string.IsNullOrEmpty(data.controllingTransportID))
             StartCoroutine(RestoreRelations(data));
         else if (!string.IsNullOrEmpty(data.parentPath))
@@ -143,7 +105,7 @@ public class SaveableObject : MonoBehaviour, ISaveable
         Physics.SyncTransforms();
     }
 
-    private IEnumerator RestoreRelations(SaveData data)
+    protected virtual IEnumerator RestoreRelations(SaveData data)
     {
         yield return new WaitForEndOfFrame();
         var all = FindObjectsOfType<SaveableObject>(true);
@@ -162,7 +124,7 @@ public class SaveableObject : MonoBehaviour, ISaveable
                 var transport = all.FirstOrDefault(x => x.GetUniqueID() == data.seatedInTransportID)?.GetComponent<TransportMovement>();
                 if (transport && TryGetComponent<PlayerMovement>(out var pm))
                 {
-                    var method = pm.GetType().GetMethod("Mount", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    var method = pm.GetType().GetMethod("Mount", BindingFlags.NonPublic | BindingFlags.Instance);
                     method?.Invoke(pm, new object[] { transport });
                 }
             }

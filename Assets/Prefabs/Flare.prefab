@@ -14,9 +14,9 @@ GameObject:
   - component: {fileID: 2251060157585757455}
   - component: {fileID: 4345183427339332268}
   - component: {fileID: 6614520378894081574}
-  - component: {fileID: -2290529786273035177}
+  - component: {fileID: -7712067143622254883}
   m_Layer: 0
-  m_Name: Flare_object
+  m_Name: Flare
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -176,7 +176,7 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
---- !u!114 &-2290529786273035177
+--- !u!114 &-7712067143622254883
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -185,8 +185,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 666048536902696509}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 55b45e13712f3564aa3b982d9b129e74, type: 3}
+  m_Script: {fileID: 11500000, guid: 50cf4822946bc4c49871aea475fc8624, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  uniqueID: 6364c069-ed5f-4e88-8d93-19620e0afd00
-  prefabIdentifier: Flare_object
+  uniqueID: 
+  prefabIdentifier: Flare
+  rb: {fileID: 0}
+  col: {fileID: 0}
+  generateIDOnlyIfEmpty: 1

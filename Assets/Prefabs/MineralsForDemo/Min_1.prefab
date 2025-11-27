@@ -252,7 +252,7 @@ GameObject:
   - component: {fileID: 635253388403995613}
   - component: {fileID: 634889202932440264}
   - component: {fileID: 1350920083297470534}
-  - component: {fileID: 1358352462224863121}
+  - component: {fileID: 3101517386839906057}
   m_Layer: 7
   m_Name: Min_1
   m_TagString: Untagged
@@ -403,14 +403,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 88d1d150cb6793349aadf4e28d23b24d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  realAge: 0
-  realRadioactivity: 0
   AgePoint: {fileID: 0}
   CrystalPoint: {fileID: 0}
   RadioactivityPoint: {fileID: 0}
   mineralClass: {fileID: 11400000, guid: e943060233ffd8341a64c82f7d2d3a7c, type: 2}
+  realAge: 0
+  realRadioactivity: 0
   UniqueInstanceID: 
   isResearched: 0
+  savedAgeLine: 
+  savedRadioactivityLine: 
+  savedCrystalLine: 
 --- !u!114 &1350920083297470534
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -428,7 +431,7 @@ MonoBehaviour:
   minDistanceBetweenPoints: 0.3
   spawnPointsOnStart: 1
   generateDataOnStart: 1
---- !u!114 &1358352462224863121
+--- !u!114 &3101517386839906057
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -437,11 +440,13 @@ MonoBehaviour:
   m_GameObject: {fileID: 5941508467737296759}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 55b45e13712f3564aa3b982d9b129e74, type: 3}
+  m_Script: {fileID: 11500000, guid: 227be5d68e5675f428e2fd8d1931a2ca, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  uniqueID: f9e9ee22-2e1e-4141-9700-9966fd48623f
+  uniqueID: 
   prefabIdentifier: Min_1
+  rb: {fileID: 0}
+  col: {fileID: 0}
 --- !u!1 &9205873675629105080
 GameObject:
   m_ObjectHideFlags: 0

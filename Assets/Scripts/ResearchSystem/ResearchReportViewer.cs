@@ -173,24 +173,28 @@ public class ResearchReportViewer : MonoBehaviour, ISaveable
 
     // ISaveable
     public string GetUniqueID() => "RESEARCH_REPORT_VIEWER";
+
     public SaveData GetSaveData()
     {
         var data = new SaveData
         {
             uniqueID = "RESEARCH_REPORT_VIEWER",
             prefabIdentifier = "ResearchSystem",
-            customString1 = string.Join("|",
-                allReports.Select(day => $"{day.dayNumber}:{string.Join(";", day.results.Select(r => $"{r.displayName}¬{r.mineralClassName}¬{(r.wasCorrect ? 1 : 0)}"))}"))
+            report = new SaveData.ReportBlock
+            {
+                serializedReports = string.Join("|",
+                    allReports.Select(day => $"{day.dayNumber}:{string.Join(";", day.results.Select(r => $"{r.displayName}¬{r.mineralClassName}¬{(r.wasCorrect ? 1 : 0)}"))}"))
+            }
         };
         return data;
     }
 
     public void LoadFromSaveData(SaveData data)
     {
-        allReports.Clear();
-        if (string.IsNullOrEmpty(data.customString1)) return;
+        if (data.report == null || string.IsNullOrEmpty(data.report.serializedReports)) return;
 
-        var dayEntries = data.customString1.Split('|');
+        allReports.Clear();
+        var dayEntries = data.report.serializedReports.Split('|');
         foreach (var entry in dayEntries)
         {
             if (string.IsNullOrEmpty(entry)) continue;

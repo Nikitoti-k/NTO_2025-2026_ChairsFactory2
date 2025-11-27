@@ -1,5 +1,4 @@
-﻿
-using UnityEngine;
+﻿using UnityEngine;
 using System.Collections.Generic;
 
 public class FlarePool : MonoBehaviour
@@ -8,15 +7,22 @@ public class FlarePool : MonoBehaviour
     [SerializeField] private int poolSize = 20;
 
     private Queue<FlareObject> pool = new Queue<FlareObject>();
+
     public static FlarePool Instance;
 
-    void Awake()
+    private void Awake()
     {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
         Instance = this;
+        DontDestroyOnLoad(gameObject);
         InitializePool();
     }
 
-    void InitializePool()
+    private void InitializePool()
     {
         for (int i = 0; i < poolSize; i++)
         {
@@ -24,8 +30,14 @@ public class FlarePool : MonoBehaviour
             obj.SetActive(false);
 
             var flare = obj.GetComponent<FlareObject>();
-            var saveable = obj.GetComponent<SaveableObject>() ?? obj.AddComponent<SaveableObject>();
-            saveable.SetPrefabIdentifier("Flare"); // ← ВАЖНО!
+            if (flare == null)
+            {
+                Debug.LogError("FlarePrefab должен иметь компонент FlareObject!");
+                continue;
+            }
+
+            // НЕ добавляем PooledSaveableObject здесь!
+            // Он добавится автоматически при первом использовании
 
             flare.ReturnToPool();
             pool.Enqueue(flare);
@@ -36,19 +48,37 @@ public class FlarePool : MonoBehaviour
     {
         if (pool.Count == 0)
         {
-            Debug.LogWarning("Flare pool empty!");
-            return null;
+            Debug.LogWarning("Flare pool пуст! Создаём новый на лету.");
+            GameObject obj = Instantiate(flarePrefab, position, Quaternion.identity);
+            var flare = obj.GetComponent<FlareObject>();
+            var saveable = obj.GetComponent<PooledSaveableObject>() ?? obj.AddComponent<PooledSaveableObject>();
+            saveable.SetPrefabIdentifier("Flare");
+            obj.SetActive(true);
+            return flare;
         }
 
-        var flare = pool.Dequeue();
-        flare.transform.position = position;
-        flare.gameObject.SetActive(true);
-        return flare;
+        var flareFromPool = pool.Dequeue();
+        flareFromPool.transform.position = position;
+        flareFromPool.transform.rotation = Quaternion.identity;
+        flareFromPool.gameObject.SetActive(true);
+
+        // Гарантируем, что у активного факела есть PooledSaveableObject
+        var saveableComponent = flareFromPool.GetComponent<PooledSaveableObject>();
+        if (saveableComponent == null)
+        {
+            saveableComponent = flareFromPool.gameObject.AddComponent<PooledSaveableObject>();
+            saveableComponent.SetPrefabIdentifier("Flare");
+        }
+
+        return flareFromPool;
     }
 
     public void ReturnFlare(FlareObject flare)
     {
-        flare.ReturnToPool();
+        if (flare == null) return;
+
+        flare.ReturnToPool(); // Делает rb.isKinematic = true и т.д.
+        flare.gameObject.SetActive(false);
         pool.Enqueue(flare);
     }
 }

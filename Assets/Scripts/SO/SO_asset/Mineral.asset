@@ -15,7 +15,11 @@ MonoBehaviour:
   prefabs:
   - identifier: Min_1
     prefab: {fileID: 5941508467737296759, guid: 8d5726580eec5f04e808a63fb618b3d0, type: 3}
-  - identifier: MIn_2
+  - identifier: Min_2
     prefab: {fileID: 5941508467737296759, guid: faf7dd68918ef2842af12aa70f777c4a, type: 3}
   - identifier: Min_3
     prefab: {fileID: 5941508467737296759, guid: f4b4fa9bb7428f04795470bd6f7ee780, type: 3}
+  - identifier: Flare
+    prefab: {fileID: 666048536902696509, guid: 45a88e604c987eb49b1362c96164c561, type: 3}
+  - identifier: Ice_Deposit
+    prefab: {fileID: 7572829150447897209, guid: b775520f4d5274b4dbea4c765c9196e2, type: 3}
