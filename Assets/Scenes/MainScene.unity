@@ -1117,7 +1117,8 @@ MonoBehaviour:
   loadGameButton: {fileID: 1199273267}
   settingsButton: {fileID: 564669876}
   quitButton: {fileID: 1958469916}
-  loadMenuPanel: {fileID: 1512301512}
+  saveLoadMenu: {fileID: 1512301512}
+  saveLoadMenuScript: {fileID: 1512301517}
   errorText: {fileID: 729774650}
   gameSceneName: Test_Scene
 --- !u!1 &1131816185
@@ -1593,7 +1594,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1512301512}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 59f8146938fff824cb5fd77236b75775, type: 3}
   m_Name: 
@@ -1624,10 +1625,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 244ff2dc65d6a8849ad8da4a110b1f15, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  slotsParent: {fileID: 1512301513}
   slotPrefab: {fileID: 2749201437485977752, guid: 502f587a5d9543d4dbdd4ae9d670e45f, type: 3}
-  contentParent: {fileID: 1512301513}
-  backButton: {fileID: 1701453043}
-  gameSceneName: Test_scene
 --- !u!1 &1563876070
 GameObject:
   m_ObjectHideFlags: 0
@@ -1794,7 +1793,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   prefabRegistry: {fileID: 11400000, guid: 1ceb099c76d9c2c4da0c3af5e2104022, type: 2}
-  autoSaveInterval: 300
 --- !u!4 &1576869677
 Transform:
   m_ObjectHideFlags: 0

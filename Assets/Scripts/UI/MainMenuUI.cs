@@ -1,66 +1,55 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
-using System.IO;
 using TMPro;
+using System.IO;
 
 public class MainMenuUI : MonoBehaviour
 {
+    [Header("Главное меню")]
     [SerializeField] private Button newGameButton;
     [SerializeField] private Button loadGameButton;
     [SerializeField] private Button settingsButton;
     [SerializeField] private Button quitButton;
+
+    [Header("Меню слотов")]
+    [SerializeField] private GameObject saveLoadMenu;
+    [SerializeField] private SaveLoadMenu saveLoadMenuScript;
+
+    [Header("Ошибка")]
     [SerializeField] private TextMeshProUGUI errorText;
 
     [SerializeField] private string gameSceneName = "GameScene";
-    private string ManualSavePath => Path.Combine(Application.persistentDataPath, "manual.json");
 
     private void Start()
     {
-        newGameButton.onClick.AddListener(NewGame);
-        loadGameButton.onClick.AddListener(TryLoadGame);
+        newGameButton.onClick.AddListener(StartNewGame);
+        loadGameButton.onClick.AddListener(OpenLoadMenu);
         settingsButton.onClick.AddListener(() => Debug.Log("Настройки"));
         quitButton.onClick.AddListener(QuitGame);
-        UpdateLoadButton();
+
         if (errorText) errorText.gameObject.SetActive(false);
+        saveLoadMenu.SetActive(false);
     }
 
-    private void UpdateLoadButton()
+    private void StartNewGame()
     {
-        bool hasSave = File.Exists(ManualSavePath);
-        loadGameButton.interactable = hasSave;
-        var txt = loadGameButton.GetComponentInChildren<TextMeshProUGUI>();
-        if (txt) txt.text = hasSave ? "Загрузить игру" : "Нет сохранения";
-    }
-
-    private void NewGame()
-    {
-        if (File.Exists(ManualSavePath)) File.Delete(ManualSavePath);
-        if (File.Exists(ManualSavePath + ".bak")) File.Delete(ManualSavePath + ".bak");
-        ClearError();
-        SceneManager.LoadScene(gameSceneName);
-    }
-
-    private void TryLoadGame()
-    {
-        ClearError();
-        if (!File.Exists(ManualSavePath)) { ShowError("Сохранение не найдено!"); return; }
-
-        if (!SaveManager.Instance.ValidateSaveFile(ManualSavePath, out string reason))
-        {
-            ShowError($"Ошибка загрузки:\n<color=red>{reason}</color>");
-            return;
-        }
+        for (int i = 0; i < 10; i++)
+            SaveManager.Instance.DeleteSlot(i);
 
         SceneManager.LoadScene(gameSceneName);
     }
 
-    private void ShowError(string msg)
+    private void OpenLoadMenu()
     {
-        if (errorText) { errorText.gameObject.SetActive(true); errorText.text = msg; errorText.color = new Color(1f, 0.3f, 0.3f); }
+        saveLoadMenu.SetActive(true);
+        saveLoadMenuScript.RefreshSlots();
     }
 
-    private void ClearError() => errorText?.gameObject.SetActive(false);
+    public void BackToMainMenu()
+    {
+        saveLoadMenu.SetActive(false);
+    }
 
     private void QuitGame()
     {
@@ -71,5 +60,15 @@ public class MainMenuUI : MonoBehaviour
 #endif
     }
 
-    private void OnEnable() => UpdateLoadButton();
+    public void ShowError(string msg)
+    {
+        if (errorText)
+        {
+            errorText.gameObject.SetActive(true);
+            errorText.text = msg;
+            errorText.color = new Color(1f, 0.3f, 0.3f);
+        }
+    }
+
+    public void ClearError() => errorText?.gameObject.SetActive(false);
 }

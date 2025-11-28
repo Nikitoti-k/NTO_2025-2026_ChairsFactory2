@@ -1,68 +1,30 @@
 using UnityEngine;
-using UnityEngine.UI;
-using UnityEngine.SceneManagement;
-using TMPro;
-using System.IO;
-using System;
 using System.Collections.Generic;
 
 public class SaveLoadMenu : MonoBehaviour
 {
- /*   [SerializeField] GameObject slotPrefab;
-    [SerializeField] Transform contentParent;
-    [SerializeField] Button backButton;
-    [SerializeField] string gameSceneName = "GameScene";
+    [SerializeField] private Transform slotsParent;
+    [SerializeField] private GameObject slotPrefab;
 
-    void OnEnable()
-    {
-        RefreshSlots();
-        if (backButton) backButton.onClick.AddListener(() => gameObject.SetActive(false));
-    }
+    private List<GameObject> spawnedSlots = new List<GameObject>();
 
-    void OnDisable()
-    {
-        if (backButton) backButton.onClick.RemoveAllListeners();
-        foreach (Transform child in contentParent)
-            Destroy(child.gameObject);
-    }
+    private void OnEnable() => RefreshSlots();
 
     public void RefreshSlots()
     {
-        foreach (Transform child in contentParent)
-            Destroy(child.gameObject);
+        foreach (var s in spawnedSlots) Destroy(s);
+        spawnedSlots.Clear();
 
-        string[] files = Directory.GetFiles(Application.persistentDataPath, "*.json");
-        Array.Sort(files, (a, b) => File.GetLastWriteTime(b).CompareTo(File.GetLastWriteTime(a)));
+        var slots = SaveManager.Instance.GetAllSaveSlots();
 
-        foreach (string file in files)
+        foreach (var slot in slots)
         {
-            string fileName = Path.GetFileNameWithoutExtension(file);
-            if (fileName == "auto" || fileName.StartsWith("slot") || fileName == "manual")
-                CreateSlot(fileName);
+            var obj = Instantiate(slotPrefab, slotsParent);
+            var ui = obj.GetComponent<SaveSlotUI>();
+            ui.Init(slot, this);
+            spawnedSlots.Add(obj);
         }
     }
 
-    void CreateSlot(string slotName)
-    {
-        string path = Path.Combine(Application.persistentDataPath, slotName + ".json");
-        if (!File.Exists(path)) return;
-
-        SaveFile save = JsonUtility.FromJson<SaveFile>(File.ReadAllText(path));
-
-        GameObject slot = Instantiate(slotPrefab, contentParent);
-        var ui = slot.GetComponent<SaveSlotUI>() ?? slot.AddComponent<SaveSlotUI>();
-
-        ui.Setup(save, slotName, () =>
-        {
-            PlayerPrefs.SetString("LoadSlot", slotName);
-            SceneManager.LoadScene(gameSceneName);
-        },
-        () =>
-        {
-            File.Delete(path);
-            File.Delete(path + ".bak");
-            RefreshSlots();
-        });
-    }*/
+    public void BackToMainMenu() => gameObject.SetActive(false);
 }
-

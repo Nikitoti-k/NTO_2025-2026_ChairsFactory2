@@ -74,7 +74,7 @@ public class PauseManager : MonoBehaviour
 
     public void SaveAndResume()
     {
-        SaveManager.Instance.SaveGame("manual");
+        SaveManager.Instance.SaveToSlot(0, "Ручное сохранение");
         SaveFeedbackUI.ShowSave();
         Resume(); // ← игра продолжается сразу!
     }

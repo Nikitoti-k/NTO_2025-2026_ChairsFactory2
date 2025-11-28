@@ -1,42 +1,48 @@
-using System;
-using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
+using UnityEngine.SceneManagement;
 
 public class SaveSlotUI : MonoBehaviour
 {
-   /* [SerializeField] RawImage previewImage;
-    [SerializeField] TextMeshProUGUI nameText;
-    [SerializeField] TextMeshProUGUI dateText;
-    [SerializeField] Button loadButton;
-    [SerializeField] Button deleteButton;
+    [SerializeField] private TextMeshProUGUI slotNameText;
+    [SerializeField] private TextMeshProUGUI saveTimeText;
+    [SerializeField] private TextMeshProUGUI playTimeText;
+    [SerializeField] private Button loadButton;
+    [SerializeField] private Button deleteButton;
+    [SerializeField] private GameObject emptyOverlay;
+    [SerializeField] private GameObject dataOverlay;
 
-    public void Setup(SaveFile save, string slotName, Action onLoad, Action onDelete)
+    private SaveSlotInfo info;
+    private SaveLoadMenu menu;
+
+    public void Init(SaveSlotInfo slotInfo, SaveLoadMenu parentMenu)
     {
-        nameText.text = save.saveName;
-        dateText.text = DateTime.Parse(save.saveTime).ToString("dd MMMM yyyy, HH:mm");
+        info = slotInfo;
+        menu = parentMenu;
 
-        if (!string.IsNullOrEmpty(save.previewImageBase64))
-        {
-            byte[] bytes = Convert.FromBase64String(save.previewImageBase64);
-            Texture2D tex = new Texture2D(256, 144, TextureFormat.RGB24, false);
-            tex.LoadImage(bytes);
-            previewImage.texture = tex;
-        }
-        else
-        {
-            previewImage.texture = null;
-            previewImage.color = Color.black;
-        }
+        slotNameText.text = slotInfo.slotName;
+        saveTimeText.text = slotInfo.hasData ? slotInfo.saveTime : "";
+        playTimeText.text = slotInfo.hasData ? slotInfo.playTime : "—";
+
+        emptyOverlay.SetActive(!slotInfo.hasData);
+        dataOverlay.SetActive(slotInfo.hasData);
+
+        loadButton.interactable = slotInfo.hasData;
+        deleteButton.gameObject.SetActive(slotInfo.hasData);
 
         loadButton.onClick.RemoveAllListeners();
-        loadButton.onClick.AddListener(() => onLoad?.Invoke());
+        loadButton.onClick.AddListener(() =>
+        {
+            SaveManager.Instance.LoadFromSlot(info.slotIndex);
+            SceneManager.LoadScene("GameScene");
+        });
 
         deleteButton.onClick.RemoveAllListeners();
         deleteButton.onClick.AddListener(() =>
         {
-            onDelete?.Invoke();
-            Destroy(gameObject);
+            SaveManager.Instance.DeleteSlot(info.slotIndex);
+            menu.RefreshSlots();
         });
-    }*/
+    }
 }

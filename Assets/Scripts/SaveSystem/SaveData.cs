@@ -1,9 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
 
-
-using UnityEngine;
-using System.Collections.Generic;
+using System;
 
 [System.Serializable]
 public class SaveFile
@@ -22,6 +20,7 @@ public class SaveFile
     public List<MineralSaveData> minerals = new List<MineralSaveData>();
     public List<DepositSaveData> deposits = new List<DepositSaveData>();
 }
+
 
 
 
