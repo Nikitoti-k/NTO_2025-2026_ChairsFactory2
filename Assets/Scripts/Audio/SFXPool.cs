@@ -19,10 +19,23 @@ public class SFXPool : MonoBehaviour
         }
     }
 
+    // Новый метод вместо простого циклического выбора:
     public AudioSource GetAvailableSource()
     {
-        AudioSource source = _pool[_currentIndex];
+        // сначала ищем свободный источник
+        for (int i = 0; i < poolSize; i++)
+        {
+            int index = (_currentIndex + i) % poolSize;
+            if (!_pool[index].isPlaying)
+            {
+                _currentIndex = index;
+                return _pool[index];
+            }
+        }
+
+        // если нет свободных – берём самый старый
+        AudioSource src = _pool[_currentIndex];
         _currentIndex = (_currentIndex + 1) % poolSize;
-        return source;
+        return src;
     }
 }

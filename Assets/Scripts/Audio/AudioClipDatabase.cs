@@ -21,7 +21,8 @@ public class AudioClipDatabase : ScriptableObject
         _dict = new System.Collections.Generic.Dictionary<string, SoundEvent>();
         foreach (var se in soundEvents)
         {
-            _dict[se.key] = se;
+            if (!string.IsNullOrEmpty(se.key))
+                _dict[se.key] = se;
         }
     }
 
