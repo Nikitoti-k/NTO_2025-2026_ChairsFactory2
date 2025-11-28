@@ -1,24 +1,13 @@
 using UnityEngine;
 
-public class IceDeposit : MonoBehaviour, ISaveable
+public class IceDeposit : SaveableObject, IHasDepositData
 {
-    [Header("Настройки депозита")]
+    [Header("Ice Deposit")]
     [SerializeField] private int hitsRequired = 3;
     [SerializeField] private GameObject mineralPrefab;
     [SerializeField] private Transform spawnPoint;
 
     private int currentHits = 0;
-    [SerializeField] private string uniqueID = "";
-    [SerializeField] private string prefabIdentifier = "IceDeposit";
-
-    private Rigidbody rb;
-
-    void OnEnable()
-    {
-        rb = GetComponent<Rigidbody>();
-        if (string.IsNullOrEmpty(uniqueID))
-            uniqueID = System.Guid.NewGuid().ToString();
-    }
 
     public void Hit()
     {
@@ -31,67 +20,29 @@ public class IceDeposit : MonoBehaviour, ISaveable
     {
         if (mineralPrefab != null)
         {
-            GameObject mineral = Instantiate(mineralPrefab,
-                spawnPoint ? spawnPoint.position : transform.position,
-                Quaternion.identity);
+            var pos = spawnPoint ? spawnPoint.position : transform.position + Vector3.up * 0.5f;
+            var mineral = Instantiate(mineralPrefab, pos, Quaternion.identity);
 
-            // КРИТИЧЕСКИ ВАЖНО: устанавливаем prefabIdentifier
-            var saveable = mineral.GetComponent<MineralSaveableObject>();
-            if (saveable == null)
-                saveable = mineral.AddComponent<MineralSaveableObject>();
-
-            string identifier = GetPrefabIdentifier(mineralPrefab);
-            saveable.SetPrefabIdentifier(identifier);
-
-            Debug.Log($"[IceDeposit] Заспавнен минерал: {mineralPrefab.name} → prefabIdentifier = \"{identifier}\" | uniqueID = {saveable.GetUniqueID()}");
+            var saveable = mineral.GetComponent<SaveableObject>() ?? mineral.AddComponent<SaveableObject>();
+            saveable.SetPrefabIdentifier(GetPrefabIdentifier(mineralPrefab));
         }
 
         gameObject.SetActive(false);
     }
 
-    // Универсальный метод — определяет identifier по реестру или имени
     private string GetPrefabIdentifier(GameObject prefab)
     {
         if (SaveManager.Instance?.prefabRegistry != null)
         {
-            foreach (var entry in SaveManager.Instance.prefabRegistry.prefabs)
-            {
-                if (entry.prefab == prefab)
-                    return entry.identifier;
-            }
+            foreach (var e in SaveManager.Instance.prefabRegistry.prefabs)
+                if (e.prefab == prefab) return e.identifier;
         }
-
-        // Если не нашёл в реестре — берём имя префаба (например, Min_2)
-        string name = prefab.name;
-        if (name.Contains("(Clone)")) name = name.Replace("(Clone)", "");
-        Debug.LogWarning($"[IceDeposit] Identifier не найден в реестре для {prefab.name}, используем имя: {name}");
-        return name.Trim();
+        return prefab.name.Replace("(Clone)", "").Trim();
     }
 
-    // ─── ISaveable ───
-    public string GetUniqueID() => uniqueID;
+    public DepositSaveData GetDepositSaveData()
+        => new DepositSaveData { uniqueID = uniqueID, currentHits = currentHits };
 
-    public SaveData GetSaveData()
-    {
-        return new SaveData
-        {
-            uniqueID = uniqueID,
-            prefabIdentifier = prefabIdentifier,
-            position = transform.position,
-            rotation = transform.rotation,
-            isActive = gameObject.activeSelf,
-            parentPath = transform.parent ? transform.parent.GetPath() : "",
-            deposit = new SaveData.DepositBlock { currentHits = currentHits }
-        };
-    }
-
-    public void LoadFromSaveData(SaveData data)
-    {
-        transform.position = data.position;
-        transform.rotation = data.rotation;
-        gameObject.SetActive(data.isActive);
-        if (data.deposit != null) currentHits = data.deposit.currentHits;
-
-        Debug.Log($"[IceDeposit] Загружен депозит | hits: {currentHits} | active: {data.isActive}");
-    }
+    public void LoadDepositData(DepositSaveData data)
+        => currentHits = data.currentHits;
 }

@@ -12,290 +12,154 @@ public class SaveManager : MonoBehaviour
 {
     public static SaveManager Instance { get; private set; }
     [SerializeField] public PrefabRegistry prefabRegistry;
-    private string basePath;
+    private string BasePath => Application.persistentDataPath;
 
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
         DontDestroyOnLoad(gameObject);
-        basePath = Application.persistentDataPath;
         SceneManager.sceneLoaded += OnSceneLoaded;
-     //   LoadGame("manual");
-        // Автосохранения: каждые 5 мин
-        // InvokeRepeating("AutoSave", 300f, 300f);
     }
 
-    private void OnDestroy()
-    {
-        if (Instance == this) SceneManager.sceneLoaded -= OnSceneLoaded;
-        CancelInvoke("AutoSave");
-    }
+    private void OnDestroy() => SceneManager.sceneLoaded -= OnSceneLoaded;
 
-    public void SaveGame(string slot = "manual")
-    {
-        SaveInternal(slot);
-        Debug.Log($"[SaveManager] Сохранено в слот: {slot}");
-        // UX: Добавь сообщение/иконку/звук здесь
-    }
+    public void SaveGame(string slot = "manual") => SaveInternal(slot);
 
-    private void AutoSave()
-    {
-        SaveInternal("auto");
-        Debug.Log("[SaveManager] Автосохранение выполнено");
-        // UX: Тихая обратная связь
-    }
-    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-    {
-        // Сначала пробуем ручное, если нет — автосохранение
-        string pathManual = Path.Combine(Application.persistentDataPath, "manual.json");
-        string pathAuto = Path.Combine(Application.persistentDataPath, "auto.json");
-
-        if (File.Exists(pathManual))
-            StartCoroutine(LoadGameAfterSpawn("manual"));
-        else if (File.Exists(pathAuto))
-            StartCoroutine(LoadGameAfterSpawn("auto"));
-        else
-            Debug.Log("Нет сохранений — новая игра");
-    }
     private void SaveInternal(string slot)
     {
-        var saveDataList = new List<SaveData>();
-        foreach (var saveable in FindObjectsOfType<MonoBehaviour>(true).OfType<ISaveable>())
-            saveDataList.Add(saveable.GetSaveData());
+        var save = new SaveFile();
 
-        var wrapper = new SaveWrapper { version = "1.0", saves = saveDataList };
+        var gameStateObj = FindObjectOfType<GameStateSaver>();
+        if (gameStateObj != null) save.gameState = gameStateObj.GetGameStateBlock();
 
-        string jsonWithoutHash = JsonUtility.ToJson(wrapper, true);
-        wrapper.checksum = ComputeHash(jsonWithoutHash);
-        string finalJson = JsonUtility.ToJson(wrapper, true);
+        var reportViewer = FindObjectOfType<ResearchReportViewer>();
+        if (reportViewer != null) save.globalReports = reportViewer.SerializeReports();
 
-        string savePath = Path.Combine(basePath, $"{slot}.json");
-        string tempPath = savePath + ".tmp";
-        string backupPath = savePath + ".bak";
+        if (CameraController.Instance != null)
+        {
+            var cam = CameraController.Instance.transform;
+            save.cameraLookDirection = new Vector2(cam.eulerAngles.y, cam.eulerAngles.x);
+        }
+
+        var saveables = FindObjectsOfType<MonoBehaviour>(true).OfType<ISaveableV2>();
+        foreach (var s in saveables)
+        {
+            save.objects.Add(s.GetCommonSaveData());
+            if (s is IHasMineralData m) save.minerals.Add(m.GetMineralSaveData());
+            if (s is IHasDepositData d) save.deposits.Add(d.GetDepositSaveData());
+        }
+
+        var temp = new SaveFile { version = save.version, gameState = save.gameState, globalReports = save.globalReports, cameraLookDirection = save.cameraLookDirection, objects = save.objects, minerals = save.minerals, deposits = save.deposits };
+        save.checksum = ComputeHash(JsonUtility.ToJson(temp, true));
+
+        string path = Path.Combine(BasePath, $"{slot}.json");
+        string tempPath = path + ".tmp";
+        string backup = path + ".bak";
 
         try
         {
-            File.WriteAllText(tempPath, finalJson);
-
-            string testJson = File.ReadAllText(tempPath);
-            SaveWrapper testWrapper = JsonUtility.FromJson<SaveWrapper>(testJson);
-            if (testWrapper == null || !ValidateWrapper(testWrapper))
-                throw new Exception("Данные не прошли валидацию!");
-
-            if (File.Exists(savePath))
-                File.Replace(tempPath, savePath, backupPath);
-            else
-                File.Move(tempPath, savePath);
+            File.WriteAllText(tempPath, JsonUtility.ToJson(save, true));
+            if (File.Exists(path)) File.Replace(tempPath, path, backup);
+            else File.Move(tempPath, path);
         }
-        catch (Exception e)
-        {
-            Debug.LogError($"[SaveManager] Ошибка сохранения: {e.Message}");
-            if (File.Exists(tempPath)) File.Delete(tempPath);
-        }
+        catch (System.Exception e) { Debug.LogError(e); }
     }
 
-    public void LoadGame(string slot = "manual") => StartCoroutine(LoadGameAfterSpawn(slot));
+    public void LoadGame(string slot = "manual") => StartCoroutine(LoadCoroutine(slot));
 
- //   private void OnSceneLoaded(Scene scene, LoadSceneMode mode) => StartCoroutine(LoadGameAfterSpawn("manual"));
-
-    private IEnumerator LoadGameAfterSpawn(string slot)
+    private IEnumerator LoadCoroutine(string slot)
     {
-        yield return new WaitForSeconds(0.1f);
-        yield return new WaitForFixedUpdate();
+        yield return new WaitForEndOfFrame();
 
-        string savePath = Path.Combine(basePath, $"{slot}.json");
-        string backupPath = savePath + ".bak";
-        string currentPath = savePath;
+        string path = Path.Combine(BasePath, $"{slot}.json");
+        if (!File.Exists(path)) yield break;
 
-        if (!File.Exists(savePath))
+        SaveFile save = JsonUtility.FromJson<SaveFile>(File.ReadAllText(path));
+        if (save == null) yield break;
+
+        var temp = new SaveFile { version = save.version, gameState = save.gameState, globalReports = save.globalReports, cameraLookDirection = save.cameraLookDirection, objects = save.objects, minerals = save.minerals, deposits = save.deposits };
+        if (save.checksum != ComputeHash(JsonUtility.ToJson(temp, true))) yield break;
+
+        var mineralDict = save.minerals.ToDictionary(m => m.uniqueID, m => m);
+        var depositDict = save.deposits.ToDictionary(d => d.uniqueID, d => d);
+
+        FindObjectOfType<GameStateSaver>()?.LoadFromBlock(save.gameState);
+        var reportViewer = FindObjectOfType<ResearchReportViewer>();
+        if (reportViewer != null && !string.IsNullOrEmpty(save.globalReports)) reportViewer.DeserializeReports(save.globalReports);
+
+        if (CameraController.Instance != null && save.cameraLookDirection != Vector2.zero)
+            CameraController.Instance.LoadCameraDirection(save.cameraLookDirection);
+
+        var existing = FindObjectsOfType<MonoBehaviour>(true).OfType<ISaveableV2>().ToList();
+        var remaining = new List<ObjectSaveData>(save.objects);
+
+        foreach (var s in existing)
         {
-            if (File.Exists(backupPath))
-            {
-                Debug.LogWarning("[SaveManager] Загружаем бэкап");
-                currentPath = backupPath;
-            }
-            else
-            {
-                yield break;
-            }
-        }
-
-        string json = string.Empty;
-        SaveWrapper wrapper = null;
-        bool loadSuccess = false;
-
-        try
-        {
-            json = File.ReadAllText(currentPath);
-            wrapper = JsonUtility.FromJson<SaveWrapper>(json);
-
-            if (wrapper == null) throw new Exception("Невалидный JSON");
-
-            string jsonWithoutHash = JsonUtility.ToJson(new SaveWrapper { version = wrapper.version, saves = wrapper.saves }, true);
-            if (wrapper.checksum != ComputeHash(jsonWithoutHash))
-                throw new Exception("Checksum не совпадает");
-
-            if (wrapper.version != "1.0")
-                throw new Exception($"Несовместимая версия: {wrapper.version}");
-
-            if (!ValidateWrapper(wrapper))
-                throw new Exception("Данные невалидны");
-
-            loadSuccess = true; // Если дошли сюда — можно безопасно загружать
-        }
-        catch (Exception e)
-        {
-            Debug.LogError($"[SaveManager] Ошибка: {e.Message}. Пробуем бэкап...");
-
-            if (File.Exists(backupPath) && currentPath != backupPath)
-            {
-                StartCoroutine(LoadGameAfterSpawn(slot + ".bak"));
-                yield break;
-            }
-            else
-            {
-                File.Delete(savePath);
-                Debug.LogWarning("[SaveManager] Битый файл удалён, дефолт");
-                yield break;
-            }
-        }
-
-        // === Всё, что ниже — выполняется только при успешной загрузке JSON ===
-        // Теперь yield return здесь разрешены
-
-        var saveDataList = wrapper.saves ?? new List<SaveData>();
-        var existingSaveables = FindObjectsOfType<MonoBehaviour>(true).OfType<ISaveable>().ToList();
-        var remainingData = new List<SaveData>(saveDataList);
-
-        foreach (var saveable in existingSaveables)
-        {
-            var data = remainingData.Find(d => d.uniqueID == saveable.GetUniqueID());
+            var data = remaining.Find(d => d.uniqueID == s.GetUniqueID());
             if (data != null)
             {
-                saveable.LoadFromSaveData(data);
-                remainingData.Remove(data);
+                s.LoadCommonData(data);
+                if (s is IHasMineralData m && mineralDict.TryGetValue(data.uniqueID, out var min)) m.LoadMineralData(min);
+                if (s is IHasDepositData d && depositDict.TryGetValue(data.uniqueID, out var dep)) d.LoadDepositData(dep);
+                remaining.Remove(data);
             }
         }
-foreach (var data in remainingData)
-{
-    if (string.IsNullOrEmpty(data.prefabIdentifier))
-    {
-        Debug.LogWarning($"[SaveManager] Объект без prefabIdentifier, пропускаем: {data.uniqueID}");
-        continue;
-    }
 
-    GameObject prefab = prefabRegistry?.GetPrefab(data.prefabIdentifier);
-    if (!prefab)
-    {
-        Debug.LogError($"[SaveManager] ПРЕФАБ НЕ НАЙДЕН В РЕЕСТРЕ: \"{data.prefabIdentifier}\" | uniqueID: {data.uniqueID}");
-        continue;
-    }
-
-    Debug.Log($"[SaveManager] Спавним из реестра: {data.prefabIdentifier} | ID: {data.uniqueID} | Pos: {data.position}");
-
-    GameObject obj = Instantiate(prefab, data.position, data.rotation);
-    
-    if (obj.TryGetComponent<Rigidbody>(out var rb))
-        rb.isKinematic = true;
-
-    if (obj.TryGetComponent<ISaveable>(out var saveable))
-    {
-        saveable.LoadFromSaveData(data);
-        Debug.Log($"[SaveManager] Данные применены к {data.prefabIdentifier} | Mineral age: {(data.mineral != null ? data.mineral.realAge.ToString() : "нет")}");
-    }
-    else
-    {
-        Debug.LogError($"[SaveManager] У заспавненного объекта {data.prefabIdentifier} НЕТ ISaveable!");
-    }
-
-    if (!string.IsNullOrEmpty(data.parentPath))
-    {
-        Transform parent = GameObject.Find(data.parentPath)?.transform;
-        if (parent) obj.transform.SetParent(parent);
-    }
-
-    if (rb) StartCoroutine(ActivatePhysicsNextFrame(obj, rb));
-}
+        foreach (var data in remaining)
+        {
+            var prefab = prefabRegistry?.GetPrefab(data.prefabIdentifier);
+            if (!prefab) continue;
+            var obj = Instantiate(prefab, data.position, data.rotation);
+            if (obj.TryGetComponent<ISaveableV2>(out var s))
+            {
+                s.LoadCommonData(data);
+                if (s is IHasMineralData m && mineralDict.TryGetValue(data.uniqueID, out var min)) m.LoadMineralData(min);
+                if (s is IHasDepositData d && depositDict.TryGetValue(data.uniqueID, out var dep)) d.LoadDepositData(dep);
+            }
+        }
 
         yield return new WaitForFixedUpdate();
-        yield return new WaitForEndOfFrame();
         Physics.SyncTransforms();
 
-        SaveData scannerMineral = wrapper.saves.Find(d => d.wasInScannerZone);
-        if (scannerMineral != null)
-        {
-            var saveable = FindObjectsOfType<SaveableObject>().FirstOrDefault(s => s.GetUniqueID() == scannerMineral.uniqueID);
-            if (saveable != null && saveable.TryGetComponent<GrabbableItem>(out var grabbable))
-            {
-                MineralScannerManager.Instance?.targetSnapZone?.LoadSnappedItem(grabbable, scannerMineral.snapPointIndex);
-                MineralScannerManager.Instance?.ForceScanCurrentMineral();
-            }
-        }
-
-        Debug.Log($"[SaveManager] Загружено из {slot}");
+        CameraController.Instance?.ForceCameraSync();
+        CameraController.Instance?.SetMode(CameraController.ControlMode.FPS);
+        SaveFeedbackUI.ShowLoad();
     }
 
-    private IEnumerator ActivatePhysicsNextFrame(GameObject obj, Rigidbody rb)
+    private void OnSceneLoaded(Scene s, LoadSceneMode m)
     {
-        yield return new WaitForFixedUpdate();
-        if (rb && obj && !rb.isKinematic) rb.WakeUp();
+        if (File.Exists(Path.Combine(BasePath, "manual.json")))
+            StartCoroutine(LoadCoroutine("manual"));
+        else if (File.Exists(Path.Combine(BasePath, "auto.json")))
+            StartCoroutine(LoadCoroutine("auto"));
+        else
+        {
+            CameraController.Instance?.SetMode(CameraController.ControlMode.FPS);
+            CameraController.Instance?.ForceCameraSync();
+        }
+    }
+
+    public bool ValidateSaveFile(string path, out string errorReason)
+    {
+        errorReason = "";
+        if (!File.Exists(path)) { errorReason = "Файл сохранения не найден."; return false; }
+        try
+        {
+            string json = File.ReadAllText(path);
+            SaveFile save = JsonUtility.FromJson<SaveFile>(json);
+            if (save == null) { errorReason = "Файл пустой или повреждён."; return false; }
+            if (save.version != SaveFile.CURRENT_VERSION) { errorReason = $"Версия сохранения устарела (текущая: {SaveFile.CURRENT_VERSION})"; return false; }
+            var temp = new SaveFile { version = save.version, gameState = save.gameState, globalReports = save.globalReports, cameraLookDirection = save.cameraLookDirection, objects = save.objects, minerals = save.minerals, deposits = save.deposits };
+            if (save.checksum != ComputeHash(JsonUtility.ToJson(temp, true))) { errorReason = "Файл повреждён (checksum не совпал)."; return false; }
+            return true;
+        }
+        catch (System.Exception e) { errorReason = $"Ошибка чтения: {e.Message}"; return false; }
     }
 
     private string ComputeHash(string input)
     {
-        using (MD5 md5 = MD5.Create())
-        {
-            byte[] hashBytes = md5.ComputeHash(Encoding.UTF8.GetBytes(input));
-            return BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
-        }
+        using (var md5 = MD5.Create())
+            return BitConverter.ToString(md5.ComputeHash(Encoding.UTF8.GetBytes(input))).Replace("-", "").ToLowerInvariant();
     }
-
-    private bool ValidateWrapper(SaveWrapper wrapper)
-    {
-        if (wrapper.saves == null)
-        {
-            Debug.LogError("ValidateWrapper: wrapper.saves == null");
-            return false;
-        }
-
-        var uniqueIDs = new HashSet<string>();
-        foreach (var data in wrapper.saves)
-        {
-            // 1. Проверка дубликатов ID
-            if (!uniqueIDs.Add(data.uniqueID))
-            {
-                Debug.LogError($"ДУБЛИКАТ UNIQUE ID: {data.uniqueID} (объект: {data.prefabIdentifier})");
-                return false;
-            }
-
-            // 2. Проверка валидности каждого SaveData
-            if (!data.Validate())
-            {
-                Debug.LogError($"НЕВАЛИДНЫЕ ДАННЫЕ у объекта {data.uniqueID} ({data.prefabIdentifier})");
-
-                // Дополнительно выводим, что именно сломалось
-                if (string.IsNullOrEmpty(data.uniqueID))
-                    Debug.LogError(" → uniqueID пустой!");
-                if (float.IsNaN(data.position.x) || float.IsInfinity(data.position.x))
-                    Debug.LogError($" → Позиция NaN/Infinity: {data.position}");
-                if (data.gameState != null && data.gameState.currentDay < 0)
-                    Debug.LogError($" → Отрицательный день: {data.gameState.currentDay}");
-                if (data.mineral != null && data.mineral.realAge < 0)
-                    Debug.LogError($" → Отрицательный возраст минерала: {data.mineral.realAge}");
-                // Добавь свои проверки по необходимости
-
-                return false;
-            }
-        }
-        return true;
-    }
-}
-
-[System.Serializable]
-public class SaveWrapper
-{
-    public string version;
-    public string checksum;
-    public List<SaveData> saves;
 }

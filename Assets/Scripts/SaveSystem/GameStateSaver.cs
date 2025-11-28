@@ -1,57 +1,59 @@
 ﻿using UnityEngine;
-using System.Reflection;
 
-[RequireComponent(typeof(GameDayManager), typeof(WeatherManager))]
-public class GameStateSaver : MonoBehaviour, ISaveable
+public class GameStateSaver : MonoBehaviour
 {
-    private GameDayManager dayManager;
-    private WeatherManager weatherManager;
+    private static GameStateSaver _instance;
+    public static GameStateSaver Instance => FindObjectOfType<GameStateSaver>() ?? _instance;
+
+    [SerializeField] private GameDayManager dayManager;
+    [SerializeField] private WeatherManager weatherManager;
 
     private void Awake()
     {
-        dayManager = GetComponent<GameDayManager>();
-        weatherManager = GetComponent<WeatherManager>();
+        if (_instance != null && _instance != this) Destroy(gameObject);
+        else _instance = this;
+        DontDestroyOnLoad(gameObject);
+
+        dayManager = FindObjectOfType<GameDayManager>();
+        weatherManager = FindObjectOfType<WeatherManager>();
     }
 
-    public string GetUniqueID() => "GAME_STATE_SINGLETON";
-
-    public SaveData GetSaveData()
+    public GameStateBlock GetGameStateBlock()
     {
-        var data = new SaveData
+        return new GameStateBlock
         {
-            uniqueID = "GAME_STATE_SINGLETON",
-            prefabIdentifier = "GameState",
-            gameState = new SaveData.GameStateBlock
-            {
-                currentDay = dayManager.CurrentDay,
-                currentTimeInMinutes = weatherManager.CurrentTimeInMinutes,
-                depositsBrokenToday = dayManager.DepositsBrokenToday,
-                mineralsResearchedToday = dayManager.MineralsResearchedToday,
-                canStartEvening = dayManager.CanStartEvening,
-                canSleep = dayManager.CanSleep
-            }
+            currentDay = dayManager.CurrentDay,
+            currentTimeInMinutes = weatherManager.CurrentTimeInMinutes,
+            depositsBrokenToday = dayManager.DepositsBrokenToday,
+            mineralsResearchedToday = dayManager.MineralsResearchedToday,
+            canStartEvening = dayManager.CanStartEvening,
+            canSleep = dayManager.CanSleep
         };
-        return data;
     }
 
-    public void LoadFromSaveData(SaveData data)
+    public void LoadFromBlock(GameStateBlock block)
     {
-        if (data.gameState == null) return;
+        if (block == null) return;
 
-        weatherManager.SetTimeDirectly(data.gameState.currentDay, data.gameState.currentTimeInMinutes);
-        dayManager.StartNewDay(data.gameState.currentDay);
+        weatherManager.SetTimeDirectly(block.currentDay, block.currentTimeInMinutes);
+        dayManager.StartNewDay(block.currentDay);
 
+        // Восстанавливаем счётчики через рефлексию (если приватные)
         var type = dayManager.GetType();
-        type.GetField("depositsBrokenToday", BindingFlags.NonPublic | BindingFlags.Instance)?.SetValue(dayManager, data.gameState.depositsBrokenToday);
-        type.GetField("mineralsResearchedToday", BindingFlags.NonPublic | BindingFlags.Instance)?.SetValue(dayManager, data.gameState.mineralsResearchedToday);
-        type.GetField("allDepositsBroken", BindingFlags.NonPublic | BindingFlags.Instance)?.SetValue(dayManager, data.gameState.canStartEvening);
-        type.GetField("allReportsSubmitted", BindingFlags.NonPublic | BindingFlags.Instance)?.SetValue(dayManager, data.gameState.canSleep);
+        type.GetField("depositsBrokenToday", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+            ?.SetValue(dayManager, block.depositsBrokenToday);
+        type.GetField("mineralsResearchedToday", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+            ?.SetValue(dayManager, block.mineralsResearchedToday);
 
-        dayManager.OnDepositsChanged?.Invoke(data.gameState.depositsBrokenToday);
-        dayManager.OnMineralsResearchedChanged?.Invoke(data.gameState.mineralsResearchedToday);
+        // Вызываем события
+        dayManager.OnDepositsChanged?.Invoke(block.depositsBrokenToday);
+        dayManager.OnMineralsResearchedChanged?.Invoke(block.mineralsResearchedToday);
 
-        if (data.gameState.canStartEvening) dayManager.OnAllDepositsBroken?.Invoke();
-        if (data.gameState.canSleep) dayManager.OnAllReportsSubmitted?.Invoke();
-        if (data.gameState.canStartEvening && data.gameState.canSleep) dayManager.OnDayFullyCompleted?.Invoke();
+        if (block.canStartEvening) dayManager.OnAllDepositsBroken?.Invoke();
+        if (block.canSleep) dayManager.OnAllReportsSubmitted?.Invoke();
     }
+
+    // Если у тебя есть глобальные отчёты
+   // public string GetGlobalReports() => ReportManager.Instance?.SerializeAllReports() ?? "";
+   // public void LoadGlobalReports(string data) => ReportManager.Instance?.DeserializeReports(data);
 }

@@ -1,37 +1,33 @@
 ﻿using UnityEngine;
 using System.Collections;
 using System.Linq;
-using System.Reflection;
 
-public class SaveableObject : MonoBehaviour, ISaveable
+public class SaveableObject : MonoBehaviour, ISaveableV2
 {
-    [SerializeField] public string uniqueID = "";
-    [SerializeField] private string prefabIdentifier = "";
-    public Rigidbody rb;
-    public Collider col;
+    [Header("Save System")]
+    [SerializeField] protected string uniqueID = "";
+    [SerializeField] protected string prefabIdentifier = "";
+
+    protected Rigidbody rb;
+    protected Collider col;
+
     public bool IsPlayer => gameObject.CompareTag("Player");
 
     protected virtual void Awake()
     {
         rb = GetComponent<Rigidbody>();
         col = GetComponentInChildren<Collider>();
+
         if (string.IsNullOrEmpty(uniqueID))
             uniqueID = System.Guid.NewGuid().ToString();
     }
 
-#if UNITY_EDITOR
-    private void OnValidate()
-    {
-        // NO GENERATION HERE! To avoid dubs in prefabs
-    }
-#endif
-
     public string GetUniqueID() => uniqueID;
     public void SetPrefabIdentifier(string id) => prefabIdentifier = id;
 
-    public virtual SaveData GetSaveData()
+    public virtual ObjectSaveData GetCommonSaveData()
     {
-        var data = new SaveData
+        var data = new ObjectSaveData
         {
             uniqueID = uniqueID,
             prefabIdentifier = prefabIdentifier,
@@ -47,6 +43,7 @@ public class SaveableObject : MonoBehaviour, ISaveable
             isKinematic = rb ? rb.isKinematic : false
         };
 
+        // Snap-зоны
         var grabbable = GetComponent<GrabbableItem>();
         if (grabbable && transform.parent != null)
         {
@@ -61,22 +58,27 @@ public class SaveableObject : MonoBehaviour, ISaveable
             }
         }
 
+        // Транспорт
         if (IsPlayer)
         {
-            if (InputRouter.Instance?.CurrentController is TransportMovement transport)
-                if (transport.GetComponent<SaveableObject>() is SaveableObject ctrl)
-                    data.controllingTransportID = ctrl.GetUniqueID();
+            if (InputRouter.Instance?.CurrentController is TransportMovement transport && transport.TryGetComponent<SaveableObject>(out var ctrl))
+                data.controllingTransportID = ctrl.GetUniqueID();
 
-            if (transform.parent?.GetComponentInParent<SaveableObject>() is SaveableObject parent)
-                data.seatedInTransportID = parent.GetUniqueID();
+            if (transform.parent?.GetComponentInParent<SaveableObject>() is SaveableObject seated)
+                data.seatedInTransportID = seated.GetUniqueID();
         }
+
+        // Минерал в сканере
+        if (TryGetComponent<MineralSaveableObject>(out _) &&
+            GetComponentInParent<SnapZone>() == MineralScannerManager.Instance?.targetSnapZone)
+            data.wasInScannerZone = true;
 
         return data;
     }
 
-    public virtual void LoadFromSaveData(SaveData data)
+    public virtual void LoadCommonData(ObjectSaveData data)
     {
-        uniqueID = data.uniqueID;  // ← ФИКС: Восстанавливаем ID из сохранения
+        uniqueID = data.uniqueID;
 
         transform.position = data.position;
         transform.rotation = data.rotation;
@@ -84,30 +86,34 @@ public class SaveableObject : MonoBehaviour, ISaveable
 
         if (rb)
         {
-            rb.isKinematic = data.isKinematic;
             rb.linearVelocity = data.velocity;
             rb.angularVelocity = data.angularVelocity;
             rb.useGravity = data.useGravity;
             rb.constraints = (RigidbodyConstraints)data.constraints;
+            rb.isKinematic = data.isKinematic;
             rb.Sleep();
         }
 
         if (col) col.isTrigger = data.isTrigger;
 
-        if (!string.IsNullOrEmpty(data.snappedZoneID) || !string.IsNullOrEmpty(data.seatedInTransportID) || !string.IsNullOrEmpty(data.controllingTransportID))
+        if (!string.IsNullOrEmpty(data.snappedZoneID) ||
+            !string.IsNullOrEmpty(data.seatedInTransportID) ||
+            !string.IsNullOrEmpty(data.controllingTransportID) ||
+            data.wasInScannerZone)
+        {
             StartCoroutine(RestoreRelations(data));
+        }
         else if (!string.IsNullOrEmpty(data.parentPath))
         {
-            Transform parent = GameObject.Find(data.parentPath)?.transform;
+            var parent = GameObject.Find(data.parentPath)?.transform;
             if (parent) transform.SetParent(parent);
         }
-
-        Physics.SyncTransforms();
     }
 
-    protected virtual IEnumerator RestoreRelations(SaveData data)
+    protected virtual IEnumerator RestoreRelations(ObjectSaveData data)
     {
         yield return new WaitForEndOfFrame();
+
         var all = FindObjectsOfType<SaveableObject>(true);
 
         if (!string.IsNullOrEmpty(data.snappedZoneID))
@@ -124,7 +130,7 @@ public class SaveableObject : MonoBehaviour, ISaveable
                 var transport = all.FirstOrDefault(x => x.GetUniqueID() == data.seatedInTransportID)?.GetComponent<TransportMovement>();
                 if (transport && TryGetComponent<PlayerMovement>(out var pm))
                 {
-                    var method = pm.GetType().GetMethod("Mount", BindingFlags.NonPublic | BindingFlags.Instance);
+                    var method = pm.GetType().GetMethod("Mount", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                     method?.Invoke(pm, new object[] { transport });
                 }
             }
@@ -134,8 +140,12 @@ public class SaveableObject : MonoBehaviour, ISaveable
                 var ctrl = all.FirstOrDefault(x => x.GetUniqueID() == data.controllingTransportID)?.GetComponent<IControllable>();
                 if (ctrl != null) InputRouter.Instance?.SetController(ctrl);
             }
-            else if (TryGetComponent<IControllable>(out var playerCtrl))
-                InputRouter.Instance?.SetController(playerCtrl);
+        }
+
+        if (data.wasInScannerZone && TryGetComponent<GrabbableItem>(out var item))
+        {
+            MineralScannerManager.Instance?.targetSnapZone?.LoadSnappedItem(item, data.snapPointIndex);
+            MineralScannerManager.Instance?.ForceScanCurrentMineral();
         }
     }
 }

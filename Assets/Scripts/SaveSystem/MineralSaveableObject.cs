@@ -1,73 +1,54 @@
 ﻿using UnityEngine;
 
-public class MineralSaveableObject : SaveableObject
+public class MineralSaveableObject : SaveableObject, IHasMineralData
 {
     protected override void Awake()
     {
         base.Awake();
         if (string.IsNullOrEmpty(uniqueID))
-        {
             uniqueID = System.Guid.NewGuid().ToString();
-            // Debug.Log($"[PooledSaveable] Новый объект — сгенерирован ID: {uniqueID}");
-        }
-        // Additional for minerals
     }
 
-    public override SaveData GetSaveData()
+    public MineralSaveData GetMineralSaveData()
     {
-        var data = base.GetSaveData();
-
         var mineral = GetComponent<MineralData>();
-        if (mineral != null)
+        if (mineral == null) return new MineralSaveData { uniqueID = uniqueID };
+
+        return new MineralSaveData
         {
-            if (GetComponentInParent<SnapZone>() == MineralScannerManager.Instance?.targetSnapZone)
-                data.wasInScannerZone = true;
-
-            var m = mineral.GetMineralSaveData();
-            data.mineral = new SaveData.MineralBlock
-            {
-                realAge = m.realAge,
-                realRadioactivity = m.realRadioactivity,
-                agePointLocalPos = m.agePointLocalPos,
-                crystalPointLocalPos = m.crystalPointLocalPos,
-                radioactivityPointLocalPos = m.radioactivityPointLocalPos,
-                isResearched = m.isResearched,
-                savedAgeLine = mineral.savedAgeLine,
-                savedRadioactivityLine = mineral.savedRadioactivityLine,
-                savedCrystalLine = mineral.savedCrystalLine
-            };
-        }
-
-        return data;
+            uniqueID = uniqueID,
+            realAge = mineral.realAge,
+            realRadioactivity = mineral.realRadioactivity,
+            agePointLocalPos = mineral.AgePoint ? mineral.AgePoint.transform.localPosition : Vector3.zero,
+            crystalPointLocalPos = mineral.CrystalPoint ? mineral.CrystalPoint.transform.localPosition : Vector3.zero,
+            radioactivityPointLocalPos = mineral.RadioactivityPoint ? mineral.RadioactivityPoint.transform.localPosition : Vector3.zero,
+            isResearched = mineral.isResearched,
+            savedAgeLine = mineral.savedAgeLine ?? "",
+            savedRadioactivityLine = mineral.savedRadioactivityLine ?? "",
+            savedCrystalLine = mineral.savedCrystalLine ?? ""
+        };
     }
 
-    public override void LoadFromSaveData(SaveData data)
+    public void LoadMineralData(MineralSaveData data)
     {
-        uniqueID = data.uniqueID;  // ← ФИКС
-
-        base.LoadFromSaveData(data);
-
-        if (data.mineral == null) return;
-
         var mineral = GetComponent<MineralData>();
-        if (mineral != null)
-        {
-            mineral.LoadMineralSaveData(new MineralData.MineralSaveData
-            {
-                realAge = data.mineral.realAge,
-                realRadioactivity = data.mineral.realRadioactivity,
-                agePointLocalPos = data.mineral.agePointLocalPos,
-                crystalPointLocalPos = data.mineral.crystalPointLocalPos,
-                radioactivityPointLocalPos = data.mineral.radioactivityPointLocalPos,
-                isResearched = data.mineral.isResearched
-            });
+        if (mineral == null) return;
 
-            mineral.savedAgeLine = data.mineral.savedAgeLine ?? "";
-            mineral.savedRadioactivityLine = data.mineral.savedRadioactivityLine ?? "";
-            mineral.savedCrystalLine = data.mineral.savedCrystalLine ?? "";
+        mineral.realAge = data.realAge;
+        mineral.realRadioactivity = data.realRadioactivity;
+        mineral.isResearched = data.isResearched;
 
-            GetComponent<MineralPointSpawner>()?.RestorePointsFromSaveData(
-                data.mineral.agePointLocalPos, data.mineral.crystalPointLocalPos, data.mineral.radioactivityPointLocalPos);
-        }
+        mineral.savedAgeLine = data.savedAgeLine;
+        mineral.savedRadioactivityLine = data.savedRadioactivityLine;
+        mineral.savedCrystalLine = data.savedCrystalLine;
+
+        if (mineral.AgePoint) mineral.AgePoint.transform.localPosition = data.agePointLocalPos;
+        if (mineral.CrystalPoint) mineral.CrystalPoint.transform.localPosition = data.crystalPointLocalPos;
+        if (mineral.RadioactivityPoint) mineral.RadioactivityPoint.transform.localPosition = data.radioactivityPointLocalPos;
+
+        GetComponent<MineralPointSpawner>()?.RestorePointsFromSaveData(
+            data.agePointLocalPos,
+            data.crystalPointLocalPos,
+            data.radioactivityPointLocalPos);
     }
 }

@@ -4,9 +4,9 @@ using TMPro;
 using System.Collections.Generic;
 using System.Linq;
 
-public class ResearchReportViewer : MonoBehaviour, ISaveable
+public class ResearchReportViewer : MonoBehaviour
 {
-    [Header("UI")]
+    [Header("UI References")]
     [SerializeField] private GameObject reportPanel;
     [SerializeField] private Transform contentParent;
     [SerializeField] private GameObject reportEntryPrefab;
@@ -22,7 +22,7 @@ public class ResearchReportViewer : MonoBehaviour, ISaveable
     {
         public string displayName;
         public bool wasCorrect;
-        public string mineralClassName; // опционально, для красоты
+        public string mineralClassName;
     }
 
     [System.Serializable]
@@ -32,7 +32,6 @@ public class ResearchReportViewer : MonoBehaviour, ISaveable
         public List<MineralResearchResult> results = new();
     }
 
-    // Все отчёты за все дни
     private readonly List<DayReport> allReports = new();
     private int currentViewedDayIndex = -1;
 
@@ -40,19 +39,23 @@ public class ResearchReportViewer : MonoBehaviour, ISaveable
     {
         if (reportPanel) reportPanel.SetActive(false);
         if (noReportsText) noReportsText.gameObject.SetActive(true);
-        if (closeButton) closeButton.onClick.AddListener(ClosePanel);
-        if (prevDayButton) prevDayButton.onClick.AddListener(ShowPreviousDay);
-        if (nextDayButton) nextDayButton.onClick.AddListener(ShowNextDay);
+
+        closeButton?.onClick.AddListener(ClosePanel);
+        prevDayButton?.onClick.AddListener(ShowPreviousDay);
+        nextDayButton?.onClick.AddListener(ShowNextDay);
     }
 
     private void OnEnable()
     {
-        GameDayManager.Instance?.OnDayFullyCompleted.AddListener(OnDayCompleted);
+        if (GameDayManager.Instance != null)
+            GameDayManager.Instance.OnDayFullyCompleted.AddListener(OnDayCompleted);
     }
 
     private void OnDisable()
     {
-        GameDayManager.Instance?.OnDayFullyCompleted.RemoveListener(OnDayCompleted);
+        if (GameDayManager.Instance != null)
+            GameDayManager.Instance.OnDayFullyCompleted.RemoveListener(OnDayCompleted);
+
         closeButton?.onClick.RemoveListener(ClosePanel);
         prevDayButton?.onClick.RemoveListener(ShowPreviousDay);
         nextDayButton?.onClick.RemoveListener(ShowNextDay);
@@ -64,17 +67,19 @@ public class ResearchReportViewer : MonoBehaviour, ISaveable
         var currentDayReport = allReports.Find(r => r.dayNumber == today);
         if (currentDayReport != null)
         {
-            // День завершён — фиксируем результаты
-            currentDayReport.results = currentDayReport.results.ToList(); // защита от изменений
+            // Фиксируем результаты — больше не меняются
+            currentDayReport.results = new List<MineralResearchResult>(currentDayReport.results);
         }
     }
 
+    // Статический метод для логирования результата исследования
     public static void LogResearchResult(string mineralName, bool correct, string className = "")
     {
         var viewer = FindObjectOfType<ResearchReportViewer>();
-        if (!viewer || !GameDayManager.Instance) return;
+        if (viewer == null || GameDayManager.Instance == null) return;
 
         int today = GameDayManager.Instance.CurrentDay;
+
         var dayReport = viewer.allReports.Find(r => r.dayNumber == today);
         if (dayReport == null)
         {
@@ -134,6 +139,7 @@ public class ResearchReportViewer : MonoBehaviour, ISaveable
 
     private void UpdatePanelVisuals()
     {
+        // Очистка
         foreach (Transform child in contentParent)
             Destroy(child.gameObject);
 
@@ -151,7 +157,6 @@ public class ResearchReportViewer : MonoBehaviour, ISaveable
         noReportsText.gameObject.SetActive(false);
         titleText.text = $"День {report.dayNumber}: Результаты";
         dayCounterText.text = $"{currentViewedDayIndex + 1} / {allReports.Count}";
-
         prevDayButton.interactable = currentViewedDayIndex > 0;
         nextDayButton.interactable = currentViewedDayIndex < allReports.Count - 1;
 
@@ -161,75 +166,84 @@ public class ResearchReportViewer : MonoBehaviour, ISaveable
             var text = entry.GetComponentInChildren<TextMeshProUGUI>();
             var img = entry.GetComponent<Image>();
 
-            if (text) text.text = $"{result.displayName}\n<size=70%>{result.mineralClassName}</size>";
+            if (text)
+                text.text = $"{result.displayName}\n<size=70%>{result.mineralClassName}</size>";
+
             if (img)
-            {
                 img.color = result.wasCorrect
-                    ? new Color(0.1f, 0.8f, 0.1f, 0.95f)
-                    : new Color(0.8f, 0.2f, 0.2f, 0.95f);
-            }
+                    ? new Color(0.1f, 0.8f, 0.1f, 0.95f)  // зелёный
+                    : new Color(0.8f, 0.2f, 0.2f, 0.95f); // красный
         }
     }
 
-    // ISaveable
-    public string GetUniqueID() => "RESEARCH_REPORT_VIEWER";
-
-    public SaveData GetSaveData()
+    // СЕРИАЛИЗАЦИЯ / ДЕСЕРИАЛИЗАЦИЯ — используется SaveManager'ом
+    public string SerializeReports()
     {
-        var data = new SaveData
+        if (allReports.Count == 0) return "";
+
+        var dayStrings = new List<string>();
+
+        foreach (var day in allReports)
         {
-            uniqueID = "RESEARCH_REPORT_VIEWER",
-            prefabIdentifier = "ResearchSystem",
-            report = new SaveData.ReportBlock
+            var resultStrings = new List<string>();
+            foreach (var r in day.results)
             {
-                serializedReports = string.Join("|",
-                    allReports.Select(day => $"{day.dayNumber}:{string.Join(";", day.results.Select(r => $"{r.displayName}¬{r.mineralClassName}¬{(r.wasCorrect ? 1 : 0)}"))}"))
+                // Просто и надёжно: используем символы, которые НИКОГДА не будут в именах
+                resultStrings.Add($"{r.displayName}|{r.mineralClassName}|{(r.wasCorrect ? 1 : 0)}");
             }
-        };
-        return data;
+            dayStrings.Add($"{day.dayNumber}:{string.Join(";", resultStrings)}");
+        }
+
+        return string.Join("|", dayStrings);
     }
 
-    public void LoadFromSaveData(SaveData data)
+    public void DeserializeReports(string data)
     {
-        if (data.report == null || string.IsNullOrEmpty(data.report.serializedReports)) return;
-
         allReports.Clear();
-        var dayEntries = data.report.serializedReports.Split('|');
+        if (string.IsNullOrEmpty(data)) return;
+
+        var dayEntries = data.Split('|');
         foreach (var entry in dayEntries)
         {
             if (string.IsNullOrEmpty(entry)) continue;
-            var parts = entry.Split(':');
-            if (parts.Length != 2) continue;
 
-            if (!int.TryParse(parts[0], out int dayNum)) continue;
+            var colonParts = entry.Split(new[] { ':' }, 2);
+            if (colonParts.Length != 2 || !int.TryParse(colonParts[0], out int dayNum)) continue;
 
             var dayReport = new DayReport { dayNumber = dayNum };
-            var resultStrings = parts[1].Split(';');
+            var resultStrings = colonParts[1].Split(';');
+
             foreach (var r in resultStrings)
             {
                 if (string.IsNullOrEmpty(r)) continue;
-                var sub = r.Split('¬');
-                if (sub.Length >= 2)
+
+                var parts = r.Split('|');
+                if (parts.Length < 2) continue;
+
+                dayReport.results.Add(new MineralResearchResult
                 {
-                    dayReport.results.Add(new MineralResearchResult
-                    {
-                        displayName = sub[0],
-                        mineralClassName = sub[1],
-                        wasCorrect = sub.Length > 2 && sub[2] == "1"
-                    });
-                }
+                    displayName = parts[0],
+                    mineralClassName = parts[1],
+                    wasCorrect = parts.Length > 2 && parts[2] == "1"
+                });
             }
+
             allReports.Add(dayReport);
         }
 
         allReports.Sort((a, b) => a.dayNumber.CompareTo(b.dayNumber));
     }
 
-#if UNITY_EDITOR
-    [ContextMenu("Открыть панель (тест)")]
-    private void TestOpen() => OpenPanel();
+  
+// Защита от спецсимволов (на всякий случай)
+private string Escape(string s) => s.Replace("¬", "&#xAC;").Replace("|", "&#x7C;").Replace(":", "&#x3A;");
+private string Unescape(string s) => s.Replace("&#xAC;", "¬").Replace("&#x7C;", "|").Replace("&#x3A;", ":");
 
-    [ContextMenu("Очистить все отчёты (тест)")]
-    private void ClearAll() => allReports.Clear();
+#if UNITY_EDITOR
+[ContextMenu("Открыть панель (тест)")]
+private void TestOpen() => OpenPanel();
+
+[ContextMenu("Очистить все отчёты (тест)")]
+private void ClearAll() => allReports.Clear();
 #endif
 }
