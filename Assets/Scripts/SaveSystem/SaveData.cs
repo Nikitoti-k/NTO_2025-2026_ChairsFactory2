@@ -60,8 +60,6 @@ public class GameStateBlock
     public float currentTimeInMinutes;
     public int depositsBrokenToday;
     public int mineralsResearchedToday;
-    public bool canStartEvening;
-    public bool canSleep;
 }
 
 [System.Serializable]

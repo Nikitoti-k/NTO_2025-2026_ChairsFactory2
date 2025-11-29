@@ -22,12 +22,14 @@ public class IceDeposit : SaveableObject, IHasDepositData
         {
             var pos = spawnPoint ? spawnPoint.position : transform.position + Vector3.up * 0.5f;
             var mineral = Instantiate(mineralPrefab, pos, Quaternion.identity);
-
             var saveable = mineral.GetComponent<SaveableObject>() ?? mineral.AddComponent<SaveableObject>();
             saveable.SetPrefabIdentifier(GetPrefabIdentifier(mineralPrefab));
         }
 
         gameObject.SetActive(false);
+
+        // щрнр бшгнб ашк опносыем ≈ днаюбэ!
+        GameDayManager.Instance.RegisterDepositBroken();
     }
 
     private string GetPrefabIdentifier(GameObject prefab)

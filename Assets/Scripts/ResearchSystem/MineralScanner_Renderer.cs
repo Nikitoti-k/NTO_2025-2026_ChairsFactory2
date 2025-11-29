@@ -128,6 +128,8 @@ public class MineralScanner_Renderer : MonoBehaviour
             currentMineral.isResearched = true;
             string name = currentMineral.transform.name.Replace("(Clone)", "").Trim();
             ResearchReportViewer.LogResearchResult(name, correct);
+
+            // ИСПРАВЛЕНО: было mineral, стало currentMineral.UniqueInstanceID
             GameDayManager.Instance.RegisterMineralResearched(currentMineral);
         }
     }

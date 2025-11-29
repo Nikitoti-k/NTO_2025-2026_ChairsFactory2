@@ -1,5 +1,5 @@
-﻿using UnityEngine;
-
+﻿// CanGrab.cs — РАБОЧАЯ ВЕРСИЯ
+using UnityEngine;
 [RequireComponent(typeof(PlayerMovement))]
 public class CanGrab : MonoBehaviour
 {
@@ -10,47 +10,41 @@ public class CanGrab : MonoBehaviour
     [SerializeField] private LayerMask grabbableMask = -1;
     [SerializeField] private LayerMask collisionReleaseMask = -1;
 
-    [Header("Физика минералов (VotV-style)")]
+    // VotV-физика минералов
+    [Header("Mineral Physics")]
     [SerializeField] private float mineralHoldDistance = 2.5f;
     [SerializeField] private float mineralPullForce = 38f;
     [SerializeField] private float mineralDrag = 10f;
     [SerializeField] private float mineralAngularDrag = 15f;
     [SerializeField] private float mineralMaxVelocity = 12f;
-    [SerializeField] private float mineralCollisionReleaseForce = 8f;
     [SerializeField] private float mineralBreakDistance = 6f;
-    [SerializeField] private float mineralBreakCheckInterval = 0.2f;
 
-    [Header("Остальное")]
     [SerializeField] private float pullSpeed = 20f;
     [SerializeField] private bool toolsHaveGravity = false;
     [SerializeField] private bool mineralsHaveGravity = true;
 
-    private Camera cam;
+    [SerializeField]private Camera cam;
     private Rigidbody heldRb;
     private Transform heldTransform;
     private GrabbableItem heldItem;
     private Transform activePoint;
-
     private Vector3 lockedOffset;
     private Quaternion lockedRotation;
     private bool isPulling = false;
     private bool wasTriggerBeforeGrab = false;
     private bool wasKinematicBeforeGrab = false;
 
+    // VotV
     private ConfigurableJoint mineralJoint;
-    private float originalDrag;
-    private float originalAngularDrag;
+    private float originalDrag, originalAngularDrag;
     private bool isSnapping = false;
-    private float breakTimer;
-
-    private Quaternion mineralFrozenRotation;
 
     public static System.Action<CanGrab, Rigidbody> OnGrabbed;
     public static System.Action<CanGrab, Rigidbody> OnReleased;
 
-    private void Awake()
+    private void Start()
     {
-        cam = Camera.main;
+       // cam = Camera.main;
         if (grabPoint == null) grabPoint = transform;
         if (toolGrabPoint == null) toolGrabPoint = grabPoint;
     }
@@ -76,11 +70,10 @@ public class CanGrab : MonoBehaviour
             GrabOldStyle(item, toolGrabPoint);
             return;
         }
-
         if (TryGrabAt(grabPoint, maxGrabDistance, out item))
         {
             if (item.ItemType == GrabbableType.Mineral)
-                GrabMineralPhysical(item);
+                GrabMineralVotV(item);
             else
                 GrabOldStyle(item, grabPoint);
         }
@@ -98,10 +91,11 @@ public class CanGrab : MonoBehaviour
         return rb != null;
     }
 
-    private void GrabMineralPhysical(GrabbableItem item)
+    private void GrabMineralVotV(GrabbableItem item)
     {
         var rb = item.GetComponent<Rigidbody>();
-        if (rb == null) return;
+        var snapZone = item.GetComponentInParent<SnapZone>();
+        snapZone?.OnItemGrabbedFromZone(item);
 
         heldRb = rb;
         heldTransform = rb.transform;
@@ -110,40 +104,23 @@ public class CanGrab : MonoBehaviour
 
         originalDrag = rb.linearDamping;
         originalAngularDrag = rb.angularDamping;
-
         rb.linearDamping = mineralDrag;
         rb.angularDamping = mineralAngularDrag;
 
-        mineralFrozenRotation = heldTransform.rotation;
-
-        mineralJoint = heldTransform.gameObject.AddComponent<ConfigurableJoint>();
+        mineralJoint = rb.gameObject.AddComponent<ConfigurableJoint>();
         mineralJoint.connectedBody = null;
-        mineralJoint.anchor = Vector3.zero;
         mineralJoint.autoConfigureConnectedAnchor = false;
         mineralJoint.connectedAnchor = cam.transform.position + cam.transform.forward * mineralHoldDistance;
+        mineralJoint.xMotion = mineralJoint.yMotion = mineralJoint.zMotion = ConfigurableJointMotion.Limited;
+        mineralJoint.angularXMotion = mineralJoint.angularYMotion = mineralJoint.angularZMotion = ConfigurableJointMotion.Locked;
 
-        mineralJoint.xMotion = ConfigurableJointMotion.Limited;
-        mineralJoint.yMotion = ConfigurableJointMotion.Limited;
-        mineralJoint.zMotion = ConfigurableJointMotion.Limited;
-        mineralJoint.angularXMotion = ConfigurableJointMotion.Locked;
-        mineralJoint.angularYMotion = ConfigurableJointMotion.Locked;
-        mineralJoint.angularZMotion = ConfigurableJointMotion.Locked;
-
-        var drive = new JointDrive
-        {
-            positionSpring = mineralPullForce * 100f,
-            positionDamper = mineralPullForce * 10f,
-            maximumForce = 1e8f
-        };
-        mineralJoint.xDrive = drive;
-        mineralJoint.yDrive = drive;
-        mineralJoint.zDrive = drive;
+        var drive = new JointDrive { positionSpring = mineralPullForce * 100f, positionDamper = mineralPullForce * 10f, maximumForce = 1e8f };
+        mineralJoint.xDrive = mineralJoint.yDrive = mineralJoint.zDrive = drive;
 
         rb.useGravity = mineralsHaveGravity;
         rb.isKinematic = false;
 
         OnGrabbed?.Invoke(this, heldRb);
-        breakTimer = 0f;
     }
 
     private void GrabOldStyle(GrabbableItem item, Transform point)
@@ -159,51 +136,33 @@ public class CanGrab : MonoBehaviour
 
         wasKinematicBeforeGrab = rb.isKinematic;
         var col = item.GetComponent<Collider>();
-        if (col)
-        {
-            wasTriggerBeforeGrab = col.isTrigger;
-            col.isTrigger = true;
-        }
+        if (col) { wasTriggerBeforeGrab = col.isTrigger; col.isTrigger = true; }
 
         rb.isKinematic = false;
         rb.useGravity = false;
         rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
-
         OnGrabbed?.Invoke(this, heldRb);
         isPulling = true;
-
-        if (item.ItemType == GrabbableType.Door)
-            item.GetComponent<Door>()?.OnGrabbed();
     }
 
     private void Release(bool force = false)
     {
         if (heldRb == null) return;
-
         OnReleased?.Invoke(this, heldRb);
-
-        if (heldItem.ItemType == GrabbableType.Door)
-            heldItem.GetComponent<Door>()?.OnReleased();
 
         if (heldItem.ItemType == GrabbableType.Mineral && mineralJoint != null)
         {
-            if (!isSnapping)
-            {
-                heldRb.linearDamping = originalDrag;
-                heldRb.angularDamping = originalAngularDrag;
-                heldRb.useGravity = mineralsHaveGravity;
-
-                if (heldRb.linearVelocity.sqrMagnitude > mineralMaxVelocity * mineralMaxVelocity)
-                    heldRb.linearVelocity = heldRb.linearVelocity.normalized * mineralMaxVelocity;
-            }
+            heldRb.linearDamping = originalDrag;
+            heldRb.angularDamping = originalAngularDrag;
             Destroy(mineralJoint);
             mineralJoint = null;
         }
-        else if (!isSnapping)
+        else if (!force && !isSnapping)
         {
             var col = heldItem.GetComponent<Collider>();
             if (col) col.isTrigger = wasTriggerBeforeGrab;
+
             bool hasGravity = heldItem.ItemType == GrabbableType.Tool ? toolsHaveGravity : mineralsHaveGravity;
             heldRb.useGravity = hasGravity;
             heldRb.isKinematic = wasKinematicBeforeGrab;
@@ -220,55 +179,29 @@ public class CanGrab : MonoBehaviour
 
     private void FixedUpdate()
     {
-        if (heldRb == null || activePoint == null || isSnapping) return;
+        if (heldRb == null || isSnapping || activePoint == null) return;
 
         if (heldItem.ItemType == GrabbableType.Mineral && mineralJoint != null)
         {
             mineralJoint.connectedAnchor = cam.transform.position + cam.transform.forward * mineralHoldDistance;
-            heldTransform.rotation = mineralFrozenRotation;
-
-            if (collisionReleaseMask != 0 && heldRb.linearVelocity.magnitude > mineralCollisionReleaseForce)
-            {
-                foreach (Collider col in Physics.OverlapSphere(heldTransform.position, 0.3f, collisionReleaseMask))
-                {
-                    if (!col.isTrigger && col.gameObject != heldTransform.gameObject && !col.transform.IsChildOf(heldTransform))
-                    {
-                        Release();
-                        return;
-                    }
-                }
-            }
-
-            breakTimer += Time.fixedDeltaTime;
-            if (breakTimer >= mineralBreakCheckInterval)
-            {
-                breakTimer = 0f;
-                if (Vector3.Distance(heldTransform.position, cam.transform.position) > mineralBreakDistance)
-                {
-                    Release();
-                    return;
-                }
-            }
-
+            if (Vector3.Distance(heldTransform.position, cam.transform.position) > mineralBreakDistance)
+                Release();
             if (heldRb.linearVelocity.sqrMagnitude > mineralMaxVelocity * mineralMaxVelocity)
                 heldRb.linearVelocity = heldRb.linearVelocity.normalized * mineralMaxVelocity;
         }
         else if (isPulling)
         {
-            Vector3 targetPos = activePoint.position;
-            Vector3 currentPos = heldTransform.position;
-            Vector3 direction = targetPos - currentPos;
-
-            if (direction.sqrMagnitude < 0.15f * 0.15f)
+            Vector3 dir = activePoint.position - heldTransform.position;
+            if (dir.sqrMagnitude < 0.02f)
             {
-                heldRb.linearVelocity = Vector3.zero;
                 isPulling = false;
-                lockedOffset = activePoint.InverseTransformPoint(currentPos);
+                lockedOffset = activePoint.InverseTransformPoint(heldTransform.position);
                 lockedRotation = Quaternion.Inverse(activePoint.rotation) * heldTransform.rotation;
+                heldRb.linearVelocity = Vector3.zero;
             }
             else
             {
-                heldRb.linearVelocity = direction.normalized * pullSpeed;
+                heldRb.linearVelocity = dir.normalized * pullSpeed;
             }
         }
         else
@@ -280,7 +213,7 @@ public class CanGrab : MonoBehaviour
     private void LateUpdate()
     {
         if (heldRb == null || isPulling || isSnapping || activePoint == null) return;
-        if (heldItem.ItemType == GrabbableType.Mineral || heldItem.ItemType == GrabbableType.Door) return;
+        if (heldItem.ItemType == GrabbableType.Mineral) return;
 
         heldTransform.position = activePoint.TransformPoint(lockedOffset);
         heldTransform.rotation = activePoint.rotation * lockedRotation;

@@ -22,12 +22,10 @@ public class GameStateSaver : MonoBehaviour
     {
         return new GameStateBlock
         {
-            currentDay = dayManager.CurrentDay,
-            currentTimeInMinutes = weatherManager.CurrentTimeInMinutes,
-            depositsBrokenToday = dayManager.DepositsBrokenToday,
-            mineralsResearchedToday = dayManager.MineralsResearchedToday,
-            canStartEvening = dayManager.CanStartEvening,
-            canSleep = dayManager.CanSleep
+            currentDay = dayManager ? dayManager.CurrentDay : 1,
+            currentTimeInMinutes = weatherManager ? weatherManager.CurrentTimeInMinutes : 480f,
+            depositsBrokenToday = dayManager ? dayManager.DepositsBrokenToday : 0,
+            mineralsResearchedToday = dayManager ? dayManager.MineralsResearchedToday : 0
         };
     }
 
@@ -36,24 +34,20 @@ public class GameStateSaver : MonoBehaviour
         if (block == null) return;
 
         weatherManager.SetTimeDirectly(block.currentDay, block.currentTimeInMinutes);
-        dayManager.StartNewDay(block.currentDay);
+        dayManager?.SetDay(block.currentDay);
 
-        // Восстанавливаем счётчики через рефлексию (если приватные)
         var type = dayManager.GetType();
         type.GetField("depositsBrokenToday", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
             ?.SetValue(dayManager, block.depositsBrokenToday);
         type.GetField("mineralsResearchedToday", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
             ?.SetValue(dayManager, block.mineralsResearchedToday);
 
-        // Вызываем события
         dayManager.OnDepositsChanged?.Invoke(block.depositsBrokenToday);
         dayManager.OnMineralsResearchedChanged?.Invoke(block.mineralsResearchedToday);
 
-        if (block.canStartEvening) dayManager.OnAllDepositsBroken?.Invoke();
-        if (block.canSleep) dayManager.OnAllReportsSubmitted?.Invoke();
+        if (block.depositsBrokenToday >= dayManager.DepositsToBreak)
+            dayManager.OnAllDepositsBroken?.Invoke();
+        if (block.mineralsResearchedToday >= dayManager.MineralsToResearch)
+            dayManager.OnAllReportsSubmitted?.Invoke();
     }
-
-    // Если у тебя есть глобальные отчёты
-   // public string GetGlobalReports() => ReportManager.Instance?.SerializeAllReports() ?? "";
-   // public void LoadGlobalReports(string data) => ReportManager.Instance?.DeserializeReports(data);
 }

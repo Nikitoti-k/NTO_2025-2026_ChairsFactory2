@@ -1755,15 +1755,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   maxForwardSpeed: 12
   maxReverseSpeed: 7
-  acceleration: 35
-  reverseAcceleration: 25
+  accelerationForce: 320
   brakeForce: 1
-  maxSteerAngle: 22
-  steerSpeed: 1.8
-  lowSpeedSteerBonus: 1.8
-  downforce: 10
-  sideFrictionMultiplier: 0.92
-  forwardFrictionOnTurn: 0.85
+  dragOnGround: 1.2
+  airDrag: 0.1
+  maxTurnRate: 80
+  minTurnRate: 180
+  turnSpeedThreshold: 4
+  turnSmoothTime: 0.15
   seatTransform: {fileID: 1955568569}
   fallbackMountOffset: {x: 0, y: 1, z: 0}
 --- !u!54 &238681552
@@ -13626,7 +13625,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 512
   miningRayOrigin: {fileID: 892996204}
-  sleepSystem: {fileID: 0}
+  sleepSystem: {fileID: 2071247397}
   objectGrabber: {fileID: 1832999338}
 --- !u!54 &1832999337
 Rigidbody:
@@ -13682,12 +13681,11 @@ MonoBehaviour:
   mineralDrag: 10
   mineralAngularDrag: 15
   mineralMaxVelocity: 12
-  mineralCollisionReleaseForce: 8
   mineralBreakDistance: 2
-  mineralBreakCheckInterval: 0.2
   pullSpeed: 1
   toolsHaveGravity: 0
   mineralsHaveGravity: 1
+  cam: {fileID: 330585545}
 --- !u!114 &1832999339
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -14951,8 +14949,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6dba86a6f17a94c4091a7522a803f3ed, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  depositsToBreakPerDay: 1
-  mineralsToResearchPerDay: 1
+  tasksDatabase: {fileID: 11400000, guid: 62a74baa6c1eca942b8131da5ff12254, type: 2}
   OnAllDepositsBroken:
     m_PersistentCalls:
       m_Calls: []

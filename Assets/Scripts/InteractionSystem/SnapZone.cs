@@ -26,7 +26,6 @@ public class SnapZone : MonoBehaviour
 
     private GrabbableItem attachedItem;
     private Coroutine snapRoutine;
-    private bool wasKinematic, hadGravity, wasTrigger;
     private readonly List<GrabbableItem> attachedItems = new List<GrabbableItem>();
     private readonly Dictionary<GrabbableItem, Coroutine> snapRoutines = new Dictionary<GrabbableItem, Coroutine>();
 
@@ -72,7 +71,6 @@ public class SnapZone : MonoBehaviour
             !attachedItems.Any(i => i != null && i.transform.parent == p)).ToList();
 
         if (available.Count == 0) return null;
-
         return prioritizeClosestPoint
             ? available.OrderBy(p => Vector3.Distance(item.transform.position, p.position)).First()
             : available[0];
@@ -85,13 +83,6 @@ public class SnapZone : MonoBehaviour
 
         Rigidbody rb = item.GetComponent<Rigidbody>();
         Collider col = item.GetComponent<Collider>();
-
-        if (!isMulti)
-        {
-            wasKinematic = rb ? rb.isKinematic : true;
-            hadGravity = rb ? rb.useGravity : true;
-            wasTrigger = col ? col.isTrigger : true;
-        }
 
         if (rb)
         {
@@ -119,6 +110,7 @@ public class SnapZone : MonoBehaviour
         {
             t += Time.deltaTime / duration;
             float curve = snapCurve.Evaluate(t);
+
             Vector3 currentPos = t < 0.5f
                 ? Vector3.Lerp(startPos, liftPos, t * 2f)
                 : Vector3.Lerp(liftPos, finalPos, (t - 0.5f) * 2f);
@@ -137,11 +129,6 @@ public class SnapZone : MonoBehaviour
             rb.isKinematic = makeKinematicInMultiSlot;
             rb.useGravity = false;
         }
-        else if (rb)
-        {
-            rb.isKinematic = wasKinematic;
-            rb.useGravity = hadGravity;
-        }
 
         if (!isMulti) snapRoutine = null;
         else snapRoutines.Remove(item);
@@ -149,7 +136,6 @@ public class SnapZone : MonoBehaviour
         grabber?.EndSnappingToZoneComplete();
     }
 
-    // ← ВАЖНЫЙ МЕТОД ДЛЯ ЗАГРУЗКИ СОХРАНЕНИЯ
     public void LoadSnappedItem(GrabbableItem item, int pointIndex = -1)
     {
         if (item == null) return;
@@ -192,7 +178,6 @@ public class SnapZone : MonoBehaviour
                 rb.useGravity = false;
             }
         }
-
         if (col && (isMultiSlot ? makeTriggerInMultiSlot : true))
             col.isTrigger = true;
 
@@ -200,32 +185,19 @@ public class SnapZone : MonoBehaviour
             attachedItem = item;
         else if (!attachedItems.Contains(item))
             attachedItems.Add(item);
-        // ← Принудительно уведомляем сканер (через задержку, если Instance ещё null)
-        if (MineralScannerManager.Instance != null)
-        {
-            if (this == MineralScannerManager.Instance.targetSnapZone)
-            {
-                MineralScannerManager.Instance.ForceScanCurrentMineral();
-            }
-        }
+
+        if (MineralScannerManager.Instance != null && this == MineralScannerManager.Instance.targetSnapZone)
+            MineralScannerManager.Instance.ForceScanCurrentMineral();
         else
-        {
-            // Если Instance ещё null — вызовем позже
             StartCoroutine(DelayedScannerCheck());
-        }
     }
 
     private IEnumerator DelayedScannerCheck()
     {
         yield return new WaitForEndOfFrame();
-        yield return null; // ещё один кадр
-
-        if (MineralScannerManager.Instance != null &&
-            this == MineralScannerManager.Instance.targetSnapZone &&
-            IsOccupied)
-        {
+        yield return null;
+        if (MineralScannerManager.Instance != null && this == MineralScannerManager.Instance.targetSnapZone && IsOccupied)
             MineralScannerManager.Instance.ForceScanCurrentMineral();
-        }
     }
 
     public void OnItemGrabbedFromZone(GrabbableItem grabbedItem)
@@ -236,39 +208,44 @@ public class SnapZone : MonoBehaviour
         {
             if (attachedItem == grabbedItem)
             {
-                RestorePhysicsAndRelease(attachedItem);
                 attachedItem = null;
-                if (snapRoutine != null) { StopCoroutine(snapRoutine); snapRoutine = null; }
+                if (snapRoutine != null)
+                {
+                    StopCoroutine(snapRoutine);
+                    snapRoutine = null;
+                }
             }
         }
         else
         {
-            if (attachedItems.Contains(grabbedItem))
-                ReleaseItem(grabbedItem);
+            if (attachedItems.Remove(grabbedItem))
+            {
+                if (snapRoutines.TryGetValue(grabbedItem, out var cr))
+                {
+                    if (cr != null) StopCoroutine(cr);
+                    snapRoutines.Remove(grabbedItem);
+                }
+            }
         }
     }
 
     public void ReleaseItem(GrabbableItem item)
     {
-        if (!isMultiSlot || !attachedItems.Remove(item)) return;
-        RestorePhysicsAndRelease(item);
-        if (snapRoutines.TryGetValue(item, out var cr) && cr != null) StopCoroutine(cr);
-        snapRoutines.Remove(item);
-    }
-
-    private void RestorePhysicsAndRelease(GrabbableItem item)
-    {
-        item.transform.SetParent(null);
-        var rb = item.GetComponent<Rigidbody>();
-        var col = item.GetComponent<Collider>();
-        if (rb) { rb.isKinematic = false; rb.useGravity = true; }
-        if (col) col.isTrigger = false;
+        if (isMultiSlot && attachedItems.Remove(item))
+        {
+            if (snapRoutines.TryGetValue(item, out var cr))
+            {
+                if (cr != null) StopCoroutine(cr);
+                snapRoutines.Remove(item);
+            }
+        }
     }
 
     private void OnDestroy()
     {
         if (!isMultiSlot && attachedItem != null) attachedItem.transform.SetParent(null);
-        foreach (var item in attachedItems) if (item != null) item.transform.SetParent(null);
+        foreach (var item in attachedItems)
+            if (item != null) item.transform.SetParent(null);
     }
 
     private void Reset()

@@ -6,16 +6,16 @@ public class GameDayManager : MonoBehaviour
 {
     public static GameDayManager Instance { get; private set; }
 
-    [SerializeField] private int depositsToBreakPerDay = 5;
-    [SerializeField] private int mineralsToResearchPerDay = 3;
+    [SerializeField] private DailyTasksDatabase tasksDatabase;
 
     private readonly HashSet<string> fullyResearchedMinerals = new();
 
     private int depositsBrokenToday;
-    private int mineralsBroughtToday;
     private int mineralsResearchedToday;
     private bool allDepositsBroken;
     private bool allReportsSubmitted;
+
+    private DailyTaskSO currentTask;
 
     public UnityEvent OnAllDepositsBroken = new();
     public UnityEvent OnAllReportsSubmitted = new();
@@ -24,8 +24,10 @@ public class GameDayManager : MonoBehaviour
     public UnityEvent<int> OnMineralsResearchedChanged = new();
 
     public int CurrentDay { get; private set; } = 1;
-    public int DepositsToBreak => depositsToBreakPerDay;
-    public int MineralsToResearch => mineralsToResearchPerDay;
+    public DailyTaskSO CurrentTask => currentTask;
+
+    public int DepositsToBreak => currentTask?.depositsToBreak ?? 5;
+    public int MineralsToResearch => currentTask?.mineralsToResearch ?? 3;
     public int DepositsBrokenToday => depositsBrokenToday;
     public int MineralsResearchedToday => mineralsResearchedToday;
     public bool CanStartEvening => allDepositsBroken;
@@ -33,44 +35,99 @@ public class GameDayManager : MonoBehaviour
 
     private void Awake()
     {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        Debug.Log("[GameDayManager] Инициализация GameDayManager...");
+        if (Instance != null && Instance != this)
+        {
+            Debug.LogWarning("[GameDayManager] Дубликат уничтожен!");
+            Destroy(gameObject);
+            return;
+        }
         Instance = this;
         DontDestroyOnLoad(gameObject);
+        Debug.Log("[GameDayManager] Instance установлен, DontDestroyOnLoad OK");
+
+        if (tasksDatabase == null)
+            Debug.LogError("[GameDayManager] tasksDatabase не назначен в инспекторе!");
+        else
+            Debug.Log($"[GameDayManager] База задач загружена: {tasksDatabase.tasks.Count} дней");
+
+        SetDay(CurrentDay);
+    }
+
+    public void SetDay(int day)
+    {
+        Debug.Log($"[GameDayManager] Установка дня {day}...");
+        CurrentDay = day;
+
+        if (tasksDatabase == null)
+        {
+            Debug.LogError($"[GameDayManager] Не могу загрузить задачу для дня {day} - tasksDatabase == null!");
+            currentTask = null;
+        }
+        else
+        {
+            currentTask = tasksDatabase.GetTaskForDay(day);
+            if (currentTask == null)
+                Debug.LogError($"[GameDayManager] Задача для дня {day} не найдена в базе!");
+            else
+                Debug.Log($"[GameDayManager] День {day}: {DepositsToBreak} залежей, {MineralsToResearch} минералов, пещера {currentTask.caveSceneName} на {currentTask.caveEntrancePosition}");
+        }
+
         ResetDailyCounters();
+        OnDepositsChanged.Invoke(depositsBrokenToday);
+        OnMineralsResearchedChanged.Invoke(mineralsResearchedToday);
+        Debug.Log($"[GameDayManager] День {day} установлен. Счётчики сброшены: залежи {depositsBrokenToday}/{DepositsToBreak}, минералы {mineralsResearchedToday}/{MineralsToResearch}");
     }
 
     private void ResetDailyCounters()
     {
-        depositsBrokenToday = mineralsBroughtToday = mineralsResearchedToday = 0;
-        allDepositsBroken = allReportsSubmitted = false;
+        Debug.Log("[GameDayManager] Сброс дневных счётчиков...");
+        depositsBrokenToday = 0;
+        mineralsResearchedToday = 0;
+        allDepositsBroken = false;
+        allReportsSubmitted = false;
         fullyResearchedMinerals.Clear();
+        Debug.Log("[GameDayManager] Счётчики сброшены успешно");
     }
 
     public void RegisterDepositBroken()
     {
         depositsBrokenToday++;
+        Debug.Log($"[GameDayManager] Залежь сломана! Прогресс: {depositsBrokenToday}/{DepositsToBreak}");
         OnDepositsChanged.Invoke(depositsBrokenToday);
 
-        if (depositsBrokenToday >= depositsToBreakPerDay && !allDepositsBroken)
+        if (depositsBrokenToday >= DepositsToBreak && !allDepositsBroken)
         {
             allDepositsBroken = true;
+            Debug.Log("[GameDayManager] ✅ ВСЕ ЗАЛЕЖИ СЛОМАНЫ! Можно начинать вечер!");
             OnAllDepositsBroken.Invoke();
         }
         CheckFullCompletion();
     }
 
-    public void RegisterMineralBrought(GameObject obj) => mineralsBroughtToday++;
-
     public void RegisterMineralResearched(MineralData mineral)
     {
-        if (mineral == null || !fullyResearchedMinerals.Add(mineral.UniqueInstanceID)) return;
+        if (mineral == null)
+        {
+            Debug.LogWarning("[GameDayManager] Попытка зарегистрировать null минерал!");
+            return;
+        }
+
+        string id = mineral.UniqueInstanceID;
+        if (!fullyResearchedMinerals.Add(id))
+        {
+            Debug.Log($"[GameDayManager] Минерал {id} уже исследован сегодня, пропускаем");
+            return;
+        }
 
         mineralsResearchedToday++;
+        Debug.Log($"[GameDayManager] Минерал исследован! ID: {id}, Прогресс: {mineralsResearchedToday}/{MineralsToResearch}");
         OnMineralsResearchedChanged.Invoke(mineralsResearchedToday);
 
-        if (mineralsResearchedToday >= mineralsToResearchPerDay && !allReportsSubmitted)
+        if (mineralsResearchedToday >= MineralsToResearch && !allReportsSubmitted)
         {
             allReportsSubmitted = true;
+            Debug.Log("[GameDayManager] ✅ ВСЕ ОТЧЁТЫ СДАНЫ! Можно спать!");
             OnAllReportsSubmitted.Invoke();
         }
         CheckFullCompletion();
@@ -78,21 +135,39 @@ public class GameDayManager : MonoBehaviour
 
     private void CheckFullCompletion()
     {
-        if (allDepositsBroken && allReportsSubmitted)
+        bool wasCompleted = allDepositsBroken && allReportsSubmitted;
+        if (wasCompleted)
+        {
+            Debug.Log("[GameDayManager] 🎉 ДЕНЬ ПОЛНОСТЬЮ ЗАВЕРШЁН!");
             OnDayFullyCompleted.Invoke();
-    }
-
-    public void StartNewDay(int day)
-    {
-        CurrentDay = day;
-        ResetDailyCounters();
+        }
+        else
+        {
+            Debug.Log($"[GameDayManager] День не завершён: залежи {depositsBrokenToday}/{DepositsToBreak} ({allDepositsBroken}), минералы {mineralsResearchedToday}/{MineralsToResearch} ({allReportsSubmitted})");
+        }
     }
 
 #if UNITY_EDITOR
     [ContextMenu("Тест: Сломать все залежи")]
-    private void TestBreakAll() { depositsBrokenToday = depositsToBreakPerDay; allDepositsBroken = true; OnAllDepositsBroken.Invoke(); CheckFullCompletion(); }
+    private void TestBreakAll()
+    {
+        Debug.Log("[GameDayManager] ТЕСТ: Ломаем все залежи");
+        depositsBrokenToday = DepositsToBreak;
+        allDepositsBroken = true;
+        OnAllDepositsBroken.Invoke();
+        CheckFullCompletion();
+        OnDepositsChanged.Invoke(depositsBrokenToday);
+    }
 
     [ContextMenu("Тест: Завершить все отчёты")]
-    private void TestSubmitAll() { mineralsResearchedToday = mineralsToResearchPerDay; allReportsSubmitted = true; OnAllReportsSubmitted.Invoke(); CheckFullCompletion(); }
+    private void TestSubmitAll()
+    {
+        Debug.Log("[GameDayManager] ТЕСТ: Завершаем все отчёты");
+        mineralsResearchedToday = MineralsToResearch;
+        allReportsSubmitted = true;
+        OnAllReportsSubmitted.Invoke();
+        CheckFullCompletion();
+        OnMineralsResearchedChanged.Invoke(mineralsResearchedToday);
+    }
 #endif
 }

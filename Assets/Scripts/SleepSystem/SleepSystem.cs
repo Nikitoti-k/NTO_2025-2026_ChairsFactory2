@@ -51,7 +51,7 @@ public class SleepSystem : MonoBehaviour
         int nextDay = WeatherManager.Instance.CurrentDay + 1;
         WeatherManager.Instance.SetTimeDirectly(nextDay, 480f);
         WeatherManager.Instance.StartMorning();
-        GameDayManager.Instance?.StartNewDay(nextDay);
+        GameDayManager.Instance?.SetDay(nextDay);
 
         StartCoroutine(SleepSequence());
     }

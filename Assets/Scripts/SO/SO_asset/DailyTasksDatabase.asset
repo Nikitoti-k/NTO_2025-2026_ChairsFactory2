@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 0}
+  m_Name: DailyTasksDatabase
+  m_EditorClassIdentifier: Assembly-CSharp::DailyTasksDatabase
+  tasks:
+  - {fileID: 11400000, guid: 6f61e6d2b5659c74d9d35ec49f434027, type: 2}
+  - {fileID: 11400000, guid: 4bae0a7a4d7bd6b4a8290686cc359447, type: 2}
