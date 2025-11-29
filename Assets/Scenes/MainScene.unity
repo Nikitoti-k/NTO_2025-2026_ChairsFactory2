@@ -469,7 +469,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &729774650
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1120,7 +1120,7 @@ MonoBehaviour:
   saveLoadMenu: {fileID: 1512301512}
   saveLoadMenuScript: {fileID: 1512301517}
   errorText: {fileID: 729774650}
-  gameSceneName: Test_Scene
+  gameSceneName: GameScene
 --- !u!1 &1131816185
 GameObject:
   m_ObjectHideFlags: 0
@@ -1594,7 +1594,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1512301512}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 59f8146938fff824cb5fd77236b75775, type: 3}
   m_Name: 
@@ -1627,6 +1627,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   slotsParent: {fileID: 1512301513}
   slotPrefab: {fileID: 2749201437485977752, guid: 502f587a5d9543d4dbdd4ae9d670e45f, type: 3}
+  backButton: {fileID: 1701453043}
 --- !u!1 &1563876070
 GameObject:
   m_ObjectHideFlags: 0

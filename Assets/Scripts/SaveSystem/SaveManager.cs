@@ -11,49 +11,157 @@ using System;
 public class SaveManager : MonoBehaviour
 {
     public static SaveManager Instance { get; private set; }
+    public PrefabRegistry prefabRegistry;
 
-    [SerializeField] public PrefabRegistry prefabRegistry;
-    private const int MAX_SLOTS = 10;
+    private const int MAX_SLOTS = 3;
     private string BasePath => Application.persistentDataPath;
+
+    private static int pendingLoadSlot = -1;
 
     private void Awake()
     {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
         Instance = this;
         DontDestroyOnLoad(gameObject);
         SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
-    private void OnDestroy() => SceneManager.sceneLoaded -= OnSceneLoaded;
-
-    // === СОХРАНЕНИЕ В СЛОТ ===
-    public void SaveToSlot(int slotIndex, string slotName = null)
+    private void OnDestroy()
     {
-        if (slotIndex < 0 || slotIndex >= MAX_SLOTS) return;
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    public void SaveGame(string customName = null)
+    {
+        string slotName = string.IsNullOrWhiteSpace(customName)
+            ? GenerateDefaultName()
+            : customName.Trim();
+
+        int targetSlot = FindOldestSlot();
 
         var save = new SaveFile();
         CollectSaveData(ref save);
 
         var meta = new SaveSlotMeta
         {
-            slotName = string.IsNullOrEmpty(slotName) ? $"Сохранение {slotIndex + 1}" : slotName.Trim(),
-            day = GetCurrentDay(),
-            timeInMinutes = GetCurrentTimeInMinutes()
+            slotName = slotName,
+            saveTime = DateTime.Now.ToString("dd MMMM yyyy, HH:mm")
         };
 
-        SaveFileAndMeta(slotIndex, save, meta);
-        Debug.Log($"[Save] Сохранено в слот {slotIndex}: {meta.slotName}");
+        string slotFolder = Path.Combine(BasePath, $"Save_{targetSlot}");
+        Directory.CreateDirectory(slotFolder);
+
+        string dataPath = Path.Combine(slotFolder, "data.json");
+        string metaPath = Path.Combine(slotFolder, "meta.json");
+        string previewPath = Path.Combine(slotFolder, "preview.png");
+
+        StartCoroutine(CaptureCleanPreviewAndSave(targetSlot, save, meta, dataPath, metaPath, previewPath));
     }
 
-    public void AutoSave() => SaveToSlot(0, "Автосохранение");
+    public void AutoSave() => SaveGame("Автосохранение");
 
-    private void SaveFileAndMeta(int slot, SaveFile save, SaveSlotMeta meta)
+    public string GenerateDefaultName()
     {
-        string dataPath = Path.Combine(BasePath, $"slot_{slot}.json");
-        string metaPath = Path.Combine(BasePath, $"slot_{slot}_meta.json");
+        int number = 1;
+        var used = new HashSet<string>();
 
-        // Хэш без checksum
-        var temp = new SaveFile
+        for (int i = 0; i < MAX_SLOTS; i++)
+        {
+            string metaPath = Path.Combine(BasePath, $"Save_{i}", "meta.json");
+            if (File.Exists(metaPath))
+            {
+                try
+                {
+                    var meta = JsonUtility.FromJson<SaveSlotMeta>(File.ReadAllText(metaPath));
+                    if (!string.IsNullOrEmpty(meta.slotName))
+                        used.Add(meta.slotName);
+                }
+                catch { }
+            }
+        }
+
+        while (used.Contains("Сохранение " + number)) number++;
+        return "Сохранение " + number;
+    }
+
+    private IEnumerator CaptureCleanPreviewAndSave(int slot, SaveFile save, SaveSlotMeta meta,
+        string dataPath, string metaPath, string previewPath)
+    {
+        yield return new WaitForEndOfFrame();
+
+        Canvas[] canvases = FindObjectsOfType<Canvas>(true);
+        bool[] states = new bool[canvases.Length];
+
+        for (int i = 0; i < canvases.Length; i++)
+        {
+            states[i] = canvases[i].gameObject.activeSelf;
+            if (canvases[i].name.Contains("Load") || canvases[i].name.Contains("Save") ||
+                canvases[i].renderMode != RenderMode.WorldSpace)
+            {
+                canvases[i].gameObject.SetActive(false);
+            }
+        }
+
+        yield return new WaitForEndOfFrame();
+
+        Texture2D screenshot = ScreenCapture.CaptureScreenshotAsTexture();
+        Texture2D preview = ScaleTexture(screenshot, 256, 144);
+        Destroy(screenshot);
+
+        for (int i = 0; i < canvases.Length; i++)
+            canvases[i].gameObject.SetActive(states[i]);
+
+        File.WriteAllBytes(previewPath, preview.EncodeToPNG());
+        Destroy(preview);
+
+        SaveFileAndMeta(save, meta, dataPath, metaPath);
+        SaveFeedbackUI.ShowSave();
+    }
+
+    private Texture2D ScaleTexture(Texture2D source, int width, int height)
+    {
+        RenderTexture rt = RenderTexture.GetTemporary(width, height, 0, RenderTextureFormat.ARGB32);
+        RenderTexture.active = rt;
+        Graphics.Blit(source, rt);
+        Texture2D result = new Texture2D(width, height, TextureFormat.RGB24, false);
+        result.ReadPixels(new Rect(0, 0, width, height), 0, 0);
+        result.Apply();
+        RenderTexture.active = null;
+        RenderTexture.ReleaseTemporary(rt);
+        return result;
+    }
+
+    private int FindOldestSlot()
+    {
+        DateTime oldest = DateTime.MaxValue;
+        int index = 0;
+
+        for (int i = 0; i < MAX_SLOTS; i++)
+        {
+            string metaPath = Path.Combine(BasePath, $"Save_{i}", "meta.json");
+            if (!File.Exists(metaPath)) return i;
+
+            try
+            {
+                var meta = JsonUtility.FromJson<SaveSlotMeta>(File.ReadAllText(metaPath));
+                if (DateTime.TryParse(meta.saveTime, out DateTime dt) && dt < oldest)
+                {
+                    oldest = dt;
+                    index = i;
+                }
+            }
+            catch { return i; }
+        }
+        return index;
+    }
+
+    private void SaveFileAndMeta(SaveFile save, SaveSlotMeta meta, string dataPath, string metaPath)
+    {
+        var clean = new SaveFile
         {
             version = save.version,
             gameState = save.gameState,
@@ -63,35 +171,55 @@ public class SaveManager : MonoBehaviour
             minerals = save.minerals,
             deposits = save.deposits
         };
-        save.checksum = ComputeHash(JsonUtility.ToJson(temp, true));
 
-        try
-        {
-            File.WriteAllText(dataPath + ".tmp", JsonUtility.ToJson(save, true));
-            File.WriteAllText(metaPath, JsonUtility.ToJson(meta, true));
+        save.checksum = ComputeHash(JsonUtility.ToJson(clean, true));
 
-            if (File.Exists(dataPath))
-                File.Replace(dataPath + ".tmp", dataPath, dataPath + ".bak");
-            else
-                File.Move(dataPath + ".tmp", dataPath);
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[Save] Ошибка записи слота {slot}: {e.Message}");
-        }
+        File.WriteAllText(dataPath + ".tmp", JsonUtility.ToJson(save, true));
+        File.WriteAllText(metaPath, JsonUtility.ToJson(meta, true));
+
+        if (File.Exists(dataPath))
+            File.Replace(dataPath + ".tmp", dataPath, dataPath + ".bak");
+        else
+            File.Move(dataPath + ".tmp", dataPath);
     }
 
-    // === ЗАГРУЗКА ИЗ СЛОТА ===
     public void LoadFromSlot(int slotIndex)
     {
-        string path = Path.Combine(BasePath, $"slot_{slotIndex}.json");
+        string path = Path.Combine(BasePath, $"Save_{slotIndex}", "data.json");
         if (!File.Exists(path))
         {
-            Debug.LogWarning($"[Save] Слот {slotIndex} не найден");
+            Debug.LogWarning($"Слот {slotIndex} не найден");
             return;
         }
 
-        StartCoroutine(LoadCoroutine(path));
+        pendingLoadSlot = slotIndex;
+        SceneManager.LoadScene("GameScene");
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        if (scene.name.Contains("Menu")) return;
+
+        if (pendingLoadSlot != -1)
+        {
+            string path = Path.Combine(BasePath, $"Save_{pendingLoadSlot}", "data.json");
+            if (File.Exists(path))
+                StartCoroutine(LoadCoroutine(path));
+            pendingLoadSlot = -1;
+            return;
+        }
+
+        for (int i = 0; i < MAX_SLOTS; i++)
+        {
+            string path = Path.Combine(BasePath, $"Save_{i}", "data.json");
+            if (File.Exists(path))
+            {
+                StartCoroutine(LoadCoroutine(path));
+                return;
+            }
+        }
+
+        CameraController.Instance?.SetMode(CameraController.ControlMode.FPS);
     }
 
     private IEnumerator LoadCoroutine(string path)
@@ -100,13 +228,14 @@ public class SaveManager : MonoBehaviour
 
         string json = File.ReadAllText(path);
         SaveFile save = JsonUtility.FromJson<SaveFile>(json);
-        if (save == null)
+
+        if (save == null || save.version != SaveFile.CURRENT_VERSION)
         {
-            Debug.LogError("[Save] Не удалось распарсить сохранение");
+            Debug.LogError("Неверная версия или повреждённый файл");
             yield break;
         }
 
-        var temp = new SaveFile
+        var clean = new SaveFile
         {
             version = save.version,
             gameState = save.gameState,
@@ -117,17 +246,17 @@ public class SaveManager : MonoBehaviour
             deposits = save.deposits
         };
 
-        if (save.checksum != ComputeHash(JsonUtility.ToJson(temp, true)))
+        if (save.checksum != ComputeHash(JsonUtility.ToJson(clean, true)))
         {
-            Debug.LogError("[Save] Файл повреждён (checksum не совпал)");
+            Debug.LogError("Checksum не совпал");
             yield break;
         }
 
-        // === ВОССТАНОВЛЕНИЕ ДАННЫХ ===
         var mineralDict = save.minerals.ToDictionary(m => m.uniqueID, m => m);
         var depositDict = save.deposits.ToDictionary(d => d.uniqueID, d => d);
 
         FindObjectOfType<GameStateSaver>()?.LoadFromBlock(save.gameState);
+
         var reportViewer = FindObjectOfType<ResearchReportViewer>();
         if (reportViewer != null && !string.IsNullOrEmpty(save.globalReports))
             reportViewer.DeserializeReports(save.globalReports);
@@ -144,8 +273,10 @@ public class SaveManager : MonoBehaviour
             if (data != null)
             {
                 s.LoadCommonData(data);
-                if (s is IHasMineralData m && mineralDict.TryGetValue(data.uniqueID, out var min)) m.LoadMineralData(min);
-                if (s is IHasDepositData d && depositDict.TryGetValue(data.uniqueID, out var dep)) d.LoadDepositData(dep);
+                if (s is IHasMineralData m && mineralDict.TryGetValue(data.uniqueID, out var min))
+                    m.LoadMineralData(min);
+                if (s is IHasDepositData d && depositDict.TryGetValue(data.uniqueID, out var dep))
+                    d.LoadDepositData(dep);
                 remaining.Remove(data);
             }
         }
@@ -154,92 +285,95 @@ public class SaveManager : MonoBehaviour
         {
             var prefab = prefabRegistry?.GetPrefab(data.prefabIdentifier);
             if (!prefab) continue;
+
             var obj = Instantiate(prefab, data.position, data.rotation);
             if (obj.TryGetComponent<ISaveableV2>(out var s))
             {
                 s.LoadCommonData(data);
-                if (s is IHasMineralData m && mineralDict.TryGetValue(data.uniqueID, out var min)) m.LoadMineralData(min);
-                if (s is IHasDepositData d && depositDict.TryGetValue(data.uniqueID, out var dep)) d.LoadDepositData(dep);
+                if (s is IHasMineralData m && mineralDict.TryGetValue(data.uniqueID, out var min))
+                    m.LoadMineralData(min);
+                if (s is IHasDepositData d && depositDict.TryGetValue(data.uniqueID, out var dep))
+                    d.LoadDepositData(dep);
             }
         }
 
         yield return new WaitForFixedUpdate();
         Physics.SyncTransforms();
-
         CameraController.Instance?.ForceCameraSync();
         CameraController.Instance?.SetMode(CameraController.ControlMode.FPS);
+
         SaveFeedbackUI.ShowLoad();
     }
 
-    // === ПОЛУЧИТЬ ВСЕ СЛОТЫ ===
     public List<SaveSlotInfo> GetAllSaveSlots()
     {
-        var list = new List<SaveSlotInfo>();
+        var slots = new List<(int index, SaveSlotInfo info)>();
 
         for (int i = 0; i < MAX_SLOTS; i++)
         {
-            string dataPath = Path.Combine(BasePath, $"slot_{i}.json");
-            string metaPath = Path.Combine(BasePath, $"slot_{i}_meta.json");
+            string folder = Path.Combine(BasePath, $"Save_{i}");
+            string dataPath = Path.Combine(folder, "data.json");
+            string metaPath = Path.Combine(folder, "meta.json");
+            string previewPath = Path.Combine(folder, "preview.png");
+
+            SaveSlotInfo info;
 
             if (File.Exists(dataPath))
             {
                 SaveSlotMeta meta = File.Exists(metaPath)
                     ? JsonUtility.FromJson<SaveSlotMeta>(File.ReadAllText(metaPath))
-                    : new SaveSlotMeta { slotName = "Сохранение без имени" };
+                    : new SaveSlotMeta { slotName = "???", saveTime = "???" };
 
-                list.Add(new SaveSlotInfo
+                Texture2D preview = null;
+                if (File.Exists(previewPath))
+                {
+                    byte[] bytes = File.ReadAllBytes(previewPath);
+                    preview = new Texture2D(2, 2);
+                    preview.LoadImage(bytes);
+                }
+
+                info = new SaveSlotInfo
                 {
                     slotIndex = i,
                     slotName = meta.slotName,
                     saveTime = meta.saveTime,
-                    playTime = $"День {meta.day}, {FormatTime(meta.timeInMinutes)}",
+                    previewTexture = preview,
                     hasData = true
-                });
+                };
             }
             else
             {
-                list.Add(new SaveSlotInfo
+                info = new SaveSlotInfo
                 {
                     slotIndex = i,
                     slotName = "Пустой слот",
                     saveTime = "",
-                    playTime = "",
+                    previewTexture = null,
                     hasData = false
-                });
+                };
             }
+
+            slots.Add((i, info));
         }
 
-        return list;
+        var result = slots
+            .OrderByDescending(x =>
+            {
+                if (!x.info.hasData) return DateTime.MinValue;
+                return DateTime.TryParse(x.info.saveTime, out DateTime dt) ? dt : DateTime.MinValue;
+            })
+            .ThenBy(x => x.index)
+            .Select(x => x.info)
+            .ToList();
+
+        return result;
     }
 
     public void DeleteSlot(int slotIndex)
     {
-        string data = Path.Combine(BasePath, $"slot_{slotIndex}.json");
-        string meta = Path.Combine(BasePath, $"slot_{slotIndex}_meta.json");
-        string bak = data + ".bak";
-
-        if (File.Exists(data)) File.Delete(data);
-        if (File.Exists(meta)) File.Delete(meta);
-        if (File.Exists(bak)) File.Delete(bak);
-    }
-
-    // === ВАЛИДАЦИЯ ФАЙЛА (для MainMenu) ===
-    public bool ValidateSaveFile(string path, out string error)
-    {
-        error = "";
-        if (!File.Exists(path)) { error = "Файл не найден"; return false; }
-        try
-        {
-            SaveFile save = JsonUtility.FromJson<SaveFile>(File.ReadAllText(path));
-            if (save == null) { error = "Файл пустой"; return false; }
-            if (save.version != SaveFile.CURRENT_VERSION) { error = "Устаревшая версия"; return false; }
-
-            var temp = JsonUtility.FromJson<SaveFile>(JsonUtility.ToJson(save));
-            temp.checksum = null;
-            if (save.checksum != ComputeHash(JsonUtility.ToJson(temp))) { error = "Файл повреждён"; return false; }
-            return true;
-        }
-        catch (Exception e) { error = e.Message; return false; }
+        string folder = Path.Combine(BasePath, $"Save_{slotIndex}");
+        if (Directory.Exists(folder))
+            Directory.Delete(folder, true);
     }
 
     private void CollectSaveData(ref SaveFile save)
@@ -265,27 +399,11 @@ public class SaveManager : MonoBehaviour
         }
     }
 
-    private int GetCurrentDay() => 1;
-    private float GetCurrentTimeInMinutes() => 1;
-    private string FormatTime(float minutes) => $"{(int)minutes / 60:D2}:{(int)minutes % 60:D2}";
-
-    private void OnSceneLoaded(Scene s, LoadSceneMode m)
-    {
-        if (s.name.Contains("Menu")) return;
-
-        if (File.Exists(Path.Combine(BasePath, "slot_0.json")))
-            LoadFromSlot(0);
-        else
-        {
-            CameraController.Instance?.SetMode(CameraController.ControlMode.FPS);
-            CameraController.Instance?.ForceCameraSync();
-        }
-    }
-
     private string ComputeHash(string input)
     {
         using (var md5 = MD5.Create())
-            return BitConverter.ToString(md5.ComputeHash(Encoding.UTF8.GetBytes(input))).Replace("-", "").ToLowerInvariant();
+            return BitConverter.ToString(md5.ComputeHash(Encoding.UTF8.GetBytes(input)))
+                .Replace("-", "").ToLowerInvariant();
     }
 }
 
@@ -295,20 +413,13 @@ public class SaveSlotInfo
     public int slotIndex;
     public string slotName;
     public string saveTime;
-    public string playTime;
+    public Texture2D previewTexture;
     public bool hasData;
 }
 
 [System.Serializable]
 public class SaveSlotMeta
 {
-    public string slotName = "Новое сохранение";
-    public string saveTime;
-    public int day = 1;
-    public float timeInMinutes = 0f;
-
-    public SaveSlotMeta()
-    {
-        saveTime = DateTime.Now.ToString("dd MMMM yyyy, HH:mm");
-    }
+    public string slotName = "Сохранение";
+    public string saveTime = "";
 }

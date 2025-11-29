@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
-using UnityEngine.UI;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 public class PauseManager : MonoBehaviour
 {
@@ -9,52 +9,50 @@ public class PauseManager : MonoBehaviour
 
     [Header("UI")]
     [SerializeField] private GameObject pauseMenuUI;
+    [SerializeField] private GameObject manualSavePopup;
 
     [Header("Кнопки")]
     [SerializeField] private Button resumeButton;
     [SerializeField] private Button saveButton;
-    [SerializeField] private Button settingsButton;
     [SerializeField] private Button mainMenuButton;
     [SerializeField] private Button quitButton;
 
     [Header("Сцены")]
     [SerializeField] private string mainMenuScene = "MainMenu";
 
+    private bool isSavePopupOpen = false;
+
     private void Awake()
     {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
         Instance = this;
         DontDestroyOnLoad(gameObject);
-
         pauseMenuUI.SetActive(false);
+        if (manualSavePopup) manualSavePopup.SetActive(false);
     }
 
     private void Start()
     {
-        // ← ВОТ ЭТО ВСЁ ВЕРНУЛ! Подписываем кнопки один раз при старте
         if (resumeButton) resumeButton.onClick.AddListener(Resume);
-        if (saveButton) saveButton.onClick.AddListener(SaveAndResume);
-        if (settingsButton) settingsButton.onClick.AddListener(() => Debug.Log("Настройки — заглушка"));
+        if (saveButton) saveButton.onClick.AddListener(OpenSavePopup);
         if (mainMenuButton) mainMenuButton.onClick.AddListener(ToMainMenu);
         if (quitButton) quitButton.onClick.AddListener(Quit);
-    }
-
-    private void OnDestroy()
-    {
-        // Отписываемся на всякий случай
-        if (resumeButton) resumeButton.onClick.RemoveListener(Resume);
-        if (saveButton) saveButton.onClick.RemoveListener(SaveAndResume);
-        if (settingsButton) settingsButton.onClick.RemoveListener(() => Debug.Log("Настройки — заглушка"));
-        if (mainMenuButton) mainMenuButton.onClick.RemoveListener(ToMainMenu);
-        if (quitButton) quitButton.onClick.RemoveListener(Quit);
     }
 
     private void Update()
     {
         if (InputManager.Instance?.EscapePressed == true)
         {
-            if (IsPaused) Resume();
-            else Pause();
+            if (isSavePopupOpen)
+                CloseSavePopup();
+            else if (IsPaused)
+                Resume();
+            else
+                Pause();
         }
     }
 
@@ -68,15 +66,29 @@ public class PauseManager : MonoBehaviour
     public void Resume()
     {
         pauseMenuUI.SetActive(false);
+        if (manualSavePopup) manualSavePopup.SetActive(false);
+        isSavePopupOpen = false;
+
         Time.timeScale = 1f;
-        CameraController.Instance.SetMode(CameraController.ControlMode.FPS); // ← после закрытия!
+        CameraController.Instance.SetMode(CameraController.ControlMode.FPS);
     }
 
-    public void SaveAndResume()
+    private void OpenSavePopup()
     {
-        SaveManager.Instance.SaveToSlot(0, "Ручное сохранение");
-        SaveFeedbackUI.ShowSave();
-        Resume(); // ← игра продолжается сразу!
+        if (manualSavePopup)
+        {
+            manualSavePopup.SetActive(true);
+            isSavePopupOpen = true;
+        }
+    }
+
+    public void CloseSavePopup()
+    {
+        if (manualSavePopup)
+        {
+            manualSavePopup.SetActive(false);
+            isSavePopupOpen = false;
+        }
     }
 
     public void ToMainMenu()
