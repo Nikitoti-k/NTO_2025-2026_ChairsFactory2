@@ -2562,7 +2562,7 @@ MonoBehaviour:
   eyeHeight: 1
   mouseSensitivityX: 0.4
   mouseSensitivityY: 0.4
-  toolSensitivityMultiplier: 0.1
+  toolSensitivityMultiplier: 0.01
   pitchMin: -80
   pitchMax: 80
   rotationSmoothTime: 0.12
@@ -6519,7 +6519,7 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   prioritizeClosestPoint: 1
-  makeKinematicInMultiSlot: 0
+  makeKinematicInMultiSlot: 1
   makeTriggerInMultiSlot: 0
   liftHeight: 0.6
 --- !u!136 &759975755
@@ -13670,13 +13670,20 @@ MonoBehaviour:
   grabbableMask:
     serializedVersion: 2
     m_Bits: 128
-  pullSpeed: 5
-  releaseOnCollision: 1
   collisionReleaseMask:
     serializedVersion: 2
     m_Bits: 4294967295
-  mineralsHaveGravity: 1
+  mineralHoldDistance: 1.8
+  mineralPullForce: 1
+  mineralDrag: 10
+  mineralAngularDrag: 15
+  mineralMaxVelocity: 12
+  mineralCollisionReleaseForce: 8
+  mineralBreakDistance: 2
+  mineralBreakCheckInterval: 0.2
+  pullSpeed: 1
   toolsHaveGravity: 0
+  mineralsHaveGravity: 1
 --- !u!114 &1832999339
 MonoBehaviour:
   m_ObjectHideFlags: 0
