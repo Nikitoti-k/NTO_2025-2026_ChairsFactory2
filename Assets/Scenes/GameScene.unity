@@ -1753,13 +1753,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8427d4e4fa2b9864cb32d25862c1f7ca, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  forwardSpeed: 16
-  reverseSpeed: 10
-  acceleration: 25
-  brakeDeceleration: 50
-  turnSpeed: 60
-  lowSpeedTurnBonus: 2.2
-  turnSmoothTime: 0.12
+  maxForwardSpeed: 12
+  maxReverseSpeed: 7
+  acceleration: 35
+  reverseAcceleration: 25
+  brakeForce: 1
+  maxSteerAngle: 22
+  steerSpeed: 1.8
+  lowSpeedSteerBonus: 1.8
+  downforce: 10
+  sideFrictionMultiplier: 0.92
+  forwardFrictionOnTurn: 0.85
   seatTransform: {fileID: 1955568569}
   fallbackMountOffset: {x: 0, y: 1, z: 0}
 --- !u!54 &238681552
@@ -1876,7 +1880,6 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 1955568569}
   - {fileID: 626916097}
   - {fileID: 344416183}
   m_Father: {fileID: 0}
@@ -4998,6 +5001,7 @@ Transform:
   m_Children:
   - {fileID: 546351834}
   - {fileID: 1407787445}
+  - {fileID: 1955568569}
   m_Father: {fileID: 238681556}
   m_LocalEulerAnglesHint: {x: 0, y: 90, z: 0}
 --- !u!1 &638122640
@@ -14215,12 +14219,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1955568568}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.54, z: 0}
+  m_LocalRotation: {x: -0, y: -0.7071068, z: -0, w: 0.7071068}
+  m_LocalPosition: {x: 0, y: 0.53999996, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 238681556}
+  m_Father: {fileID: 626916097}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1978001579
 PrefabInstance:
