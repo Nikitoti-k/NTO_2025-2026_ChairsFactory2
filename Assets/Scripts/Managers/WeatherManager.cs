@@ -4,15 +4,10 @@ using System.Collections;
 
 public class WeatherManager : MonoBehaviour
 {
-    public enum TimeOfDay
-    {
-        Night,
-        Morning,
-        Day,
-        Evening
-    }
+    public enum TimeOfDay { Night, Morning, Day, Evening }
 
     private const float REAL_SECONDS_PER_GAME_DAY = 10f;
+    public static WeatherManager Instance { get; private set; }
 
     [SerializeField] private Light mainDirectionalLight;
     [SerializeField] private float nightIntensity = 0.1f;
@@ -21,106 +16,91 @@ public class WeatherManager : MonoBehaviour
     [SerializeField] private float eveningIntensity = 0.5f;
     [SerializeField] private float transitionDuration = 3f;
 
-    public UnityEvent<int> OnDayChanged;
-    public UnityEvent<TimeOfDay> OnPeriodChanged;
-    public UnityEvent<float, float> OnTimeChanged;
+    public UnityEvent<int> OnDayChanged = new();
+    public UnityEvent<TimeOfDay> OnPeriodChanged = new();
+    public UnityEvent<float, float> OnTimeChanged = new();
 
     public int CurrentDay { get; private set; } = 1;
-    public float CurrentTimeInMinutes { get; private set; } = 0f;
-    public TimeOfDay CurrentPeriod => GetCurrentPeriodEnum();
+    public float CurrentTimeInMinutes { get; private set; } = 480f;
+    public TimeOfDay CurrentPeriod => GetCurrentPeriod();
 
-    private bool morningStarted = false;
-    private bool dayStarted = false;
-    private bool eveningStarted = false;
-    private bool nightStarted = false;
-
+    private bool morningStarted, dayStarted, eveningStarted, nightStarted;
     private Coroutine lightTransition;
     private TimeOfDay queuedPeriod = (TimeOfDay)(-1);
- 
-    public void AdvanceTime(float realSecondsPassed)
+
+    private void Awake()
     {
-        float minutesPassed = realSecondsPassed * (1440f / REAL_SECONDS_PER_GAME_DAY);
-        float previousMinutes = CurrentTimeInMinutes;
-        CurrentTimeInMinutes += minutesPassed;
+        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+        SetTimeDirectly(CurrentDay, CurrentTimeInMinutes);
+    }
+
+    public void AdvanceTime(float realSeconds)
+    {
+        float minutes = realSeconds * (1440f / REAL_SECONDS_PER_GAME_DAY);
+        AdvanceTimeByMinutes(minutes);
+    }
+
+    public void AdvanceTimeByMinutes(float minutes)
+    {
+        float previous = CurrentTimeInMinutes;
+        CurrentTimeInMinutes += minutes;
 
         while (CurrentTimeInMinutes >= 1440f)
         {
             CurrentTimeInMinutes -= 1440f;
             CurrentDay++;
             ResetPeriodFlags();
-            OnDayChanged?.Invoke(CurrentDay);
+            OnDayChanged.Invoke(CurrentDay);
         }
 
-        OnTimeChanged?.Invoke(CurrentDay, CurrentTimeInMinutes);
-        CheckAndTriggerPeriods(previousMinutes);
+        OnTimeChanged.Invoke(CurrentDay, CurrentTimeInMinutes);
+        CheckPeriodTransition(previous);
     }
 
-    public void AdvanceTimeByMinutes(float gameMinutes)
-    {
-        float previousMinutes = CurrentTimeInMinutes;
-        CurrentTimeInMinutes += gameMinutes;
-
-        while (CurrentTimeInMinutes >= 1440f)
-        {
-            CurrentTimeInMinutes -= 1440f;
-            CurrentDay++;
-            ResetPeriodFlags();
-            OnDayChanged?.Invoke(CurrentDay);
-        }
-
-        OnTimeChanged?.Invoke(CurrentDay, CurrentTimeInMinutes);
-        CheckAndTriggerPeriods(previousMinutes);
-    }
-
-    public void SetTimeDirectly(int day, float minutesInDay)
+    public void SetTimeDirectly(int day, float minutes)
     {
         CurrentDay = day;
-        CurrentTimeInMinutes = Mathf.Clamp(minutesInDay, 0f, 1439.99f);
+        CurrentTimeInMinutes = Mathf.Clamp(minutes, 0f, 1439.99f);
         ResetPeriodFlags();
-        CheckAndTriggerPeriods(0f);
-        OnDayChanged?.Invoke(CurrentDay);
-        OnTimeChanged?.Invoke(CurrentDay, CurrentTimeInMinutes);
+        CheckPeriodTransition(-1f);
+        OnDayChanged.Invoke(day);
+        OnTimeChanged.Invoke(day, CurrentTimeInMinutes);
     }
 
-    public void StartMorning() => TryTriggerPeriod(TimeOfDay.Morning, 480f, 720f, morningIntensity);
-    public void StartDay() => TryTriggerPeriod(TimeOfDay.Day, 720f, 1080f, dayIntensity);
-    public void StartEvening() => TryTriggerPeriod(TimeOfDay.Evening, 1080f, 1440f, eveningIntensity);
-    public void StartNight() => TryTriggerPeriod(TimeOfDay.Night, 0f, 480f, nightIntensity);
+    public void StartMorning() => QueueOrTriggerPeriod(TimeOfDay.Morning, 480f, morningIntensity);
+    public void StartDay() => QueueOrTriggerPeriod(TimeOfDay.Day, 720f, dayIntensity);
+    public void StartEvening() => QueueOrTriggerPeriod(TimeOfDay.Evening, 1080f, eveningIntensity);
+    public void StartNight() => QueueOrTriggerPeriod(TimeOfDay.Night, 0f, nightIntensity);
 
-    private void TryTriggerPeriod(TimeOfDay period, float startMin, float endMin, float intensity)
+    private void QueueOrTriggerPeriod(TimeOfDay period, float startMinute, float intensity)
     {
-        bool inRange = CurrentTimeInMinutes >= startMin && CurrentTimeInMinutes < endMin;
-        if (inRange && !PeriodStarted(period))
-        {
+        if (CurrentTimeInMinutes >= startMinute && !PeriodStarted(period))
             TriggerPeriod(period, intensity);
-        }
-        else if (CurrentTimeInMinutes >= startMin)
-        {
+        else
             queuedPeriod = period;
-        }
     }
 
-    private void CheckAndTriggerPeriods(float previousMinutes)
+    private void CheckPeriodTransition(float previousMinutes)
     {
         TimeOfDay current = CurrentPeriod;
 
         if (queuedPeriod != (TimeOfDay)(-1) && queuedPeriod == current && !PeriodStarted(current))
         {
-            TriggerPeriod(queuedPeriod, GetIntensityForPeriod(queuedPeriod));
+            TriggerPeriod(queuedPeriod, GetIntensity(current));
             queuedPeriod = (TimeOfDay)(-1);
         }
 
-        if (!PeriodStarted(current) && CrossedIntoPeriod(previousMinutes, current))
-        {
-            TriggerPeriod(current, GetIntensityForPeriod(current));
-        }
+        if (!PeriodStarted(current) && HasCrossedIntoPeriod(previousMinutes, current))
+            TriggerPeriod(current, GetIntensity(current));
     }
 
-    private bool CrossedIntoPeriod(float previous, TimeOfDay period)
+    private bool HasCrossedIntoPeriod(float previous, TimeOfDay period)
     {
         return period switch
         {
-            TimeOfDay.Night => previous >= 1380f || previous < 480f,
+            TimeOfDay.Night => previous >= 1380f || (previous < 480f && CurrentTimeInMinutes >= 0f),
             TimeOfDay.Morning => previous < 480f && CurrentTimeInMinutes >= 480f,
             TimeOfDay.Day => previous < 720f && CurrentTimeInMinutes >= 720f,
             TimeOfDay.Evening => previous < 1080f && CurrentTimeInMinutes >= 1080f,
@@ -131,16 +111,26 @@ public class WeatherManager : MonoBehaviour
     private void TriggerPeriod(TimeOfDay period, float intensity)
     {
         ApplyLighting(intensity);
-        OnPeriodChanged?.Invoke(period);
-
-        switch (period)
-        {
-            case TimeOfDay.Morning: morningStarted = true; break;
-            case TimeOfDay.Day: dayStarted = true; break;
-            case TimeOfDay.Evening: eveningStarted = true; break;
-            case TimeOfDay.Night: nightStarted = true; break;
-        }
+        OnPeriodChanged.Invoke(period);
+        SetPeriodStarted(period, true);
     }
+
+    private TimeOfDay GetCurrentPeriod()
+    {
+        float m = CurrentTimeInMinutes;
+        return m < 480f ? TimeOfDay.Night :
+               m < 720f ? TimeOfDay.Morning :
+               m < 1080f ? TimeOfDay.Day : TimeOfDay.Evening;
+    }
+
+    private float GetIntensity(TimeOfDay p) => p switch
+    {
+        TimeOfDay.Night => nightIntensity,
+        TimeOfDay.Morning => morningIntensity,
+        TimeOfDay.Day => dayIntensity,
+        TimeOfDay.Evening => eveningIntensity,
+        _ => dayIntensity
+    };
 
     private bool PeriodStarted(TimeOfDay p) => p switch
     {
@@ -151,32 +141,25 @@ public class WeatherManager : MonoBehaviour
         _ => true
     };
 
-    private float GetIntensityForPeriod(TimeOfDay p) => p switch
+    private void SetPeriodStarted(TimeOfDay p, bool value)
     {
-        TimeOfDay.Night => nightIntensity,
-        TimeOfDay.Morning => morningIntensity,
-        TimeOfDay.Day => dayIntensity,
-        TimeOfDay.Evening => eveningIntensity,
-        _ => dayIntensity
-    };
-
-    public TimeOfDay GetCurrentPeriodEnum()
-    {
-        float m = CurrentTimeInMinutes;
-        if (m < 480f) return TimeOfDay.Night;
-        if (m < 720f) return TimeOfDay.Morning;
-        if (m < 1080f) return TimeOfDay.Day;
-        return TimeOfDay.Evening;
+        switch (p)
+        {
+            case TimeOfDay.Morning: morningStarted = value; break;
+            case TimeOfDay.Day: dayStarted = value; break;
+            case TimeOfDay.Evening: eveningStarted = value; break;
+            case TimeOfDay.Night: nightStarted = value; break;
+        }
     }
 
     private void ApplyLighting(float target)
     {
         if (!mainDirectionalLight) return;
         if (lightTransition != null) StopCoroutine(lightTransition);
-        lightTransition = StartCoroutine(TransitionIntensity(target));
+        lightTransition = StartCoroutine(TransitionLight(target));
     }
 
-    private IEnumerator TransitionIntensity(float target)
+    private IEnumerator TransitionLight(float target)
     {
         float start = mainDirectionalLight.intensity;
         float t = 0f;

@@ -98,7 +98,7 @@ public class PlayerMovement : MonoBehaviour, IControllable
     {
         if (!pressed || _isMounting || _isSleeping) return;
 
-        // 1. Если держим объект — пытаемся вставить в SnapZone
+        
         if (objectGrabber?.IsHoldingObject() == true)
         {
             TrySnapObject();
@@ -114,14 +114,14 @@ public class PlayerMovement : MonoBehaviour, IControllable
             return;
         }
 
-        // 3. Пытаемся сесть в транспорт
+       
         TryMountTransport();
 
-        // 4. НОВАЯ ФУНКЦИЯ: ОТКРЫВАЕМ ТЕРМИНАЛ С ОТЧЁТАМИ!
+      
         if (TryOpenResearchReport())
             return;
 
-        // Если ничего не сработало — просто логируем
+    
         Debug.Log("[Player] Нечего интерактировать поблизости.");
     }
 
@@ -134,7 +134,7 @@ public class PlayerMovement : MonoBehaviour, IControllable
         var nearest = viewers.FirstOrDefault();
         if (nearest != null)
         {
-            nearest.TogglePanel();
+            nearest.OpenPanel();
             return true;
         }
         return false;

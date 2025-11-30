@@ -362,8 +362,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   hitsRequired: 3
-  mineralPrefab: {fileID: 5941508467737296759, guid: 26ebad526ecae8b499db1093d7ea47b2, type: 3}
+  mineralPrefab: {fileID: 5941508467737296759, guid: 01f3b3c9428253945b041c9878b29bc7, type: 3}
   spawnPoint: {fileID: 4834058187007695671}
+  uniqueID: 
+  prefabIdentifier: IceDeposit
 --- !u!135 &5907497370124100283
 SphereCollider:
   m_ObjectHideFlags: 0

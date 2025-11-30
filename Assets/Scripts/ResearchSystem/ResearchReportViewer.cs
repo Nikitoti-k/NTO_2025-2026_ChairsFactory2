@@ -6,173 +6,244 @@ using System.Linq;
 
 public class ResearchReportViewer : MonoBehaviour
 {
-    [Header("UI")]
+    [Header("UI References")]
     [SerializeField] private GameObject reportPanel;
     [SerializeField] private Transform contentParent;
     [SerializeField] private GameObject reportEntryPrefab;
     [SerializeField] private TextMeshProUGUI titleText;
     [SerializeField] private TextMeshProUGUI noReportsText;
-
-    [Header("Кнопка закрытия")]
     [SerializeField] private Button closeButton;
+    [SerializeField] private Button prevDayButton;
+    [SerializeField] private Button nextDayButton;
+    [SerializeField] private TextMeshProUGUI dayCounterText;
 
-    [Header("Взаимодействие")]
-    [SerializeField] private float interactionDistance = 3f;
-
-    private List<MineralResearchResult> yesterdayResults = new();
-    private List<MineralResearchResult> currentDayResults = new();
-
-    private struct MineralResearchResult
+    [System.Serializable]
+    private class MineralResearchResult
     {
-        public string mineralName;
+        public string displayName;
         public bool wasCorrect;
+        public string mineralClassName;
     }
-    private static int globalSampleCounter = 1;           
-    private static int currentDaySampleCounter = 1;      
-    private static int lastSavedDay = -1;                   
 
-    private void SaveYesterdayResults()
+    [System.Serializable]
+    private class DayReport
     {
-        yesterdayResults = new List<MineralResearchResult>(currentDayResults);
-        currentDayResults.Clear();
-
-        
-        currentDaySampleCounter = 1;
-
-        Debug.Log($"<b>[ResearchReportViewer]</b> <color=lime>Сохранено {yesterdayResults.Count} результатов за вчера!</color>");
-        UpdatePanelVisuals();
+        public int dayNumber;
+        public List<MineralResearchResult> results = new();
     }
 
-    public static void LogResearchResult(string mineralName, bool correct)
-    {
-        var viewer = FindObjectsOfType<ResearchReportViewer>().FirstOrDefault();
-        if (viewer != null)
-        {
-           
-            int today = GameDayManager.Instance ? GameDayManager.Instance.CurrentDay : 1;
+    private readonly List<DayReport> allReports = new();
+    private int currentViewedDayIndex = -1;
 
-            
-            if (today != lastSavedDay + 1)
-                currentDaySampleCounter = 1;
-
-            lastSavedDay = today;
-
-            string displayName = $"Образец №{currentDaySampleCounter}";
-
-            viewer.currentDayResults.Add(new MineralResearchResult
-            {
-                mineralName = displayName,
-                wasCorrect = correct
-            });
-
-            currentDaySampleCounter++; 
-        }
-    }
     private void Awake()
     {
-        if (reportPanel != null) reportPanel.SetActive(false);
-        if (noReportsText != null) noReportsText.gameObject.SetActive(true);
+        if (reportPanel) reportPanel.SetActive(false);
+        if (noReportsText) noReportsText.gameObject.SetActive(true);
 
-        
-        if (closeButton != null)
-            closeButton.onClick.AddListener(ClosePanel);
+        closeButton?.onClick.AddListener(ClosePanel);
+        prevDayButton?.onClick.AddListener(ShowPreviousDay);
+        nextDayButton?.onClick.AddListener(ShowNextDay);
     }
 
     private void OnEnable()
     {
-        if (GameDayManager.Instance)
-            GameDayManager.Instance.OnDayFullyCompleted.AddListener(SaveYesterdayResults);
+        if (GameDayManager.Instance != null)
+            GameDayManager.Instance.OnDayFullyCompleted.AddListener(OnDayCompleted);
     }
 
     private void OnDisable()
     {
-        if (GameDayManager.Instance)
-            GameDayManager.Instance.OnDayFullyCompleted.RemoveListener(SaveYesterdayResults);
+        if (GameDayManager.Instance != null)
+            GameDayManager.Instance.OnDayFullyCompleted.RemoveListener(OnDayCompleted);
 
-        if (closeButton != null)
-            closeButton.onClick.RemoveListener(ClosePanel);
+        closeButton?.onClick.RemoveListener(ClosePanel);
+        prevDayButton?.onClick.RemoveListener(ShowPreviousDay);
+        nextDayButton?.onClick.RemoveListener(ShowNextDay);
     }
 
-   
+    private void OnDayCompleted()
+    {
+        int today = GameDayManager.Instance.CurrentDay;
+        var currentDayReport = allReports.Find(r => r.dayNumber == today);
+        if (currentDayReport != null)
+        {
+            // Фиксируем результаты — больше не меняются
+            currentDayReport.results = new List<MineralResearchResult>(currentDayReport.results);
+        }
+    }
 
-   
+    // Статический метод для логирования результата исследования
+    public static void LogResearchResult(string mineralName, bool correct, string className = "")
+    {
+        var viewer = FindObjectOfType<ResearchReportViewer>();
+        if (viewer == null || GameDayManager.Instance == null) return;
+
+        int today = GameDayManager.Instance.CurrentDay;
+
+        var dayReport = viewer.allReports.Find(r => r.dayNumber == today);
+        if (dayReport == null)
+        {
+            dayReport = new DayReport { dayNumber = today };
+            viewer.allReports.Add(dayReport);
+        }
+
+        int sampleNum = dayReport.results.Count + 1;
+        dayReport.results.Add(new MineralResearchResult
+        {
+            displayName = $"Образец №{sampleNum}",
+            wasCorrect = correct,
+            mineralClassName = className
+        });
+    }
 
     public void OpenPanel()
     {
-        if (reportPanel == null) return;
+        if (!reportPanel) return;
 
         reportPanel.SetActive(true);
-        CameraController.Instance.SetMode(CameraController.ControlMode.UI); 
+        CameraController.Instance.SetMode(CameraController.ControlMode.UI);
+
+        // Показываем последний завершённый день
+        if (allReports.Count > 0)
+        {
+            currentViewedDayIndex = allReports.FindLastIndex(r => r.dayNumber < GameDayManager.Instance.CurrentDay);
+            if (currentViewedDayIndex == -1) currentViewedDayIndex = allReports.Count - 1;
+        }
+        else
+        {
+            currentViewedDayIndex = -1;
+        }
+
         UpdatePanelVisuals();
-        Debug.Log("<b>[ResearchReportViewer]</b> Панель открыта — UI режим включён");
     }
 
     public void ClosePanel()
     {
-        if (reportPanel == null) return;
-
         reportPanel.SetActive(false);
-        CameraController.Instance.SetMode(CameraController.ControlMode.FPS); 
-        Debug.Log("<b>[ResearchReportViewer]</b> Панель закрыта — FPS режим восстановлен");
+        CameraController.Instance.SetMode(CameraController.ControlMode.FPS);
     }
 
-    public void TogglePanel()
+    private void ShowPreviousDay()
     {
-        if (reportPanel.activeSelf)
-            ClosePanel();
-        else
-            OpenPanel();
+        if (currentViewedDayIndex <= 0) return;
+        currentViewedDayIndex--;
+        UpdatePanelVisuals();
+    }
+
+    private void ShowNextDay()
+    {
+        if (currentViewedDayIndex >= allReports.Count - 1) return;
+        currentViewedDayIndex++;
+        UpdatePanelVisuals();
     }
 
     private void UpdatePanelVisuals()
     {
-        if (contentParent != null)
-        {
-            foreach (Transform child in contentParent) Destroy(child.gameObject);
-        }
+        // Очистка
+        foreach (Transform child in contentParent)
+            Destroy(child.gameObject);
 
-        if (yesterdayResults.Count == 0)
+        if (currentViewedDayIndex < 0 || currentViewedDayIndex >= allReports.Count)
         {
-            if (noReportsText != null)
-            {
-                noReportsText.text = "Отчётов за вчера нет.\nЭто первый день экспедиции.";
-                noReportsText.gameObject.SetActive(true);
-            }
-            if (titleText != null)
-                titleText.text = "Результаты исследований";
+            noReportsText.gameObject.SetActive(true);
+            noReportsText.text = "Нет завершённых отчётов.\nИсследуй минералы и заверши день!";
+            titleText.text = "Результаты исследований";
+            dayCounterText.text = "";
+            prevDayButton.interactable = nextDayButton.interactable = false;
             return;
         }
 
-        if (noReportsText != null) noReportsText.gameObject.SetActive(false);
-        if (titleText != null)
-            titleText.text = $"Результаты за день {GameDayManager.Instance.CurrentDay}";
+        var report = allReports[currentViewedDayIndex];
+        noReportsText.gameObject.SetActive(false);
+        titleText.text = $"День {report.dayNumber}: Результаты";
+        dayCounterText.text = $"{currentViewedDayIndex + 1} / {allReports.Count}";
+        prevDayButton.interactable = currentViewedDayIndex > 0;
+        nextDayButton.interactable = currentViewedDayIndex < allReports.Count - 1;
 
-        foreach (var result in yesterdayResults)
+        foreach (var result in report.results)
         {
             var entry = Instantiate(reportEntryPrefab, contentParent);
-            var img = entry.GetComponent<Image>();
             var text = entry.GetComponentInChildren<TextMeshProUGUI>();
+            var img = entry.GetComponent<Image>();
 
-            if (text != null) text.text = result.mineralName;
-            if (img != null)
-            {
+            if (text)
+                text.text = $"{result.displayName}\n<size=70%>{result.mineralClassName}</size>";
+
+            if (img)
                 img.color = result.wasCorrect
-                    ? new Color(0.1f, 0.9f, 0.1f, 0.95f)
-                    : new Color(0.9f, 0.2f, 0.2f, 0.95f);
-            }
+                    ? new Color(0.1f, 0.8f, 0.1f, 0.95f)  // зелёный
+                    : new Color(0.8f, 0.2f, 0.2f, 0.95f); // красный
         }
     }
 
-   
+    // СЕРИАЛИЗАЦИЯ / ДЕСЕРИАЛИЗАЦИЯ — используется SaveManager'ом
+    public string SerializeReports()
+    {
+        if (allReports.Count == 0) return "";
+
+        var dayStrings = new List<string>();
+
+        foreach (var day in allReports)
+        {
+            var resultStrings = new List<string>();
+            foreach (var r in day.results)
+            {
+                // Просто и надёжно: используем символы, которые НИКОГДА не будут в именах
+                resultStrings.Add($"{r.displayName}|{r.mineralClassName}|{(r.wasCorrect ? 1 : 0)}");
+            }
+            dayStrings.Add($"{day.dayNumber}:{string.Join(";", resultStrings)}");
+        }
+
+        return string.Join("|", dayStrings);
+    }
+
+    public void DeserializeReports(string data)
+    {
+        allReports.Clear();
+        if (string.IsNullOrEmpty(data)) return;
+
+        var dayEntries = data.Split('|');
+        foreach (var entry in dayEntries)
+        {
+            if (string.IsNullOrEmpty(entry)) continue;
+
+            var colonParts = entry.Split(new[] { ':' }, 2);
+            if (colonParts.Length != 2 || !int.TryParse(colonParts[0], out int dayNum)) continue;
+
+            var dayReport = new DayReport { dayNumber = dayNum };
+            var resultStrings = colonParts[1].Split(';');
+
+            foreach (var r in resultStrings)
+            {
+                if (string.IsNullOrEmpty(r)) continue;
+
+                var parts = r.Split('|');
+                if (parts.Length < 2) continue;
+
+                dayReport.results.Add(new MineralResearchResult
+                {
+                    displayName = parts[0],
+                    mineralClassName = parts[1],
+                    wasCorrect = parts.Length > 2 && parts[2] == "1"
+                });
+            }
+
+            allReports.Add(dayReport);
+        }
+
+        allReports.Sort((a, b) => a.dayNumber.CompareTo(b.dayNumber));
+    }
+
+  
+// Защита от спецсимволов (на всякий случай)
+private string Escape(string s) => s.Replace("¬", "&#xAC;").Replace("|", "&#x7C;").Replace(":", "&#x3A;");
+private string Unescape(string s) => s.Replace("&#xAC;", "¬").Replace("&#x7C;", "|").Replace("&#x3A;", ":");
 
 #if UNITY_EDITOR
-    [ContextMenu("Открыть панель (тест)")]
-    private void TestOpen() => OpenPanel();
-#endif
+[ContextMenu("Открыть панель (тест)")]
+private void TestOpen() => OpenPanel();
 
-    private void OnDrawGizmosSelected()
-    {
-        Gizmos.color = Color.cyan;
-        Gizmos.DrawWireSphere(transform.position, interactionDistance);
-    }
+[ContextMenu("Очистить все отчёты (тест)")]
+private void ClearAll() => allReports.Clear();
+#endif
 }
