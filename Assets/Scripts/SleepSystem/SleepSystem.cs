@@ -6,28 +6,28 @@ using System.Collections;
 public class SleepSystem : MonoBehaviour
 {
     public static SleepSystem Instance { get; private set; }
-    [SerializeField] private Image sleepImage;
-    [SerializeField] private float fadeDuration = 1.5f;
-    [SerializeField] private float sleepScreenDuration = 2f;
-    [SerializeField] private Transform spawnPointAfterSleep;
-    [SerializeField] private Transform bedTransform;
-    [SerializeField] private float maxSleepDistance = 3f;
 
-    private PlayerMovement player;
-    private Rigidbody playerRb;
-    private Color fadeColor;
+    [SerializeField] Image sleepImage;
+    [SerializeField] float fadeDuration = 1.5f;
+    [SerializeField] float sleepScreenDuration = 2f;
+    [SerializeField] Transform spawnPointAfterSleep;
+    [SerializeField] Transform bedTransform;
+    [SerializeField] float maxSleepDistance = 3f;
+
+    PlayerMovement player;
+    Rigidbody playerRb;
+    Color fadeColor;
 
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
 
-        if (sleepImage != null)
+        if (sleepImage)
         {
             fadeColor = sleepImage.color;
             fadeColor.a = 0f;
             sleepImage.color = fadeColor;
-            sleepImage.raycastTarget = false;
         }
 
         player = FindFirstObjectByType<PlayerMovement>();
@@ -46,38 +46,32 @@ public class SleepSystem : MonoBehaviour
         if (!CanSleepNow() || player == null || sleepImage == null) return;
 
         player.enabled = false;
-        if (playerRb) { playerRb.isKinematic = true; playerRb.linearVelocity = Vector3.zero; }
+        if (playerRb) playerRb.isKinematic = true;
 
-        int nextDay = WeatherManager.Instance.CurrentDay + 1;
-        WeatherManager.Instance.SetTimeDirectly(nextDay, 480f);
-        WeatherManager.Instance.StartMorning();
-        GameDayManager.Instance?.SetDay(nextDay);
+        WeatherManager.Instance.SleepAndNextDay();
 
         StartCoroutine(SleepSequence());
     }
 
-    private IEnumerator SleepSequence()
+    IEnumerator SleepSequence()
     {
-        yield return FadeIn();
+        yield return FadeTo(1f);
         yield return new WaitForSeconds(sleepScreenDuration);
 
-        if (spawnPointAfterSleep != null)
+        if (spawnPointAfterSleep)
         {
             player.transform.position = spawnPointAfterSleep.position;
             player.transform.rotation = spawnPointAfterSleep.rotation;
         }
 
-        yield return FadeOut();
+        yield return FadeTo(0f);
 
         if (playerRb) playerRb.isKinematic = false;
         player.enabled = true;
         player.EndSleep();
     }
 
-    private IEnumerator FadeIn() => FadeTo(1f);
-    private IEnumerator FadeOut() => FadeTo(0f);
-
-    private IEnumerator FadeTo(float a)
+    IEnumerator FadeTo(float a)
     {
         sleepImage.raycastTarget = a > 0f;
         Color start = sleepImage.color;

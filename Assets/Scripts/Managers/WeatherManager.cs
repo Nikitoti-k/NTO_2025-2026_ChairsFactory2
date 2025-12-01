@@ -1,37 +1,20 @@
 ﻿using UnityEngine;
 using UnityEngine.Events;
-using System.Collections;
 
 public class WeatherManager : MonoBehaviour
 {
     public enum TimeOfDay { Night, Morning, Day, Evening }
-
-    private const float REAL_SECONDS_PER_GAME_DAY = 300f;
     public static WeatherManager Instance { get; private set; }
 
-    [Header("Lights")]
-    [SerializeField] private Light mainDirectionalLight;
-    [SerializeField] private Light moonLight;
+    [SerializeField] Light mainDirectionalLight;
+    [SerializeField] Light moonLight;
+    [SerializeField] Gradient directionalLightGradient;
+    [SerializeField] Gradient ambientLightGradient;
+    [SerializeField, Range(60f, 3600f)] float realSecondsPerGameDay = 300f;
 
-    [Header("Skybox Materials (URP)")]
-    [SerializeField] private Material nightSkybox;
-    [SerializeField] private Material morningSkybox;
-    [SerializeField] private Material daySkybox;
-    [SerializeField] private Material eveningSkybox;
-
-    [Header("Lighting Settings")]
-    [SerializeField] private Color nightAmbient = new Color(0.05f, 0.05f, 0.1f);
-    [SerializeField] private Color morningAmbient = new Color(0.6f, 0.5f, 0.7f);
-    [SerializeField] private Color dayAmbient = new Color(0.8f, 0.85f, 0.9f);
-    [SerializeField] private Color eveningAmbient = new Color(0.7f, 0.5f, 0.4f);
-
-    [SerializeField] private Color nightFog = new Color(0.01f, 0.01f, 0.03f);
-    [SerializeField] private Color morningFog = new Color(0.8f, 0.7f, 0.9f);
-    [SerializeField] private Color dayFog = new Color(0.7f, 0.8f, 0.9f);
-    [SerializeField] private Color eveningFog = new Color(0.6f, 0.4f, 0.3f);
-
-    [Header("Transition")]
-    [SerializeField] private float transitionDuration = 3f;
+    [Space]
+    [Tooltip("Если включено — время идёт всегда, даже без разрешений фаз")]
+    public bool forceTimeFlow = false;
 
     public UnityEvent<int> OnDayChanged = new UnityEvent<int>();
     public UnityEvent<TimeOfDay> OnPeriodChanged = new UnityEvent<TimeOfDay>();
@@ -41,8 +24,12 @@ public class WeatherManager : MonoBehaviour
     public float CurrentTimeInMinutes { get; private set; } = 480f;
     public TimeOfDay CurrentPeriod => GetCurrentPeriod();
 
-    private Coroutine skyboxCoroutine;
-    private Material currentSkybox;
+    private float timeProgress;
+    private Vector3 sunDefaultAngles;
+    private Vector3 moonDefaultAngles;
+    private TimeOfDay currentPeriodCache;
+
+    private int nextAllowedPhase = 0; // 0=Morning, 1=Day, 2=Evening
 
     private void Awake()
     {
@@ -51,172 +38,98 @@ public class WeatherManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
 
         if (mainDirectionalLight == null) mainDirectionalLight = FindObjectOfType<Light>();
-        RenderSettings.skybox = daySkybox;
-        currentSkybox = daySkybox;
+        sunDefaultAngles = mainDirectionalLight.transform.localEulerAngles;
+        if (moonLight) moonDefaultAngles = moonLight.transform.localEulerAngles;
 
-        SetTimeDirectly(CurrentDay, CurrentTimeInMinutes);
-        Debug.Log("[WeatherManager URP] Готов! Используется плавная смена материалов.");
+        JumpTo(480f);
+        nextAllowedPhase = 1;
     }
 
-    public void AdvanceTime(float realSeconds)
+    private void Update()
     {
-        float minutes = realSeconds * (1440f / REAL_SECONDS_PER_GAME_DAY);
-        AdvanceTimeByMinutes(minutes);
-    }
+        if (!Application.isPlaying) return;
 
-    public void AdvanceTimeByMinutes(float minutes)
-    {
-        float previous = CurrentTimeInMinutes;
-        CurrentTimeInMinutes += minutes;
+        timeProgress += Time.deltaTime / realSecondsPerGameDay;
+        CurrentTimeInMinutes = timeProgress * 1440f;
 
-        while (CurrentTimeInMinutes >= 1440f)
+        if (CurrentTimeInMinutes >= 1440f)
         {
-            CurrentTimeInMinutes -= 1440f;
+            timeProgress = 0f;
+            CurrentTimeInMinutes = 0f;
             CurrentDay++;
             OnDayChanged.Invoke(CurrentDay);
+            nextAllowedPhase = 1;
+        }
+
+        if (!forceTimeFlow)
+            ClampToCurrentPhase();
+
+        timeProgress = CurrentTimeInMinutes / 1440f;
+
+        UpdateLightingAndRotation();
+
+        TimeOfDay newPeriod = GetCurrentPeriod();
+        if (newPeriod != currentPeriodCache)
+        {
+            currentPeriodCache = newPeriod;
+            OnPeriodChanged.Invoke(newPeriod);
         }
 
         OnTimeChanged.Invoke(CurrentDay, CurrentTimeInMinutes);
-        CheckPeriodTransition(previous);
-        UpdateSunAndMoon();
+    }
+
+    private void ClampToCurrentPhase()
+    {
+        if (nextAllowedPhase == 1 && CurrentTimeInMinutes >= 720f) CurrentTimeInMinutes = 719.99f;
+        if (nextAllowedPhase == 2 && CurrentTimeInMinutes >= 1080f) CurrentTimeInMinutes = 1079.99f;
+    }
+
+    public void AllowNextPhase()
+    {
+        if (nextAllowedPhase < 3) nextAllowedPhase++;
+    }
+
+    public void SleepAndNextDay()
+    {
+        CurrentDay++;
+        JumpTo(480f);
+        nextAllowedPhase = 1;
+        OnDayChanged.Invoke(CurrentDay);
+        GameDayManager.Instance?.SetDay(CurrentDay);
     }
 
     public void SetTimeDirectly(int day, float minutes)
     {
         CurrentDay = day;
+        JumpTo(minutes);
+    }
+
+    private void JumpTo(float minutes)
+    {
         CurrentTimeInMinutes = Mathf.Clamp(minutes, 0f, 1439.99f);
-        OnDayChanged.Invoke(day);
-        OnTimeChanged.Invoke(day, CurrentTimeInMinutes);
-        UpdateSunAndMoon();
-        ApplyCurrentPeriodInstantly();
+        timeProgress = CurrentTimeInMinutes / 1440f;
+        if (!forceTimeFlow) ClampToCurrentPhase();
+        UpdateLightingAndRotation();
     }
 
-    public void StartMorning() => TriggerPeriod(TimeOfDay.Morning);
-    public void StartDay() => TriggerPeriod(TimeOfDay.Day);
-    public void StartEvening() => TriggerPeriod(TimeOfDay.Evening);
-    public void StartNight() => TriggerPeriod(TimeOfDay.Night);
-
-    private void CheckPeriodTransition(float previousMinutes)
+    private void UpdateLightingAndRotation()
     {
-        TimeOfDay current = CurrentPeriod;
-        if (HasCrossedIntoPeriod(previousMinutes, current))
-            TriggerPeriod(current);
-    }
-
-    private bool HasCrossedIntoPeriod(float previous, TimeOfDay period)
-    {
-        return period switch
-        {
-            TimeOfDay.Night => previous >= 1380f || (previous < 480f && CurrentTimeInMinutes >= 0f),
-            TimeOfDay.Morning => previous < 480f && CurrentTimeInMinutes >= 480f,
-            TimeOfDay.Day => previous < 720f && CurrentTimeInMinutes >= 720f,
-            TimeOfDay.Evening => previous < 1080f && CurrentTimeInMinutes >= 1080f,
-            _ => false
-        };
-    }
-
-    private void TriggerPeriod(TimeOfDay period)
-    {
-        Debug.Log($"[WeatherManager URP] → Переход в {period}");
-        OnPeriodChanged.Invoke(period);
-
-        Material target = period switch
-        {
-            TimeOfDay.Night => nightSkybox,
-            TimeOfDay.Morning => morningSkybox,
-            TimeOfDay.Day => daySkybox,
-            TimeOfDay.Evening => eveningSkybox,
-            _ => daySkybox
-        };
-
-        if (skyboxCoroutine != null) StopCoroutine(skyboxCoroutine);
-        skyboxCoroutine = StartCoroutine(SmoothSkyboxChange(target, GetAmbientColor(period), GetFogColor(period)));
-    }
-
-    private IEnumerator SmoothSkyboxChange(Material target, Color targetAmbient, Color targetFog)
-    {
-        Material startMat = RenderSettings.skybox;
-        Color startAmbient = RenderSettings.ambientLight;
-        Color startFog = RenderSettings.fogColor;
-
-        float t = 0f;
-        while (t < transitionDuration)
-        {
-            t += Time.deltaTime;
-            float lerp = t / transitionDuration;
-
-            // Плавная смена материала (мгновенно, но можно сделать fade через Volume)
-            RenderSettings.skybox = target;
-            RenderSettings.ambientLight = Color.Lerp(startAmbient, targetAmbient, lerp);
-            RenderSettings.fogColor = Color.Lerp(startFog, targetFog, lerp);
-
-            // Опционально: плавная смена Exposure через Volume (если есть Post-Processing)
-            // UpdateExposure(lerp);
-
-            yield return null;
-        }
-
-        RenderSettings.skybox = target;
-        RenderSettings.ambientLight = targetAmbient;
-        RenderSettings.fogColor = targetFog;
-        currentSkybox = target;
-        skyboxCoroutine = null;
-    }
-
-    private void ApplyCurrentPeriodInstantly()
-    {
-        TimeOfDay period = CurrentPeriod;
-        Material mat = period switch
-        {
-            TimeOfDay.Night => nightSkybox,
-            TimeOfDay.Morning => morningSkybox,
-            TimeOfDay.Day => daySkybox,
-            TimeOfDay.Evening => eveningSkybox,
-            _ => daySkybox
-        };
-
-        RenderSettings.skybox = mat;
-        RenderSettings.ambientLight = GetAmbientColor(period);
-        RenderSettings.fogColor = GetFogColor(period);
-        currentSkybox = mat;
-    }
-
-    private Color GetAmbientColor(TimeOfDay p) => p switch
-    {
-        TimeOfDay.Night => nightAmbient,
-        TimeOfDay.Morning => morningAmbient,
-        TimeOfDay.Day => dayAmbient,
-        TimeOfDay.Evening => eveningAmbient,
-        _ => dayAmbient
-    };
-
-    private Color GetFogColor(TimeOfDay p) => p switch
-    {
-        TimeOfDay.Night => nightFog,
-        TimeOfDay.Morning => morningFog,
-        TimeOfDay.Day => dayFog,
-        TimeOfDay.Evening => eveningFog,
-        _ => dayFog
-    };
-
-    private void UpdateSunAndMoon()
-    {
-        float progress = CurrentTimeInMinutes / 1440f;
-        float angle = progress * 360f - 90f;
-
         if (mainDirectionalLight)
         {
-            mainDirectionalLight.transform.rotation = Quaternion.Euler(angle, 30f, 0f);
-            float intensity = Mathf.Clamp01(Mathf.Sin(progress * Mathf.PI));
-            mainDirectionalLight.intensity = intensity * 2f;
-            mainDirectionalLight.color = Color.Lerp(Color.cyan, Color.white, intensity);
+            mainDirectionalLight.color = directionalLightGradient.Evaluate(timeProgress);
+            mainDirectionalLight.transform.localEulerAngles = new Vector3(360f * timeProgress - 90f, sunDefaultAngles.y, sunDefaultAngles.z);
+            float sun = Mathf.Clamp01(Mathf.Sin(timeProgress * Mathf.PI));
+            sun = Mathf.Max(sun, 0.03f);
+            mainDirectionalLight.intensity = sun * 2f;
         }
 
         if (moonLight)
         {
-            moonLight.transform.rotation = Quaternion.Euler(angle + 180f, 30f, 0f);
-            moonLight.intensity = (1f - Mathf.Abs(Mathf.Sin(progress * Mathf.PI))) * 0.8f;
+            moonLight.transform.localEulerAngles = new Vector3(360f * timeProgress + 90f, moonDefaultAngles.y, moonDefaultAngles.z);
+            moonLight.intensity = (1f - Mathf.Abs(Mathf.Sin(timeProgress * Mathf.PI))) * 0.8f;
         }
+
+        RenderSettings.ambientLight = ambientLightGradient.Evaluate(timeProgress);
     }
 
     private TimeOfDay GetCurrentPeriod()

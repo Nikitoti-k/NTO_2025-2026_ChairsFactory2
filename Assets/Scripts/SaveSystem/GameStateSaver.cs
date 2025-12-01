@@ -1,12 +1,13 @@
 ﻿using UnityEngine;
+using System.Reflection;
 
 public class GameStateSaver : MonoBehaviour
 {
-    private static GameStateSaver _instance;
+    static GameStateSaver _instance;
     public static GameStateSaver Instance => FindObjectOfType<GameStateSaver>() ?? _instance;
 
-    [SerializeField] private GameDayManager dayManager;
-    [SerializeField] private WeatherManager weatherManager;
+    [SerializeField] GameDayManager dayManager;
+    [SerializeField] WeatherManager weatherManager;
 
     private void Awake()
     {
@@ -37,10 +38,10 @@ public class GameStateSaver : MonoBehaviour
         dayManager?.SetDay(block.currentDay);
 
         var type = dayManager.GetType();
-        type.GetField("depositsBrokenToday", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-            ?.SetValue(dayManager, block.depositsBrokenToday);
-        type.GetField("mineralsResearchedToday", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-            ?.SetValue(dayManager, block.mineralsResearchedToday);
+        type.GetField("depositsBrokenToday", BindingFlags.NonPublic | BindingFlags.Instance)?
+            .SetValue(dayManager, block.depositsBrokenToday);
+        type.GetField("mineralsResearchedToday", BindingFlags.NonPublic | BindingFlags.Instance)?
+            .SetValue(dayManager, block.mineralsResearchedToday);
 
         dayManager.OnDepositsChanged?.Invoke(block.depositsBrokenToday);
         dayManager.OnMineralsResearchedChanged?.Invoke(block.mineralsResearchedToday);
