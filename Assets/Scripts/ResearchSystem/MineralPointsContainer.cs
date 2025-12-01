@@ -3,7 +3,7 @@
 [RequireComponent(typeof(MineralPointSpawner))]
 public class MineralData : MonoBehaviour
 {
-    public enum CrystalSystem { Cubic, Trigonal, Monoclinic, Tetragonal, Hexagonal, Orthorhombic, Triclinic }
+    public enum CrystalSystem { Cubic, Monoclinic, Molecular }
 
     [System.Serializable]
     public class MineralSaveData

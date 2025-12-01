@@ -277,7 +277,7 @@ public class MineralScanner_Renderer : MonoBehaviour
     private string GetCrystalName(MineralData.CrystalSystem s) => s switch
     {
         MineralData.CrystalSystem.Cubic => "кубическая",
-        MineralData.CrystalSystem.Trigonal => "тригональная",
+        MineralData.CrystalSystem.Molecular => "молекулярная",
         MineralData.CrystalSystem.Monoclinic => "моноклинная",
         _ => "аморфная"
     };

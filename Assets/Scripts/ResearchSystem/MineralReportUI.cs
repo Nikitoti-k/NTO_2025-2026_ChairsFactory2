@@ -148,7 +148,7 @@ public class MineralReportUI : MonoBehaviour
         return system switch
         {
             MineralData.CrystalSystem.Cubic => "кубическая",
-            MineralData.CrystalSystem.Trigonal => "тригональная",
+            MineralData.CrystalSystem.Molecular => "молекулярная",
             MineralData.CrystalSystem.Monoclinic => "моноклинная",
             
           

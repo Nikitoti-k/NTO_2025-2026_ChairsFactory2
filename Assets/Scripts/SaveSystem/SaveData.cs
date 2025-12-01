@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 
 using System;
-
 [System.Serializable]
 public class SaveFile
 {
@@ -13,14 +12,15 @@ public class SaveFile
     public GameStateBlock gameState = new GameStateBlock();
     public string globalReports = "";
 
-    // Направление камеры
     public Vector2 cameraLookDirection;
+
+    public int tutorialProgress = 0;        // 0..5 (5 = завершён)
+    public bool flareHintWasShown = false;  // чтобы не показывать повторно в пещере
 
     public List<ObjectSaveData> objects = new List<ObjectSaveData>();
     public List<MineralSaveData> minerals = new List<MineralSaveData>();
     public List<DepositSaveData> deposits = new List<DepositSaveData>();
 }
-
 
 
 

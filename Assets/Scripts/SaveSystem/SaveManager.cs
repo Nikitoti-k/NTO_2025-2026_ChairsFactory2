@@ -376,7 +376,7 @@ public class SaveManager : MonoBehaviour
             Directory.Delete(folder, true);
     }
 
-    private void CollectSaveData(ref SaveFile save)
+    public void CollectSaveData(ref SaveFile save)
     {
         var gs = FindObjectOfType<GameStateSaver>();
         if (gs != null) save.gameState = gs.GetGameStateBlock();
