@@ -87,12 +87,10 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
         step++;
         waitingHold = false;
 
-        // После шага 3 (снегоход) — НЕ переходим автоматически к факелу!
-        // Останавливаемся. Ждём внешнего вызова.
-        if (step == 4 && !flareHintActivated)
+        // После снегохода (step == 4) — просто выключаем панель и ждём внешнего вызова
+        if (step == 4)
         {
-            step = 3; // остаёмся на шаге "снегоход", пока не вызовут факел
-            if (hintPanel) hintPanel.SetActive(false);
+            if (hintPanel) hintPanel.SetActive(false);   // ← ЭТА СТРОЧКА ВСЁ ИСПРАВЛЯЕТ
             return;
         }
 

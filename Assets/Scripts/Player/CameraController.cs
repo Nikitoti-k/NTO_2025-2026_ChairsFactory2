@@ -57,7 +57,12 @@ public class CameraController : MonoBehaviour
 
         _yaw = _smoothYaw = transform.eulerAngles.y;
         _pitch = _smoothPitch = UnwrapAngle(transform.eulerAngles.x);
+        _yaw = _smoothYaw = 0f;        // или transform.eulerAngles.y, если нужно сохранить yaw
+        _pitch = _smoothPitch = 0f;    // ← вот главное!
 
+        transform.rotation = Quaternion.Euler(0f, _yaw, 0f);
+
+        UpdateSensitivity();
         UpdateSensitivity();
     }
 
