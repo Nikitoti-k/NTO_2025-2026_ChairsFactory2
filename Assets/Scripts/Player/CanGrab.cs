@@ -1,5 +1,5 @@
-﻿// CanGrab.cs — РАБОЧАЯ ВЕРСИЯ
-using UnityEngine;
+﻿using UnityEngine;
+
 [RequireComponent(typeof(PlayerMovement))]
 public class CanGrab : MonoBehaviour
 {
@@ -10,7 +10,6 @@ public class CanGrab : MonoBehaviour
     [SerializeField] private LayerMask grabbableMask = -1;
     [SerializeField] private LayerMask collisionReleaseMask = -1;
 
-    // VotV-физика минералов
     [Header("Mineral Physics")]
     [SerializeField] private float mineralHoldDistance = 2.5f;
     [SerializeField] private float mineralPullForce = 38f;
@@ -18,12 +17,11 @@ public class CanGrab : MonoBehaviour
     [SerializeField] private float mineralAngularDrag = 15f;
     [SerializeField] private float mineralMaxVelocity = 12f;
     [SerializeField] private float mineralBreakDistance = 6f;
-
     [SerializeField] private float pullSpeed = 20f;
     [SerializeField] private bool toolsHaveGravity = false;
     [SerializeField] private bool mineralsHaveGravity = true;
+    [SerializeField] private Camera cam;
 
-    [SerializeField]private Camera cam;
     private Rigidbody heldRb;
     private Transform heldTransform;
     private GrabbableItem heldItem;
@@ -34,9 +32,11 @@ public class CanGrab : MonoBehaviour
     private bool wasTriggerBeforeGrab = false;
     private bool wasKinematicBeforeGrab = false;
 
-    // VotV
     private ConfigurableJoint mineralJoint;
-    private float originalDrag, originalAngularDrag;
+    private float originalDrag;
+    private float originalAngularDrag;
+    private RigidbodyInterpolation originalInterpolation;
+
     private bool isSnapping = false;
 
     public static System.Action<CanGrab, Rigidbody> OnGrabbed;
@@ -44,7 +44,6 @@ public class CanGrab : MonoBehaviour
 
     private void Start()
     {
-       // cam = Camera.main;
         if (grabPoint == null) grabPoint = transform;
         if (toolGrabPoint == null) toolGrabPoint = grabPoint;
     }
@@ -70,6 +69,7 @@ public class CanGrab : MonoBehaviour
             GrabOldStyle(item, toolGrabPoint);
             return;
         }
+
         if (TryGrabAt(grabPoint, maxGrabDistance, out item))
         {
             if (item.ItemType == GrabbableType.Mineral)
@@ -102,6 +102,9 @@ public class CanGrab : MonoBehaviour
         heldItem = item;
         activePoint = grabPoint;
 
+        originalInterpolation = rb.interpolation;
+        rb.interpolation = RigidbodyInterpolation.Interpolate;
+
         originalDrag = rb.linearDamping;
         originalAngularDrag = rb.angularDamping;
         rb.linearDamping = mineralDrag;
@@ -114,7 +117,12 @@ public class CanGrab : MonoBehaviour
         mineralJoint.xMotion = mineralJoint.yMotion = mineralJoint.zMotion = ConfigurableJointMotion.Limited;
         mineralJoint.angularXMotion = mineralJoint.angularYMotion = mineralJoint.angularZMotion = ConfigurableJointMotion.Locked;
 
-        var drive = new JointDrive { positionSpring = mineralPullForce * 100f, positionDamper = mineralPullForce * 10f, maximumForce = 1e8f };
+        var drive = new JointDrive
+        {
+            positionSpring = mineralPullForce * 100f,
+            positionDamper = mineralPullForce * 10f,
+            maximumForce = 1e8f
+        };
         mineralJoint.xDrive = mineralJoint.yDrive = mineralJoint.zDrive = drive;
 
         rb.useGravity = mineralsHaveGravity;
@@ -142,6 +150,7 @@ public class CanGrab : MonoBehaviour
         rb.useGravity = false;
         rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
+
         OnGrabbed?.Invoke(this, heldRb);
         isPulling = true;
     }
@@ -149,10 +158,12 @@ public class CanGrab : MonoBehaviour
     private void Release(bool force = false)
     {
         if (heldRb == null) return;
+
         OnReleased?.Invoke(this, heldRb);
 
         if (heldItem.ItemType == GrabbableType.Mineral && mineralJoint != null)
         {
+            heldRb.interpolation = originalInterpolation;
             heldRb.linearDamping = originalDrag;
             heldRb.angularDamping = originalAngularDrag;
             Destroy(mineralJoint);
@@ -166,6 +177,7 @@ public class CanGrab : MonoBehaviour
             bool hasGravity = heldItem.ItemType == GrabbableType.Tool ? toolsHaveGravity : mineralsHaveGravity;
             heldRb.useGravity = hasGravity;
             heldRb.isKinematic = wasKinematicBeforeGrab;
+
             heldRb.linearVelocity *= 0.3f;
             heldRb.angularVelocity *= 0.3f;
         }
@@ -183,9 +195,18 @@ public class CanGrab : MonoBehaviour
 
         if (heldItem.ItemType == GrabbableType.Mineral && mineralJoint != null)
         {
-            mineralJoint.connectedAnchor = cam.transform.position + cam.transform.forward * mineralHoldDistance;
-            if (Vector3.Distance(heldTransform.position, cam.transform.position) > mineralBreakDistance)
+            if (cam == null)
+            {
+                Debug.LogError("Camera reference is missing in CanGrab!", this);
                 Release();
+                return;
+            }
+
+            mineralJoint.connectedAnchor = grabPoint.position;//cam.transform.position + cam.transform.forward * mineralHoldDistance;
+
+            if (Vector3.Distance(heldTransform.position, grabPoint.position) > mineralBreakDistance)
+                Release();
+
             if (heldRb.linearVelocity.sqrMagnitude > mineralMaxVelocity * mineralMaxVelocity)
                 heldRb.linearVelocity = heldRb.linearVelocity.normalized * mineralMaxVelocity;
         }

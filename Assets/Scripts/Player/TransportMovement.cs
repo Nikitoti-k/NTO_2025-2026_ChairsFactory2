@@ -1,37 +1,41 @@
 using UnityEngine;
-
 [RequireComponent(typeof(Rigidbody))]
 public class TransportMovement : MonoBehaviour, IControllable
 {
-    [Header("=== Движение ===")]
-    [SerializeField] private float maxForwardSpeed = 18f;
-    [SerializeField] private float maxReverseSpeed = 10f;
-    [SerializeField] private float accelerationForce = 320f;      // сила тяги вперёд/назад
-    [SerializeField] private float brakeForce = 500f;            // сила торможения (очень мощная)
-    [SerializeField] private float dragOnGround = 1.2f;          // сопротивление при движении
-    [SerializeField] private float airDrag = 0.1f;               // сопротивление в воздухе
+    [Header("Скорость")]
+    [SerializeField] private float forwardSpeed = 16f;
+    [SerializeField] private float reverseSpeed = 10f;
+    [SerializeField] private float acceleration = 12f;
+    [SerializeField] private float brakeDeceleration = 30f;
 
-    [Header("=== Поворот ===")]
-    [SerializeField] private float maxTurnRate = 80f;            // градусов в секунду на максимальной скорости
-    [SerializeField] private float minTurnRate = 180f;           // градусов в секунду почти на месте
-    [SerializeField] private float turnSpeedThreshold = 4f;     // ниже этой скорости поворот становится резко лучше
-    [SerializeField] private float turnSmoothTime = 0.15f;      // инерция поворота руля
+    [Header("Поворот")]
+    [SerializeField] private float turnSpeed = 100f;
+    [SerializeField] private float lowSpeedTurnBonus = 3f;
+    [SerializeField, Range(0.05f, 0.5f)] private float turnSmoothTime = 0.12f;
+    [SerializeField] private float minTurnSpeed = 1.5f;
 
-    [Header("=== Посадка ===")]
+    [Header("Проходимость")]
+    [SerializeField] private float raycastDistance = 3f;  // ← НОВОЕ: дистанция raycast для уклонов
+
+    [Header("Посадка")]
     public Transform seatTransform;
     public Vector3 fallbackMountOffset = new Vector3(0f, 1.2f, 0.6f);
 
     private Rigidbody _rb;
     private Vector2 _input;
-    private float _currentTurnInput;     // сглаженный поворот (имитация руля)
+    private float _currentTurn;
+    private float _targetForwardSpeed;
 
     private void Awake()
     {
         _rb = GetComponent<Rigidbody>();
         _rb.interpolation = RigidbodyInterpolation.Interpolate;
-        _rb.centerOfMass = new Vector3(0f, -0.8f, 0f); // ниже — стабильнее
-        _rb.linearDamping = airDrag;
-        _rb.angularDamping = 5f;
+        _rb.freezeRotation = true;
+        _rb.centerOfMass = new Vector3(0f, -1.1f, 0.3f);
+
+        // ← БОНУС: улучшаем физику коллизий для уклонов
+        _rb.solverVelocityIterations = 16;
+        _rb.solverIterations = 10;
     }
 
     public void HandleMovement(Vector2 input) => _input = input;
@@ -47,83 +51,66 @@ public class TransportMovement : MonoBehaviour, IControllable
     private void FixedUpdate()
     {
         if (InputRouter.Instance?.CurrentController != this) return;
-
-        HandleDrag();
-        HandleThrustAndBrake();
-        HandleSteering();
+        Drive();
     }
 
-    private void HandleDrag()
+    private void Drive()
     {
-        // Если транспорт на земле — добавляем дополнительное сопротивление (имитация трения о грунт)
-        bool onGround = Physics.Raycast(transform.position + Vector3.up * 0.5f, Vector3.down, 1.2f);
-        _rb.linearDamping = onGround ? dragOnGround : airDrag;
-    }
+        float forwardInput = _input.y;
+        float turnInput = _input.x;
 
-    private void HandleThrustAndBrake()
-    {
-        Vector3 forward = transform.forward;
-        float currentForwardSpeed = Vector3.Dot(_rb.linearVelocity, forward);
+        // === 0. Горизонтальная скорость для расчётов ===
+        Vector3 flatVel = new Vector3(_rb.linearVelocity.x, 0f, _rb.linearVelocity.z);
+        float currentForwardSpeed = Vector3.Dot(flatVel, transform.forward);
 
-        float inputY = _input.y;
+        // === 1. Желаемая скорость ===
+        float desiredSpeed = 0f;
+        if (forwardInput > 0.01f) desiredSpeed = forwardSpeed;
+        else if (forwardInput < -0.01f) desiredSpeed = -reverseSpeed;
 
-        // Определяем, едем ли мы в противоположную сторону от ввода (нужен тормоз)
-        bool isBraking = inputY != 0 && Mathf.Sign(inputY) != Mathf.Sign(currentForwardSpeed) && Mathf.Abs(currentForwardSpeed) > 0.5f;
-        // Или игрок отпустил газ — тоже тормозим
-        bool neutralBrake = inputY == 0 && Mathf.Abs(currentForwardSpeed) > 0.5f;
+        _targetForwardSpeed = Mathf.MoveTowards(_targetForwardSpeed, desiredSpeed,
+                                               acceleration * Time.fixedDeltaTime);
 
-        if (isBraking || neutralBrake)
+        // Торможение против направления
+        bool isBraking = Mathf.Abs(currentForwardSpeed) > 1f &&
+                         Mathf.Sign(currentForwardSpeed) != Mathf.Sign(forwardInput) &&
+                         forwardInput != 0f;
+        float effectiveAccel = isBraking ? brakeDeceleration : acceleration;
+
+        // === 2. ПРОХОДИМОСТЬ НА УКЛОНАХ: raycast + проекция на поверхность ===
+        Vector3 comWorld = transform.TransformPoint(_rb.centerOfMass);
+        Vector3 surfaceNormal = Vector3.up;
+        if (Physics.Raycast(comWorld, Vector3.down, out RaycastHit hit, raycastDistance))
         {
-            // Тормозим против направления движения
-            Vector3 brakeDirection = -_rb.linearVelocity.normalized;
-            float brakePower = brakeForce * (isBraking ? 1.3f : 0.8f); // ручной тормоз чуть сильнее
-            _rb.AddForce(brakeDirection * brakePower * Time.fixedDeltaTime, ForceMode.Acceleration);
+            surfaceNormal = hit.normal;
         }
-        else if (Mathf.Abs(inputY) > 0.01f)
+
+        // Проекция на поверхность
+        Vector3 currentVelOnPlane = Vector3.ProjectOnPlane(flatVel, surfaceNormal);
+        Vector3 desiredDirOnPlane = Vector3.ProjectOnPlane(transform.forward, surfaceNormal).normalized;
+        Vector3 desiredVelOnPlane = desiredDirOnPlane * _targetForwardSpeed;
+
+        Vector3 velDelta = desiredVelOnPlane - currentVelOnPlane;
+        Vector3 force = velDelta / Time.fixedDeltaTime;
+        force = Vector3.ClampMagnitude(force, effectiveAccel);
+
+        _rb.AddForce(force, ForceMode.Acceleration);
+
+        // === 3. Поворот ===
+        _currentTurn = Mathf.MoveTowards(_currentTurn, turnInput, Time.fixedDeltaTime / turnSmoothTime);
+
+        float absForwardSpeed = Mathf.Abs(currentForwardSpeed);
+        float rotationThisFrame = 0f;
+
+        if (absForwardSpeed >= minTurnSpeed)
         {
-            // Тяга вперёд или назад
-            float targetMax = inputY > 0 ? maxForwardSpeed : maxReverseSpeed;
-            float speedLimit = targetMax * Mathf.Abs(inputY);
-
-            // Если уже почти на максимуме — не даём разгоняться дальше
-            if (Mathf.Abs(currentForwardSpeed) < speedLimit || Mathf.Sign(currentForwardSpeed) != Mathf.Sign(inputY))
-            {
-                Vector3 thrust = forward * inputY * accelerationForce * Time.fixedDeltaTime;
-                _rb.AddForce(thrust, ForceMode.Acceleration);
-            }
-        }
-    }
-
-    private void HandleSteering()
-    {
-        float speed = _rb.linearVelocity.magnitude;
-
-        // Сглаживаем ввод поворота — руль не поворачивается мгновенно
-        float targetTurn = _input.x;
-        _currentTurnInput = Mathf.MoveTowards(_currentTurnInput, targetTurn, Time.fixedDeltaTime / turnSmoothTime);
-
-        if (Mathf.Abs(_currentTurnInput) < 0.01f) return;
-
-        // Поворот зависит от скорости: чем быстрее — тем хуже поворачивает
-        float speedFactor = Mathf.InverseLerp(0f, turnSpeedThreshold, speed);
-        float currentTurnRate = Mathf.Lerp(minTurnRate, maxTurnRate, speedFactor);
-
-        float rotationThisFrame = _currentTurnInput * currentTurnRate * Time.fixedDeltaTime;
-
-        // Критически важно: не даём поворачивать, если скорость слишком мала и мы почти стоим
-        // (убираем разворот на месте)
-        float forwardSpeed = Vector3.Dot(_rb.linearVelocity, transform.forward);
-        if (Mathf.Abs(forwardSpeed) < 1.5f && speed < 3f)
-        {
-            // На очень малой скорости можно поворачивать, но только если есть хоть какой-то импульс
-            rotationThisFrame *= Mathf.InverseLerp(0f, 3f, speed);
+            float speedFactor = Mathf.InverseLerp(minTurnSpeed, forwardSpeed * 0.6f, absForwardSpeed);
+            float turnBonus = Mathf.Lerp(lowSpeedTurnBonus, 1f, speedFactor);
+            rotationThisFrame = _currentTurn * turnSpeed * turnBonus * Time.fixedDeltaTime;
         }
 
         if (Mathf.Abs(rotationThisFrame) > 0.001f)
-        {
-            Quaternion deltaRot = Quaternion.Euler(0f, rotationThisFrame, 0f);
-            _rb.MoveRotation(_rb.rotation * deltaRot);
-        }
+            _rb.MoveRotation(_rb.rotation * Quaternion.Euler(0f, rotationThisFrame, 0f));
     }
 
     private void Dismount()
@@ -142,20 +129,10 @@ public class TransportMovement : MonoBehaviour, IControllable
         col.enabled = true;
         col.isTrigger = false;
 
-        Vector3 exitPos = transform.position + transform.right * 1.5f + transform.forward * -2f + Vector3.up * 1.5f;
+        Vector3 exitPos = transform.position + transform.forward * 2.8f + Vector3.up * 1.5f;
         player.transform.position = exitPos;
-
-        // Выбрасываем игрока с учётом скорости транспорта
-        Vector3 inheritVel = _rb.linearVelocity * 0.7f;
-        prb.linearVelocity = inheritVel + Vector3.up * 6f + transform.right * 4f;
+        prb.linearVelocity = _rb.linearVelocity + Vector3.up * 5f;
 
         router?.SetController(player);
-    }
-
-    // Визуализация в редакторе
-    private void OnDrawGizmosSelected()
-    {
-        Gizmos.color = Color.red;
-        Gizmos.DrawRay(transform.position + Vector3.up * 0.5f, Vector3.down * 1.2f);
     }
 }
