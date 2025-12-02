@@ -2,58 +2,72 @@
 using UnityEngine.InputSystem;
 using TMPro;
 using System.Collections;
+using System;
+
+[Serializable]
+public class MonologueSet
+{
+    public string speakerName;
+    [TextArea(3, 5)] public string[] phrases;
+}
 
 public class RadioMonologue : MonoBehaviour
 {
-    [Header("══ РАДИО-МОНОЛОГ ══")]
-    [SerializeField] private GameObject radioPanel;           // весь UI (можно просто Image + Text)
-    [SerializeField] private TMP_Text radioText;              // TextMeshPro компонент
-    [SerializeField] private float charsPerSecond = 45f;      // скорость появления текста
-    [SerializeField] private AudioSource radioVoice;          // опционально — голос по рации
+    [SerializeField] private GameObject radioPanel;
+    [SerializeField] private TMP_Text radioText;
+    [SerializeField] private TMP_Text speakerText;
+    [SerializeField] private TMP_Text promptText;
+    [SerializeField] private float charsPerSecond = 45f;
 
-    [Header("Фразы — задавай сколько угодно")]
-    [TextArea(3, 5)] public string[] phrases;
+    [SerializeField] private MonologueSet[] monologueSets;
 
+    private int currentSet = 0;
     private int currentPhrase = 0;
     private bool isTyping = false;
-    private bool skipRequested = false;
     private Coroutine typingCoroutine;
+
+    public TutorialManager tutorialManager;
+
+    private void Awake()
+    {
+        tutorialManager = FindObjectOfType<TutorialManager>();
+    }
 
     private void Start()
     {
         if (radioPanel) radioPanel.SetActive(false);
+        if (promptText) promptText.text = "Press Enter to continue";
+
+        if (monologueSets != null && monologueSets.Length > 0)
+            StartMonologue(0);
     }
 
-    // ═══════════════════════════════════════
-    // ВЫЗЫВАЙ ЭТУ ФУНКЦИЮ, КОГДА НУЖНО ЗАПУСТИТЬ МОНОЛОГ
-    // Например: при старте уровня, при входе в зону и т.д.
-    // ═══════════════════════════════════════
-    public void StartMonologue()
+    public void StartMonologue(int setIndex)
     {
-        if (phrases == null || phrases.Length == 0) return;
+        if (monologueSets == null || setIndex < 0 || setIndex >= monologueSets.Length) return;
+
+        currentSet = setIndex;
+        currentPhrase = 0;
 
         radioPanel.SetActive(true);
-        currentPhrase = 0;
         BlockPlayerControls(true);
-        StartNextPhrase();
+        UpdateSpeakerAndStartTyping();
     }
 
-    private void StartNextPhrase()
+    private void UpdateSpeakerAndStartTyping()
     {
-        if (currentPhrase >= phrases.Length)
+        if (currentPhrase >= monologueSets[currentSet].phrases.Length)
         {
             EndMonologue();
             return;
         }
 
         radioText.text = "";
-        skipRequested = false;
+        if (speakerText) speakerText.text = monologueSets[currentSet].speakerName;
+        if (promptText) promptText.gameObject.SetActive(false);
+
         isTyping = true;
-
-        if (radioVoice != null && radioVoice.clip != null)
-            radioVoice.Play();
-
-        typingCoroutine = StartCoroutine(TypeText(phrases[currentPhrase]));
+        typingCoroutine = StartCoroutine(TypeText(monologueSets[currentSet].phrases[currentPhrase]));
     }
 
     private IEnumerator TypeText(string text)
@@ -63,41 +77,35 @@ public class RadioMonologue : MonoBehaviour
 
         while (charIndex < text.Length)
         {
-            if (skipRequested)
-            {
-                radioText.text = text;
-                skipRequested = false;
-                isTyping = false;
-                break;
-            }
+            if (!isTyping) yield break; // если уже скипнули
 
-            radioText.text += text[charIndex];
+            radioText.text = text.Substring(0, charIndex + 1);
             charIndex++;
             yield return new WaitForSeconds(delay);
         }
 
+        radioText.text = text;
         isTyping = false;
+        if (promptText) promptText.gameObject.SetActive(true);
     }
 
     private void Update()
     {
-        if (!radioPanel.activeSelf) return;
+        if (!radioPanel.activeSelf || InputManager.Instance == null) return;
 
-        // Нажатие Enter
-        if (Keyboard.current.enterKey.wasPressedThisFrame || Keyboard.current.numpadEnterKey.wasPressedThisFrame)
+        if (InputManager.Instance.RadioNext)
         {
-            if (isTyping)
+            if (isTyping && typingCoroutine != null)
             {
-                // Скип анимации появления
-                skipRequested = true;
-                if (typingCoroutine != null)
-                    StopCoroutine(typingCoroutine);
+                StopCoroutine(typingCoroutine);
+                radioText.text = monologueSets[currentSet].phrases[currentPhrase]; // мгновенно весь текст
+                isTyping = false;
+                if (promptText) promptText.gameObject.SetActive(true);
             }
-            else
+            else if (!isTyping)
             {
-                // Переход к следующей фразе
                 currentPhrase++;
-                StartNextPhrase();
+                UpdateSpeakerAndStartTyping();
             }
         }
     }
@@ -107,51 +115,32 @@ public class RadioMonologue : MonoBehaviour
         radioPanel.SetActive(false);
         BlockPlayerControls(false);
 
-        if (radioVoice != null)
-            radioVoice.Stop();
+        if (currentSet == 0 && tutorialManager != null)
+        {
+            tutorialManager.gameObject.SetActive(true);
+            tutorialManager.enabled = true;
+            tutorialManager.ForceStartTutorial(); // ← ВСЁ, ТУТОРИАЛ ТОЧНО ЗАПУСТИТСЯ
+        }
     }
 
-    // Блокируем/разблокируем управление игроком
     private void BlockPlayerControls(bool block)
     {
         var player = FindObjectOfType<PlayerMovement>();
-        if (player != null)
-        {
-            player.enabled = !block;
-        }
+        if (player != null) player.enabled = !block;
 
-        var cameraCtrl = FindObjectOfType<CameraController>();
-        if (cameraCtrl != null)
-        {
-            cameraCtrl.enabled = !block;
-        }
+        var cam = FindObjectOfType<CameraController>();
+        if (cam != null) cam.enabled = !block;
 
-        // Блокируем ввод через InputManager (если он используется)
-        if (InputManager.Instance != null)
-        {
-            if (block)
-            {
-                InputManager.ClearAll();
-            }
-        }
-
-        // Альтернатива: блокируем курсор и ввод полностью
         Cursor.lockState = block ? CursorLockMode.None : CursorLockMode.Locked;
         Cursor.visible = block;
+
+        if (block && InputManager.Instance != null)
+            InputManager.ClearAll();
     }
 
-    // Для теста — запускаем монолог из контекстного меню
-    [ContextMenu("▶ Запустить монолог (тест)")]
-    public void TestStartMonologue()
-    {
-        StartMonologue();
-    }
+    [ContextMenu("Запустить монолог 0 (тест)")]
+    private void Test0() => StartMonologue(0);
 
-    // Сброс для теста
-    [ContextMenu("Скрыть радио")]
-    public void HideRadio()
-    {
-        radioPanel.SetActive(false);
-        BlockPlayerControls(false);
-    }
+    [ContextMenu("Запустить монолог 1 (возвращение на базу)")]
+    public void PlayReturnToBaseMonologue() => StartMonologue(1);
 }

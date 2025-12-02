@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine.Events;
 
 [RequireComponent(typeof(Collider))]
 public class SnapZone : MonoBehaviour
@@ -18,7 +19,16 @@ public class SnapZone : MonoBehaviour
     [SerializeField] private bool makeKinematicInMultiSlot = true;
     [SerializeField] private bool makeTriggerInMultiSlot = true;
     [SerializeField] private float liftHeight = 0.6f;
+    // === ДОБАВЬ ЭТО В КОНЕЦ КЛАССА SnapZone ===
+    [System.Serializable]
+    public class GrabbableItemEvent : UnityEvent<GrabbableItem> { }
 
+    [Header("События")]
+    public GrabbableItemEvent onItemSnapped = new GrabbableItemEvent();
+    public GrabbableItemEvent onItemRemoved = new GrabbableItemEvent();
+
+    // Публичное свойство для количества прикреплённых предметов
+    public int AttachedItemsCount => isMultiSlot ? attachedItems.Count : (attachedItem != null ? 1 : 0);
     public bool IsOccupied => isMultiSlot ? attachedItems.Count > 0 : attachedItem != null;
     public GameObject CurrentSnappedObject => isMultiSlot
         ? (attachedItems.Count > 0 ? attachedItems[0].gameObject : null)
@@ -128,6 +138,7 @@ public class SnapZone : MonoBehaviour
             yield return null;
         }
         item.transform.SetParent(target);
+        onItemSnapped?.Invoke(item);
         item.transform.localPosition = Vector3.zero;
         item.transform.localRotation = Quaternion.identity;
         if (isMulti && rb)
@@ -200,6 +211,7 @@ public class SnapZone : MonoBehaviour
     public void OnItemGrabbedFromZone(GrabbableItem grabbedItem)
     {
         if (grabbedItem == null) return;
+        onItemRemoved?.Invoke(grabbedItem);
         if (!isMultiSlot)
         {
             if (attachedItem == grabbedItem)

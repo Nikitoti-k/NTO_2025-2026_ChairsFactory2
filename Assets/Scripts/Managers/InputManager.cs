@@ -11,10 +11,11 @@ public class InputManager : MonoBehaviour
     public bool Physical => _physical;
     public bool PhysicalHeld => _physicalHeld;
     public bool Flare => _flare;
+    public bool RadioNext => _radioNext; // НОВАЯ КНОПКА
     public bool EscapePressed { get; private set; }
 
     private Vector2 _move, _look;
-    private bool _interact, _physical, _physicalHeld, _flare;
+    private bool _interact, _physical, _physicalHeld, _flare, _radioNext;
 
     private PlayerControls _actions;
 
@@ -37,7 +38,7 @@ public class InputManager : MonoBehaviour
         _actions.Player.Physical_Interact_Button.performed += _ => { _physical = true; _physicalHeld = true; };
         _actions.Player.Physical_Interact_Button.canceled += _ => _physicalHeld = false;
         _actions.Player.FlareButton.performed += _ => _flare = true;
-
+        _actions.Player.DialogueButton.performed += _ => _radioNext = true; // ← НОВАЯ
         _actions.Player.PauseButton.performed += _ => EscapePressed = true;
     }
 
@@ -46,6 +47,7 @@ public class InputManager : MonoBehaviour
         _interact = false;
         _physical = false;
         _flare = false;
+        _radioNext = false;
         EscapePressed = false;
     }
 
