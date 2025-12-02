@@ -6,7 +6,6 @@ public class CameraController : MonoBehaviour
 {
     public enum ControlMode { UI, FPS }
 
-    [Header("Настройки")]
     public float eyeHeight = 1.6f;
     public float mouseSensitivityX = 1.8f;
     public float mouseSensitivityY = 1.8f;
@@ -17,7 +16,6 @@ public class CameraController : MonoBehaviour
     public float vehicleYawLimit = 70f;
     public float toolPointMoveSpeed = 0.002f;
 
-    [Header("UI Raycast")]
     [SerializeField] private LayerMask uiLayer = 1;
     [SerializeField] private float uiRayDistance = 4f;
 
@@ -25,12 +23,10 @@ public class CameraController : MonoBehaviour
     private Rigidbody _targetRb;
     private CanGrab _playerGrabber;
     private InputRouter _router;
-
     private float _yaw, _pitch;
     private float _smoothYaw, _smoothPitch;
     private float _yawVel, _pitchVel;
     private float _sensX, _sensY;
-
     private TransportMovement _currentVehicle;
     private bool _inVehicle;
 
@@ -55,22 +51,37 @@ public class CameraController : MonoBehaviour
         }
         _router = FindFirstObjectByType<InputRouter>();
 
-        _yaw = _smoothYaw = transform.eulerAngles.y;
-        _pitch = _smoothPitch = UnwrapAngle(transform.eulerAngles.x);
-        _yaw = _smoothYaw = 0f;        // или transform.eulerAngles.y, если нужно сохранить yaw
-        _pitch = _smoothPitch = 0f;    // ← вот главное!
-
+        _yaw = _smoothYaw = 0f;
+        _pitch = _smoothPitch = 0f;
         transform.rotation = Quaternion.Euler(0f, _yaw, 0f);
 
-        UpdateSensitivity();
-        UpdateSensitivity();
+        UpdateSensitivity(false);
+
+        CanGrab.OnGrabbed += OnPlayerGrabbed;
+        CanGrab.OnReleased += OnPlayerReleased;
+    }
+
+    private void OnDestroy()
+    {
+        CanGrab.OnGrabbed -= OnPlayerGrabbed;
+        CanGrab.OnReleased -= OnPlayerReleased;
+    }
+
+    private void OnPlayerGrabbed(CanGrab grabber, Rigidbody rb)
+    {
+        var item = rb.GetComponent<GrabbableItem>();
+        UpdateSensitivity(item != null && item.ItemType == GrabbableType.Tool);
+    }
+
+    private void OnPlayerReleased(CanGrab grabber, Rigidbody rb)
+    {
+        UpdateSensitivity(false);
     }
 
     public void SetMode(ControlMode mode)
     {
         if (currentMode == mode) return;
         currentMode = mode;
-
         if (mode == ControlMode.FPS)
         {
             Cursor.lockState = CursorLockMode.Locked;
@@ -97,10 +108,8 @@ public class CameraController : MonoBehaviour
     {
         float yaw = yawPitch.x;
         float pitch = UnwrapAngle(yawPitch.y);
-
         _yaw = _smoothYaw = yaw;
         _pitch = _smoothPitch = pitch;
-
         transform.rotation = Quaternion.Euler(pitch, yaw, 0f);
     }
 
@@ -144,18 +153,7 @@ public class CameraController : MonoBehaviour
 
         _smoothYaw = Mathf.SmoothDampAngle(_smoothYaw, _yaw, ref _yawVel, rotationSmoothTime);
         _smoothPitch = Mathf.SmoothDampAngle(_smoothPitch, _pitch, ref _pitchVel, rotationSmoothTime);
-
         transform.rotation = Quaternion.Euler(_smoothPitch, _smoothYaw, 0f);
-
-       /*if (_playerGrabber?.IsHoldingTool() == true)
-        {
-            var tgp = _playerGrabber.toolGrabPoint;
-            if (tgp != null)
-            {
-                Vector3 move = new Vector3(look.x, 0f, look.y) * toolPointMoveSpeed;
-                tgp.position += transform.TransformDirection(move);
-            }
-        }*/
 
         HandleFPS_UIRaycast();
     }
@@ -182,13 +180,19 @@ public class CameraController : MonoBehaviour
         }
     }
 
-    private void UpdateSensitivity(bool holdingTool = false)
+    private void UpdateSensitivity(bool holdingTool)
     {
         float m = holdingTool ? toolSensitivityMultiplier : 1f;
         _sensX = mouseSensitivityX * m;
         _sensY = mouseSensitivityY * m;
     }
 
-    private static float NormalizeAngle(float a) { while (a > 180f) a -= 360f; while (a < -180f) a += 360f; return a; }
+    private static float NormalizeAngle(float a)
+    {
+        while (a > 180f) a -= 360f;
+        while (a < -180f) a += 360f;
+        return a;
+    }
+
     private static float UnwrapAngle(float a) => a > 180f ? a - 360f : a;
 }

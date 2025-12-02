@@ -3,22 +3,15 @@
 public class JoystickController : MonoBehaviour
 {
     public static JoystickController Instance { get; private set; }
-
-    [Header("Визуальный рычаг")]
     [SerializeField] private Transform handle;
     [SerializeField] private float maxAngle = 45f;
-
-    [Header("Плавность джойстика")]
-    [SerializeField, Range(1f, 30f)] private float tiltSmooth = 18f;        
-    [SerializeField, Range(1f, 30f)] private float returnSmooth = 12f;      
-
-    [Header("УСКОРЕНИЕ ДВИЖЕНИЯ")]
-    [SerializeField, Range(0.1f, 10f)] private float acceleration = 3.5f;  
-    [SerializeField, Range(0.1f, 10f)] private float deceleration = 6f;   
-
-    [Header("Инверсия")]
+    [SerializeField, Range(1f, 30f)] private float tiltSmooth = 18f;
+    [SerializeField, Range(1f, 30f)] private float returnSmooth = 12f;
+    [SerializeField, Range(0.1f, 10f)] private float acceleration = 3.5f;
+    [SerializeField, Range(0.1f, 10f)] private float deceleration = 6f;
     [SerializeField] private bool invertX = true;
     [SerializeField] private bool invertY = true;
+    [SerializeField] private float joystickSensitivity = 120f;
 
     public Vector2 CurrentDirection { get; private set; } = Vector2.zero;
     public Vector2 SmoothVelocity { get; private set; } = Vector2.zero;
@@ -61,13 +54,11 @@ public class JoystickController : MonoBehaviour
 
     private void Update()
     {
-        
         if (IsGrabbed)
         {
             Vector2 input = InputManager.Instance.Look;
-            targetTilt += input * 180f * Time.deltaTime;
-            targetTilt.x = Mathf.Clamp(targetTilt.x, -maxAngle, maxAngle);
-            targetTilt.y = Mathf.Clamp(targetTilt.y, -maxAngle, maxAngle);
+            targetTilt += input * joystickSensitivity * Time.deltaTime;
+            targetTilt = Vector2.ClampMagnitude(targetTilt, maxAngle);
         }
         else
         {
@@ -81,21 +72,12 @@ public class JoystickController : MonoBehaviour
         float rotY = currentTilt.y * (invertY ? -1f : 1f);
         handle.localRotation = initialRotation * Quaternion.Euler(rotY, 0f, rotX);
 
-       
         Vector2 targetDir = currentTilt / maxAngle;
-        Vector2 maxSpeed = targetDir * 1f; 
-
         if (IsGrabbed)
-        {
-            
-            SmoothVelocity = Vector2.MoveTowards(SmoothVelocity, maxSpeed, 1f);
-        }
+            SmoothVelocity = Vector2.MoveTowards(SmoothVelocity, targetDir, acceleration * Time.deltaTime);
         else
-        {
-            
-            SmoothVelocity = Vector2.MoveTowards(SmoothVelocity, Vector2.zero, 1f);
-        }
+            SmoothVelocity = Vector2.MoveTowards(SmoothVelocity, Vector2.zero, deceleration * Time.deltaTime);
 
-        CurrentDirection = SmoothVelocity; 
+        CurrentDirection = SmoothVelocity;
     }
 }
