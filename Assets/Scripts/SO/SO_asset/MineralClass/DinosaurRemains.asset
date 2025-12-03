@@ -20,4 +20,4 @@ MonoBehaviour:
   radioactivityMin: 0.2
   radioactivityMax: 0.4
   radioactivityError: 0.001
-  crystalSystem: 2
+  crystalSystem: 1

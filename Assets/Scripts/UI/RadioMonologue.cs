@@ -26,8 +26,10 @@ public class RadioMonologue : MonoBehaviour
     private Coroutine typingCoroutine;
 
     public TutorialManager tutorialManager;
-
     public bool IsPlaying => radioPanel != null && radioPanel.activeSelf;
+
+    private bool hasPlayedFinalMonologue = false;
+    public bool HasPlayedFinalMonologue => hasPlayedFinalMonologue;
 
     private void Awake()
     {
@@ -38,7 +40,6 @@ public class RadioMonologue : MonoBehaviour
     {
         if (radioPanel) radioPanel.SetActive(false);
         if (promptText) promptText.text = "Press Enter to continue";
-
         if (monologueSets != null && monologueSets.Length > 0)
             StartMonologue(0);
     }
@@ -78,6 +79,7 @@ public class RadioMonologue : MonoBehaviour
         while (charIndex < text.Length)
         {
             if (!isTyping) yield break;
+
             radioText.text = text.Substring(0, charIndex + 1);
             charIndex++;
             yield return new WaitForSeconds(delay);
@@ -108,22 +110,35 @@ public class RadioMonologue : MonoBehaviour
             }
         }
     }
-    [ContextMenu("Запустить финальный монолог туториала")]
+
     public void PlayFinalTutorialMonologue()
     {
         if (monologueSets.Length > 2)
-            StartMonologue(2); // ← индекс 2 — третий монолог
+            StartMonologue(2);
     }
+
+    public void PlayReturnToBaseMonologue()
+    {
+        StartMonologue(1);
+    }
+
     private void EndMonologue()
     {
         radioPanel.SetActive(false);
         BlockPlayerControls(false);
 
+        // === ФИКС: отмечаем проигрывание монологов ===
+        if (currentSet == 1)                   // ← ЭТО ВТОРОЙ МОНOЛОГ
+            hasPlayedReturnMonologue = true;
+
+        if (currentSet == 2)                   // ← финальный
+            hasPlayedFinalMonologue = true;
+
         if (currentSet == 0 && tutorialManager != null)
-        {
             tutorialManager.ForceStartTutorial();
-        }
     }
+    private bool hasPlayedReturnMonologue = false;
+    public bool HasPlayedReturnMonologue => hasPlayedReturnMonologue;
 
     private void BlockPlayerControls(bool block)
     {
@@ -140,9 +155,5 @@ public class RadioMonologue : MonoBehaviour
             InputManager.ClearAll();
     }
 
-    [ContextMenu("Запустить монолог 0 (тест)")]
     private void Test0() => StartMonologue(0);
-
-    [ContextMenu("Запустить монолог 1 (возвращение на базу)")]
-    public void PlayReturnToBaseMonologue() => StartMonologue(1);
 }

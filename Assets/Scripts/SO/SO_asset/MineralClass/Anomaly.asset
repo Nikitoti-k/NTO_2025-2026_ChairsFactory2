@@ -10,9 +10,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d9dc88466fb3dae4bbc933e6cf50d87d, type: 3}
-  m_Name: AlienEgg
+  m_Name: Anomaly
   m_EditorClassIdentifier: 
-  className: "\u041E\u0441\u0430\u0434\u043E\u0447\u043D\u044B\u0439 \u0436\u0435\u043B\u0435\u0437\u043D\u044F\u043A"
+  className: "\u0410\u043D\u043E\u043C\u0430\u043B\u0438\u044F"
+  isAnomalyClass: 1
   ageUnit: 0
   ageMin: 4
   ageMax: 4
