@@ -19,7 +19,7 @@ public class SnapZone : MonoBehaviour
     [SerializeField] private bool makeKinematicInMultiSlot = true;
     [SerializeField] private bool makeTriggerInMultiSlot = true;
     [SerializeField] private float liftHeight = 0.6f;
-    // === ДОБАВЬ ЭТО В КОНЕЦ КЛАССА SnapZone ===
+
     [System.Serializable]
     public class GrabbableItemEvent : UnityEvent<GrabbableItem> { }
 
@@ -27,7 +27,6 @@ public class SnapZone : MonoBehaviour
     public GrabbableItemEvent onItemSnapped = new GrabbableItemEvent();
     public GrabbableItemEvent onItemRemoved = new GrabbableItemEvent();
 
-    // Публичное свойство для количества прикреплённых предметов
     public int AttachedItemsCount => isMultiSlot ? attachedItems.Count : (attachedItem != null ? 1 : 0);
     public bool IsOccupied => isMultiSlot ? attachedItems.Count > 0 : attachedItem != null;
     public GameObject CurrentSnappedObject => isMultiSlot
@@ -48,38 +47,32 @@ public class SnapZone : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        var grabbable = other.GetComponent<GrabbableItem>();
-        if (grabbable != null && grabbable.ItemType == GrabbableType.Mineral)
-        {
-            var col = other.GetComponent<Collider>();
-            if (col != null) col.isTrigger = true;
-        }
+        if (CanGrab.Instance != null && Time.time - CanGrab.Instance.LastReleaseTime < 0.2f) return;
     }
 
     private void OnTriggerStay(Collider other)
     {
-        var grabbable = other.GetComponent<GrabbableItem>();
-        if (grabbable != null && grabbable.ItemType == GrabbableType.Mineral)
-        {
-            var col = other.GetComponent<Collider>();
-            if (col != null) col.isTrigger = true;
-        }
+        if (CanGrab.Instance != null && Time.time - CanGrab.Instance.LastReleaseTime < 0.2f) return;
     }
 
-    public bool CanSnap(GrabbableItem item)
+    // ВИРТУАЛЬНЫЕ МЕТОДЫ — теперь можно переопределять!
+    public virtual bool CanSnap(GrabbableItem item)
     {
         if (item == null || item.ItemType != requiredType) return false;
         if (isMultiSlot ? attachedItems.Contains(item) : attachedItem == item) return false;
         if (isMultiSlot && attachedItems.Count >= multiSnapPoints.Count) return false;
+
         var target = isMultiSlot ? GetBestMultiPoint(item) : singleSnapPoint;
         return target != null && Vector3.Distance(item.transform.position, target.position) <= snapDistance;
     }
 
-    public void Snap(GrabbableItem item)
+    public virtual void Snap(GrabbableItem item)
     {
         if (item == null || (isMultiSlot ? snapRoutines.ContainsKey(item) : snapRoutine != null)) return;
+
         Transform target = isMultiSlot ? GetBestMultiPoint(item) : singleSnapPoint;
         if (target == null) return;
+
         if (!isMultiSlot)
         {
             attachedItem = item;
@@ -92,127 +85,11 @@ public class SnapZone : MonoBehaviour
         }
     }
 
-    private Transform GetBestMultiPoint(GrabbableItem item)
-    {
-        var available = multiSnapPoints.Where(p => p != null &&
-            !attachedItems.Any(i => i != null && i.transform.parent == p)).ToList();
-        if (available.Count == 0) return null;
-        return prioritizeClosestPoint
-            ? available.OrderBy(p => Vector3.Distance(item.transform.position, p.position)).First()
-            : available[0];
-    }
-
-    private IEnumerator Snapping(GrabbableItem item, Transform target, bool isMulti)
-    {
-        CanGrab grabber = FindFirstObjectByType<CanGrab>();
-        grabber?.StartSnappingToZone();
-        Rigidbody rb = item.GetComponent<Rigidbody>();
-        Collider col = item.GetComponent<Collider>();
-        if (rb)
-        {
-            rb.isKinematic = true;
-            rb.linearVelocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
-        }
-        if (col && (isMulti ? makeTriggerInMultiSlot : true))
-            col.isTrigger = true;
-        grabber?.ForceRelease();
-        Vector3 startPos = item.transform.position;
-        Quaternion startRot = item.transform.rotation;
-        Vector3 liftPos = startPos + Vector3.up * liftHeight;
-        Vector3 finalPos = target.position;
-        float liftDist = Vector3.Distance(startPos, liftPos);
-        float dropDist = Vector3.Distance(liftPos, finalPos);
-        float totalDist = liftDist + dropDist;
-        float duration = Mathf.Max(minSnapDuration, totalDist / snapSpeed);
-        float t = 0f;
-        while (t < 1f)
-        {
-            t += Time.deltaTime / duration;
-            float curve = snapCurve.Evaluate(t);
-            Vector3 currentPos = t < 0.5f
-                ? Vector3.Lerp(startPos, liftPos, t * 2f)
-                : Vector3.Lerp(liftPos, finalPos, (t - 0.5f) * 2f);
-            item.transform.position = currentPos;
-            item.transform.rotation = Quaternion.Slerp(startRot, target.rotation, curve);
-            yield return null;
-        }
-        item.transform.SetParent(target);
-        onItemSnapped?.Invoke(item);
-        item.transform.localPosition = Vector3.zero;
-        item.transform.localRotation = Quaternion.identity;
-        if (isMulti && rb)
-        {
-            rb.isKinematic = makeKinematicInMultiSlot;
-            rb.useGravity = false;
-        }
-        if (!isMulti) snapRoutine = null;
-        else snapRoutines.Remove(item);
-        grabber?.EndSnappingToZoneComplete();
-    }
-
-    public void LoadSnappedItem(GrabbableItem item, int pointIndex = -1)
-    {
-        if (item == null) return;
-        Transform target;
-        if (!isMultiSlot)
-        {
-            target = singleSnapPoint ?? transform;
-        }
-        else
-        {
-            if (pointIndex >= 0 && pointIndex < multiSnapPoints.Count &&
-                multiSnapPoints[pointIndex] != null &&
-                !attachedItems.Any(i => i != null && i.transform.parent == multiSnapPoints[pointIndex]))
-            {
-                target = multiSnapPoints[pointIndex];
-            }
-            else
-            {
-                target = GetBestMultiPoint(item) ?? multiSnapPoints.FirstOrDefault(p => p != null);
-            }
-        }
-        if (target == null) return;
-        item.transform.SetParent(target);
-        item.transform.localPosition = Vector3.zero;
-        item.transform.localRotation = Quaternion.identity;
-        var rb = item.GetComponent<Rigidbody>();
-        var col = item.GetComponent<Collider>();
-        if (rb)
-        {
-            rb.linearVelocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
-            if (isMultiSlot)
-            {
-                rb.isKinematic = makeKinematicInMultiSlot;
-                rb.useGravity = false;
-            }
-        }
-        if (col && (isMultiSlot ? makeTriggerInMultiSlot : true))
-            col.isTrigger = true;
-        if (!isMultiSlot)
-            attachedItem = item;
-        else if (!attachedItems.Contains(item))
-            attachedItems.Add(item);
-        if (MineralScannerManager.Instance != null && this == MineralScannerManager.Instance.targetSnapZone)
-            MineralScannerManager.Instance.ForceScanCurrentMineral();
-        else
-            StartCoroutine(DelayedScannerCheck());
-    }
-
-    private IEnumerator DelayedScannerCheck()
-    {
-        yield return new WaitForEndOfFrame();
-        yield return null;
-        if (MineralScannerManager.Instance != null && this == MineralScannerManager.Instance.targetSnapZone && IsOccupied)
-            MineralScannerManager.Instance.ForceScanCurrentMineral();
-    }
-
-    public void OnItemGrabbedFromZone(GrabbableItem grabbedItem)
+    public virtual void OnItemGrabbedFromZone(GrabbableItem grabbedItem)
     {
         if (grabbedItem == null) return;
 
-        // ← БЛОКИРОВКА ВЗЯТИЯ ЛЮБОГО МИНЕРАЛА ДО ВТОРОГО МОНОЛОГА
+        // Блокировка взятия минералов в туториале
         if (grabbedItem.ItemType == GrabbableType.Mineral)
         {
             if (TutorialManager.Instance != null && !TutorialManager.Instance.CanGrabAnyMineralFromVehicle())
@@ -231,6 +108,10 @@ public class SnapZone : MonoBehaviour
                 }
             }
         }
+
+        grabbedItem.transform.SetParent(null);
+        var col = grabbedItem.GetComponent<Collider>();
+        if (col != null) col.isTrigger = false;
 
         onItemRemoved?.Invoke(grabbedItem);
 
@@ -259,8 +140,138 @@ public class SnapZone : MonoBehaviour
         }
     }
 
+    // Остальные методы без изменений
+    private Transform GetBestMultiPoint(GrabbableItem item)
+    {
+        var available = multiSnapPoints.Where(p => p != null &&
+            !attachedItems.Any(i => i != null && i.transform.parent == p)).ToList();
+        if (available.Count == 0) return null;
+        return prioritizeClosestPoint
+            ? available.OrderBy(p => Vector3.Distance(item.transform.position, p.position)).First()
+            : available[0];
+    }
 
-    public void ReleaseItem(GrabbableItem item)
+    private IEnumerator Snapping(GrabbableItem item, Transform target, bool isMulti)
+    {
+        CanGrab grabber = FindFirstObjectByType<CanGrab>();
+        grabber?.StartSnappingToZone();
+
+        Rigidbody rb = item.GetComponent<Rigidbody>();
+        Collider col = item.GetComponent<Collider>();
+
+        if (rb)
+        {
+            rb.isKinematic = true;
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+        }
+        if (col && (isMulti ? makeTriggerInMultiSlot : true))
+            col.isTrigger = true;
+
+        grabber?.ForceRelease();
+
+        Vector3 startPos = item.transform.position;
+        Quaternion startRot = item.transform.rotation;
+        Vector3 liftPos = startPos + Vector3.up * liftHeight;
+        Vector3 finalPos = target.position;
+        float liftDist = Vector3.Distance(startPos, liftPos);
+        float dropDist = Vector3.Distance(liftPos, finalPos);
+        float totalDist = liftDist + dropDist;
+        float duration = Mathf.Max(minSnapDuration, totalDist / snapSpeed);
+        float t = 0f;
+
+        while (t < 1f)
+        {
+            t += Time.deltaTime / duration;
+            float curve = snapCurve.Evaluate(t);
+            Vector3 currentPos = t < 0.5f
+                ? Vector3.Lerp(startPos, liftPos, t * 2f)
+                : Vector3.Lerp(liftPos, finalPos, (t - 0.5f) * 2f);
+            item.transform.position = currentPos;
+            item.transform.rotation = Quaternion.Slerp(startRot, target.rotation, curve);
+            yield return null;
+        }
+
+        item.transform.SetParent(target);
+        onItemSnapped?.Invoke(item);
+        item.transform.localPosition = Vector3.zero;
+        item.transform.localRotation = Quaternion.identity;
+
+        if (isMulti && rb)
+        {
+            rb.isKinematic = makeKinematicInMultiSlot;
+            rb.useGravity = false;
+        }
+
+        if (!isMulti) snapRoutine = null;
+        else snapRoutines.Remove(item);
+
+        grabber?.EndSnappingToZoneComplete();
+    }
+
+    public virtual void LoadSnappedItem(GrabbableItem item, int pointIndex = -1)
+    {
+        // ... (остаётся без изменений)
+        if (item == null) return;
+        Transform target;
+        if (!isMultiSlot)
+        {
+            target = singleSnapPoint ?? transform;
+        }
+        else
+        {
+            if (pointIndex >= 0 && pointIndex < multiSnapPoints.Count &&
+                multiSnapPoints[pointIndex] != null &&
+                !attachedItems.Any(i => i != null && i.transform.parent == multiSnapPoints[pointIndex]))
+            {
+                target = multiSnapPoints[pointIndex];
+            }
+            else
+            {
+                target = GetBestMultiPoint(item) ?? multiSnapPoints.FirstOrDefault(p => p != null);
+            }
+        }
+        if (target == null) return;
+
+        item.transform.SetParent(target);
+        item.transform.localPosition = Vector3.zero;
+        item.transform.localRotation = Quaternion.identity;
+
+        var rb = item.GetComponent<Rigidbody>();
+        var col = item.GetComponent<Collider>();
+        if (rb)
+        {
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+            if (isMultiSlot)
+            {
+                rb.isKinematic = makeKinematicInMultiSlot;
+                rb.useGravity = false;
+            }
+        }
+        if (col && (isMultiSlot ? makeTriggerInMultiSlot : true))
+            col.isTrigger = true;
+
+        if (!isMultiSlot)
+            attachedItem = item;
+        else if (!attachedItems.Contains(item))
+            attachedItems.Add(item);
+
+        if (MineralScannerManager.Instance != null && this == MineralScannerManager.Instance.targetSnapZone)
+            MineralScannerManager.Instance.ForceScanCurrentMineral();
+        else
+            StartCoroutine(DelayedScannerCheck());
+    }
+
+    private IEnumerator DelayedScannerCheck()
+    {
+        yield return new WaitForEndOfFrame();
+        yield return null;
+        if (MineralScannerManager.Instance != null && this == MineralScannerManager.Instance.targetSnapZone && IsOccupied)
+            MineralScannerManager.Instance.ForceScanCurrentMineral();
+    }
+
+    public virtual void ReleaseItem(GrabbableItem item)
     {
         if (isMultiSlot && attachedItems.Remove(item))
         {

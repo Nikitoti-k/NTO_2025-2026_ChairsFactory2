@@ -43,7 +43,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
     [SerializeField] public RadioMonologue radioMonologue;
     [SerializeField] public SnapZone vehicleMineralSnapZone;
     [SerializeField] private SnapZone baseResearchSnapZone;
-    [SerializeField] private QuarantineBox quarantineBox; // ← карантинный ящик
+    [SerializeField] private QuarantineBox quarantineBox;
 
     private int step = 0;
     private float timer = 0f;
@@ -61,11 +61,11 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
     private MineralData currentScannedMineral;
     private Transform player;
 
-    // Новые флаги
     private bool anomalyHintShown = false;
     private bool anomalyPlaced = false;
     private bool bedHintShown = false;
     private bool playerSlept = false;
+    private bool finalMonologuePlayed = false;
 
     private void Awake()
     {
@@ -100,6 +100,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
         ResetAllFlags();
         step = 0;
         researchedCount = 0;
+        finalMonologuePlayed = false;
         ShowHint(lookText);
     }
 
@@ -116,13 +117,12 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
         if (baseResearchSnapZone != null)
             baseResearchSnapZone.onItemSnapped.AddListener(OnMineralPlacedOnResearchTable);
         if (MineralScanner_Renderer.Instance != null)
+        {
             MineralScanner_Renderer.Instance.SubscribeToAllThreeScanned(OnAllThreeValuesScanned);
+            MineralScanner_Renderer.Instance.SubscribeToProximity(OnScannerProximityChanged); // ← ВОССТАНАВЛИВАЕМ!
+        }
         if (quarantineBox != null)
             quarantineBox.onItemSnapped.AddListener(OnAnomalyPlacedInQuarantine);
-
-        // Подписываемся на сон
-        if (SleepSystem.Instance != null)
-            SleepSystem.Instance.GetComponent<SleepSystem>().enabled = true; // на всякий
     }
 
     private void OnDisable()
@@ -138,7 +138,10 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
         if (baseResearchSnapZone != null)
             baseResearchSnapZone.onItemSnapped.RemoveListener(OnMineralPlacedOnResearchTable);
         if (MineralScanner_Renderer.Instance != null)
+        {
             MineralScanner_Renderer.Instance.UnsubscribeFromAllThreeScanned(OnAllThreeValuesScanned);
+            MineralScanner_Renderer.Instance.UnsubscribeFromProximity(OnScannerProximityChanged); // ← ВОССТАНАВЛИВАЕМ!
+        }
         if (quarantineBox != null)
             quarantineBox.onItemSnapped.RemoveListener(OnAnomalyPlacedInQuarantine);
     }
@@ -189,8 +192,8 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
             HighlightFirstTwoMineralsInVehicle();
         }
 
-        // Финальная подсказка — лечь спать
-        if (!bedHintShown && playerSlept == false && GameDayManager.Instance != null && GameDayManager.Instance.CanSleep)
+        // ← ПОДСКАЗКА СНА — ТОЛЬКО ПОСЛЕ КАРАНТИНА!
+        if (!bedHintShown && !playerSlept && anomalyPlaced && GameDayManager.Instance != null && GameDayManager.Instance.CanSleep)
         {
             ShowHint(goToBedHint);
             bedHintShown = true;
@@ -246,7 +249,18 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
         }
     }
 
-    // ← ПОДСКАЗКА "ОТПРАВИТЬ ОТЧЁТ" РАБОТАЕТ КАК КНОПКА!
+    // ← ВОССТАНАВЛИВАЕМ ПОДСКАЗКУ ДЛЯ КНОПКИ СКАНИРОВАНИЯ
+    private void OnScannerProximityChanged(float proximity)
+    {
+        if (!firstMineralOnTable || !scanMoveHintShown || scanClickHintShown) return;
+        if (proximity >= 0.6f)
+        {
+            ShowHint(scanClickHint);
+            scanMoveHintShown = false;
+            scanClickHintShown = true;
+        }
+    }
+
     private void OnAllThreeValuesScanned()
     {
         if (currentScannedMineral == null || currentScannedMineral.isResearched)
@@ -261,9 +275,18 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
                           !string.IsNullOrEmpty(currentScannedMineral.savedCrystalLine);
 
         if (allScanned)
+        {
             ShowHint(makeConclusionHint);
+            if (currentScannedMineral.isLastInTutorialQueue && !finalMonologuePlayed && radioMonologue != null)
+            {
+                radioMonologue.PlayFinalTutorialMonologue();
+                finalMonologuePlayed = true;
+            }
+        }
         else if (hintPanel.activeSelf && hintText.text.Contains("отправьте отчёт"))
+        {
             hintPanel.SetActive(false);
+        }
     }
 
     public void OnRecordButtonPressed()
@@ -289,7 +312,6 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
             showedFindTwoMore = true;
             StartCoroutine(HideHintAfter(3f));
         }
-
     }
 
     private void OnMineralResearched(MineralData mineral)
@@ -306,10 +328,9 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
         }
     }
 
-    // После всех отчётов — можно спать
     private void OnAllReportsSubmitted()
     {
-        if (!bedHintShown && !playerSlept)
+        if (!bedHintShown && !playerSlept && anomalyPlaced)
         {
             ShowHint(goToBedHint);
             bedHintShown = true;
@@ -318,8 +339,10 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
 
     public void OnAnomalyReportSubmitted()
     {
-        if (anomalyHintShown || anomalyPlaced) return;
-        if (radioMonologue != null && radioMonologue.HasPlayedFinalMonologue)
+        if (anomalyHintShown || anomalyPlaced || currentScannedMineral == null) return;
+
+        // ← ПРОВЕРЯЕМ, ЧТО ЭТО АНОМАЛИЯ И МОНОЛОГ ПРОИГРАН
+        if (currentScannedMineral.isAnomaly && radioMonologue != null && radioMonologue.HasPlayedFinalMonologue)
         {
             ShowHint(placeAnomalyHint);
             anomalyHintShown = true;
@@ -337,7 +360,6 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
         }
     }
 
-    // ВЫЗЫВАЕТСЯ ИЗ SleepSystem ПОСЛЕ СНА!
     public void OnPlayerSlept()
     {
         playerSlept = true;
@@ -427,6 +449,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
         researchedCount = 0;
         currentScannedMineral = null;
         anomalyHintShown = anomalyPlaced = bedHintShown = playerSlept = false;
+        finalMonologuePlayed = false;
         waitingHold = false;
         if (hintPanel) hintPanel.SetActive(false);
     }

@@ -1442,7 +1442,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &98591565
 Transform:
   m_ObjectHideFlags: 0
@@ -1773,6 +1773,7 @@ Transform:
   - {fileID: 1528209745}
   - {fileID: 1422885598}
   - {fileID: 1119673872}
+  - {fileID: 1920654346}
   m_Father: {fileID: 781156269}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &118751175
@@ -6152,6 +6153,7 @@ Transform:
   - {fileID: 781156269}
   - {fileID: 742248460}
   - {fileID: 98591565}
+  - {fileID: 1401544960}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &344416182
@@ -19570,6 +19572,37 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1401544959
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1401544960}
+  m_Layer: 0
+  m_Name: BasePoint
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1401544960
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1401544959}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 343934409}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1407787444
 GameObject:
   m_ObjectHideFlags: 0
@@ -25820,7 +25853,7 @@ MonoBehaviour:
   transportMask:
     serializedVersion: 2
     m_Bits: 64
-  miningRange: 4
+  miningRange: 3
   miningMask:
     serializedVersion: 2
     m_Bits: 512
@@ -26586,6 +26619,37 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 173617605}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1920654345
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1920654346}
+  m_Layer: 0
+  m_Name: PointBed
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1920654346
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1920654345}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0.821, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 117365957}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1921843701
 GameObject:
@@ -27358,6 +27422,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1988298930}
+  - component: {fileID: 1988298932}
   - component: {fileID: 1988298929}
   - component: {fileID: 1988298931}
   m_Layer: 0
@@ -27480,6 +27545,21 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
+--- !u!114 &1988298932
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1988298928}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 086f04abf62b14242a1663495702a781, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  rotateX: 1
+  rotateY: 1
+  rotateZ: 0
 --- !u!1 &1994448734
 GameObject:
   m_ObjectHideFlags: 0
@@ -29073,7 +29153,10 @@ MonoBehaviour:
     m_NumColorKeys: 5
     m_NumAlphaKeys: 2
   realSecondsPerGameDay: 300
-  forceTimeFlow: 1
+  forceTimeFlow: 0
+  baseCenterPoint: {fileID: 1401544960}
+  distanceToStartDay: 60
+  distanceToTriggerEvening: 60
   OnDayChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -29187,7 +29270,7 @@ MonoBehaviour:
   fadeDuration: 1.5
   sleepScreenDuration: 2
   spawnPointAfterSleep: {fileID: 1920041748}
-  bedTransform: {fileID: 173617605}
+  bedTransform: {fileID: 1920654346}
   maxSleepDistance: 3
 --- !u!114 &2071247398
 MonoBehaviour:
@@ -29803,7 +29886,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 2147483647
   m_IsActive: 1
 --- !u!4 &2100830891
 Transform:

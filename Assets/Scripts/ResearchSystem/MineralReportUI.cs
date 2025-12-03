@@ -140,14 +140,16 @@ public class MineralReportUI : MonoBehaviour
 
         bool correct = selectedClass == correctClass;
 
-        // Если выбрали класс «Аномалия» — помечаем и уведомляем туториал
+        // ← УСТАНАВЛИВАЕМ isAnomaly СРАЗУ
         if (selectedClass.isAnomalyClass)
         {
             currentSample.isAnomaly = true;
+        }
 
-            // УВЕДОМЛЯЕМ ТУТОРИАЛ!
-            if (TutorialManager.Instance != null)
-                TutorialManager.Instance.OnAnomalyReportSubmitted();
+        // Уведомляем туториал
+        if (selectedClass.isAnomalyClass && TutorialManager.Instance != null)
+        {
+            TutorialManager.Instance.OnAnomalyReportSubmitted();
         }
 
         OnReportSubmitted?.Invoke(correct);

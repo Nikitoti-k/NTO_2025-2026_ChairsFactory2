@@ -98,31 +98,37 @@ public class PlayerMovement : MonoBehaviour, IControllable
     {
         if (!pressed || _isMounting || _isSleeping) return;
 
-        
         if (objectGrabber?.IsHoldingObject() == true)
         {
             TrySnapObject();
             return;
         }
 
-        // 2. Пытаемся лечь спать
-        if (sleepSystem != null && sleepSystem.CanSleepNow())
+        // === ПОПЫТКА СПАТЬ ===
+        if (sleepSystem != null)
         {
-            Debug.Log("[Player] Засыпаем...");
-            _isSleeping = true;
-            sleepSystem.StartSleep();
-            return;
+            bool canSleep = sleepSystem.CanSleepNow();
+            Debug.Log($"[Player] Нажал E → Проверка сна: CanSleep = {canSleep}");
+
+            if (canSleep)
+            {
+                Debug.Log("[Player] Ложимся спать! Z-z-z...");
+                _isSleeping = true;
+                sleepSystem.StartSleep();
+                return;
+            }
+            else
+            {
+                Debug.LogWarning("[Player] НЕЛЬЗЯ СПАТЬ! Смотри логи выше ↑");
+            }
         }
 
-       
         TryMountTransport();
 
-      
         if (TryOpenResearchReport())
             return;
 
-    
-        Debug.Log("[Player] Нечего интерактировать поблизости.");
+        Debug.Log("[Player] Нечего интерактировать рядом.");
     }
 
     private bool TryOpenResearchReport()
