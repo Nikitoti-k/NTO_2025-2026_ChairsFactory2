@@ -36,7 +36,7 @@ public class SnapZone : MonoBehaviour
 
     private GrabbableItem attachedItem;
     private Coroutine snapRoutine;
-    private readonly List<GrabbableItem> attachedItems = new List<GrabbableItem>();
+    public readonly List<GrabbableItem> attachedItems = new List<GrabbableItem>();
     private readonly Dictionary<GrabbableItem, Coroutine> snapRoutines = new Dictionary<GrabbableItem, Coroutine>();
 
     private void Awake()
@@ -211,7 +211,29 @@ public class SnapZone : MonoBehaviour
     public void OnItemGrabbedFromZone(GrabbableItem grabbedItem)
     {
         if (grabbedItem == null) return;
+
+        // ← БЛОКИРОВКА ВЗЯТИЯ ЛЮБОГО МИНЕРАЛА ДО ВТОРОГО МОНОЛОГА
+        if (grabbedItem.ItemType == GrabbableType.Mineral)
+        {
+            if (TutorialManager.Instance != null && !TutorialManager.Instance.CanGrabAnyMineralFromVehicle())
+            {
+                FindObjectOfType<CanGrab>()?.ForceRelease();
+                return;
+            }
+
+            var mineralData = grabbedItem.GetComponentInChildren<MineralData>();
+            if (mineralData != null && mineralData.isLastInTutorialQueue)
+            {
+                if (TutorialManager.Instance != null && !TutorialManager.Instance.CanGrabLastTutorialMineral())
+                {
+                    FindObjectOfType<CanGrab>()?.ForceRelease();
+                    return;
+                }
+            }
+        }
+
         onItemRemoved?.Invoke(grabbedItem);
+
         if (!isMultiSlot)
         {
             if (attachedItem == grabbedItem)
@@ -236,6 +258,7 @@ public class SnapZone : MonoBehaviour
             }
         }
     }
+
 
     public void ReleaseItem(GrabbableItem item)
     {

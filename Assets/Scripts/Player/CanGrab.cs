@@ -1,11 +1,12 @@
 ﻿using UnityEngine;
 using System;
+using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(PlayerMovement))]
 public class CanGrab : MonoBehaviour
 {
     [SerializeField] private Transform grabPoint;
-    [SerializeField] private Transform doorGrabPoint;        // Новый отдельный grabPoint для дверей
+    [SerializeField] private Transform doorGrabPoint;
     [SerializeField] private float maxGrabDistance = 3.5f;
     [SerializeField] public Transform toolGrabPoint;
     [SerializeField] private float toolMaxGrabDistance = 1.8f;
@@ -46,7 +47,7 @@ public class CanGrab : MonoBehaviour
     {
         if (grabPoint == null) grabPoint = transform;
         if (toolGrabPoint == null) toolGrabPoint = grabPoint;
-        if (doorGrabPoint == null) doorGrabPoint = grabPoint; // fallback
+        if (doorGrabPoint == null) doorGrabPoint = grabPoint;
     }
 
     public bool IsHoldingObject() => heldRb != null;
@@ -67,29 +68,54 @@ public class CanGrab : MonoBehaviour
 
     private void TryGrab()
     {
-        // 1. Сначала проверяем Tool
+        // 1. Tool
         if (TryGrabAt(toolGrabPoint, toolMaxGrabDistance, out var item) && item.ItemType == GrabbableType.Tool)
         {
             GrabOldStyle(item, toolGrabPoint);
             return;
         }
-
-        // 2. Проверяем Door (по тегу)
+        // 2. Door
         if (TryGrabAt(doorGrabPoint, maxGrabDistance, out item) && item.CompareTag("Door"))
         {
             GrabOldStyle(item, doorGrabPoint);
             return;
         }
-
-        // 3. Всё остальное (включая Mineral и обычные предметы)
+        // 3. Всё остальное
+        // 3. Всё остальное
         if (TryGrabAt(grabPoint, maxGrabDistance, out item))
         {
+            // ← БЛОКИРОВКА ТУТОРИАЛА ТОЛЬКО ДЛЯ SnapZone снегохода
+            if (item.ItemType == GrabbableType.Mineral)
+            {
+                var mineralData = item.GetComponentInChildren<MineralData>();
+                if (mineralData != null)
+                {
+                    // ← Проверяем, находится ли минерал в SnapZone снегохода
+                    var vehicleSnapZone = TutorialManager.Instance?.vehicleMineralSnapZone;
+                    if (vehicleSnapZone != null && item.GetComponentInParent<SnapZone>() == vehicleSnapZone)
+                    {
+                        // Блокировка до второго монолога
+                        if (TutorialManager.Instance != null && !TutorialManager.Instance.CanGrabAnyMineralFromVehicle())
+                        {
+                            return;
+                        }
+
+                        // Блокировка последнего минерала
+                        if (mineralData.isLastInTutorialQueue && TutorialManager.Instance != null && !TutorialManager.Instance.CanGrabLastTutorialMineral())
+                        {
+                            return;
+                        }
+                    }
+                }
+            }
+
             if (item.ItemType == GrabbableType.Mineral)
                 GrabMineralVotV(item);
             else
                 GrabOldStyle(item, grabPoint);
         }
     }
+       
 
     private bool TryGrabAt(Transform point, float dist, out GrabbableItem item)
     {
@@ -99,6 +125,7 @@ public class CanGrab : MonoBehaviour
         if (item == null) return false;
         if (point == toolGrabPoint && item.ItemType != GrabbableType.Tool) return false;
         if (point == grabPoint && item.ItemType == GrabbableType.Tool) return false;
+
         var rb = item.GetComponent<Rigidbody>() ?? hit.collider.attachedRigidbody;
         return rb != null;
     }
@@ -108,26 +135,32 @@ public class CanGrab : MonoBehaviour
         var rb = item.GetComponent<Rigidbody>();
         var snapZone = item.GetComponentInParent<SnapZone>();
         snapZone?.OnItemGrabbedFromZone(item);
+
         heldRb = rb;
         heldTransform = rb.transform;
         heldItem = item;
         activePoint = grabPoint;
+
         originalInterpolation = rb.interpolation;
         rb.interpolation = RigidbodyInterpolation.Interpolate;
         originalDrag = rb.linearDamping;
         originalAngularDrag = rb.angularDamping;
         rb.linearDamping = mineralDrag;
         rb.angularDamping = mineralAngularDrag;
+
         mineralJoint = rb.gameObject.AddComponent<ConfigurableJoint>();
         mineralJoint.connectedBody = null;
         mineralJoint.autoConfigureConnectedAnchor = false;
         mineralJoint.connectedAnchor = cam.transform.position + cam.transform.forward * mineralHoldDistance;
         mineralJoint.xMotion = mineralJoint.yMotion = mineralJoint.zMotion = ConfigurableJointMotion.Limited;
         mineralJoint.angularXMotion = mineralJoint.angularYMotion = mineralJoint.angularZMotion = ConfigurableJointMotion.Locked;
+
         var drive = new JointDrive { positionSpring = mineralPullForce * 100f, positionDamper = mineralPullForce * 10f, maximumForce = 1e8f };
         mineralJoint.xDrive = mineralJoint.yDrive = mineralJoint.zDrive = drive;
+
         rb.useGravity = mineralsHaveGravity;
         rb.isKinematic = false;
+
         OnGrabbed?.Invoke(this, heldRb);
     }
 
@@ -136,10 +169,12 @@ public class CanGrab : MonoBehaviour
         var rb = item.GetComponent<Rigidbody>() ?? item.GetComponentInParent<Rigidbody>();
         var snapZone = item.GetComponentInParent<SnapZone>();
         snapZone?.OnItemGrabbedFromZone(item);
+
         heldRb = rb;
         heldTransform = rb.transform;
         heldItem = item;
         activePoint = point;
+
         wasKinematicBeforeGrab = rb.isKinematic;
 
         bool isDoor = item.CompareTag("Door");
@@ -153,6 +188,7 @@ public class CanGrab : MonoBehaviour
         rb.useGravity = false;
         rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
+
         OnGrabbed?.Invoke(this, heldRb);
         isPulling = true;
     }
@@ -175,8 +211,14 @@ public class CanGrab : MonoBehaviour
         {
             bool isDoor = heldItem.CompareTag("Door");
             var col = heldItem.GetComponent<Collider>();
-            if (col && !isDoor && (heldItem.ItemType == GrabbableType.Tool || heldItem.ItemType == GrabbableType.Mineral))
-                col.isTrigger = wasTriggerBeforeGrab;
+            if (col && !isDoor)
+            {
+                // ← ЖЁСТКО: минерал всегда НЕ триггер после отпускания
+                if (heldItem.ItemType == GrabbableType.Mineral)
+                    col.isTrigger = false;
+                else
+                    col.isTrigger = wasTriggerBeforeGrab;
+            }
 
             bool hasGravity = heldItem.ItemType == GrabbableType.Tool ? toolsHaveGravity : mineralsHaveGravity;
             heldRb.useGravity = hasGravity;
@@ -201,6 +243,7 @@ public class CanGrab : MonoBehaviour
             mineralJoint.connectedAnchor = grabPoint.position;
             if (Vector3.Distance(heldTransform.position, grabPoint.position) > mineralBreakDistance)
                 Release();
+
             if (heldRb.linearVelocity.sqrMagnitude > mineralMaxVelocity * mineralMaxVelocity)
                 heldRb.linearVelocity = heldRb.linearVelocity.normalized * mineralMaxVelocity;
         }
@@ -229,6 +272,7 @@ public class CanGrab : MonoBehaviour
     {
         if (heldRb == null || isPulling || isSnapping || activePoint == null) return;
         if (heldItem.ItemType == GrabbableType.Mineral) return;
+
         heldTransform.position = activePoint.TransformPoint(lockedOffset);
         heldTransform.rotation = activePoint.rotation * lockedRotation;
     }

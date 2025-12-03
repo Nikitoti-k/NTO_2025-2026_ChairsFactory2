@@ -18,7 +18,6 @@ public class RadioMonologue : MonoBehaviour
     [SerializeField] private TMP_Text speakerText;
     [SerializeField] private TMP_Text promptText;
     [SerializeField] private float charsPerSecond = 45f;
-
     [SerializeField] private MonologueSet[] monologueSets;
 
     private int currentSet = 0;
@@ -27,6 +26,8 @@ public class RadioMonologue : MonoBehaviour
     private Coroutine typingCoroutine;
 
     public TutorialManager tutorialManager;
+
+    public bool IsPlaying => radioPanel != null && radioPanel.activeSelf;
 
     private void Awake()
     {
@@ -48,7 +49,6 @@ public class RadioMonologue : MonoBehaviour
 
         currentSet = setIndex;
         currentPhrase = 0;
-
         radioPanel.SetActive(true);
         BlockPlayerControls(true);
         UpdateSpeakerAndStartTyping();
@@ -77,8 +77,7 @@ public class RadioMonologue : MonoBehaviour
 
         while (charIndex < text.Length)
         {
-            if (!isTyping) yield break; // если уже скипнули
-
+            if (!isTyping) yield break;
             radioText.text = text.Substring(0, charIndex + 1);
             charIndex++;
             yield return new WaitForSeconds(delay);
@@ -98,7 +97,7 @@ public class RadioMonologue : MonoBehaviour
             if (isTyping && typingCoroutine != null)
             {
                 StopCoroutine(typingCoroutine);
-                radioText.text = monologueSets[currentSet].phrases[currentPhrase]; // мгновенно весь текст
+                radioText.text = monologueSets[currentSet].phrases[currentPhrase];
                 isTyping = false;
                 if (promptText) promptText.gameObject.SetActive(true);
             }
@@ -109,7 +108,12 @@ public class RadioMonologue : MonoBehaviour
             }
         }
     }
-
+    [ContextMenu("Запустить финальный монолог туториала")]
+    public void PlayFinalTutorialMonologue()
+    {
+        if (monologueSets.Length > 2)
+            StartMonologue(2); // ← индекс 2 — третий монолог
+    }
     private void EndMonologue()
     {
         radioPanel.SetActive(false);
@@ -117,9 +121,7 @@ public class RadioMonologue : MonoBehaviour
 
         if (currentSet == 0 && tutorialManager != null)
         {
-            tutorialManager.gameObject.SetActive(true);
-            tutorialManager.enabled = true;
-            tutorialManager.ForceStartTutorial(); // ← ВСЁ, ТУТОРИАЛ ТОЧНО ЗАПУСТИТСЯ
+            tutorialManager.ForceStartTutorial();
         }
     }
 
