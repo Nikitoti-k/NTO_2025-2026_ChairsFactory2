@@ -7,11 +7,11 @@ using System.Linq;
 public class MineralScanner_Renderer : MonoBehaviour
 {
     public static MineralScanner_Renderer Instance { get; private set; }
+
     private event System.Action<float> OnProximityChanged;
     public void SubscribeToProximity(System.Action<float> c) => OnProximityChanged += c;
     public void UnsubscribeFromProximity(System.Action<float> c) => OnProximityChanged -= c;
 
-    [Header("UI")]
     [SerializeField] private RectTransform scanningPoint;
     [SerializeField] private Button recordButtonUI;
     [SerializeField] private Button reportButton;
@@ -21,12 +21,11 @@ public class MineralScanner_Renderer : MonoBehaviour
     [SerializeField] private GameObject noConnectionOverlay;
     [SerializeField] private TextMeshProUGUI noConnectionText;
 
-    [Header("Настройки")]
     [SerializeField] private Vector2 boundsMin = new(-300f, -300f);
     [SerializeField] private Vector2 boundsMax = new(300f, 300f);
     [SerializeField] private float detectionRadius = 80f;
     [SerializeField] private float captureRadius = 30f;
-    [SerializeField] private float scannerSpeed = 580f;
+    [SerializeField] private float scannerSpeed = 850f;
     public Camera renderCam;
 
     private RectTransform myRect;
@@ -42,7 +41,6 @@ public class MineralScanner_Renderer : MonoBehaviour
     {
         Instance = this;
         myRect = GetComponent<RectTransform>();
-
         resultText.text = "Крист. решётка: ???\nВозраст: ???\nРадиоактивность: ???";
         noConnectionOverlay.SetActive(true);
         noConnectionText.text = "НЕТ СОЕДИНЕНИЯ";
@@ -68,16 +66,18 @@ public class MineralScanner_Renderer : MonoBehaviour
         MineralScannerManager.Instance.OnMineralRemoved.AddListener(OnMineralRemoved);
     }
 
+    public MineralData GetCurrentMineral() => currentMineral;
+
     public void OnMineralPlaced(GameObject obj)
     {
         currentMineral = obj.GetComponentInChildren<MineralData>();
         if (currentMineral == null) return;
 
         isReportSubmitted = currentMineral.isResearched;
-        reportButton.interactable = !isReportSubmitted;
+        reportButton.interactable = !isReportSubmitted && AreAllThreeValuesScanned();
         recordButtonUI.interactable = !isReportSubmitted;
-        noConnectionOverlay.SetActive(isReportSubmitted);
 
+        noConnectionOverlay.SetActive(isReportSubmitted);
         if (isReportSubmitted)
         {
             noConnectionText.text = "ОБРАЗЕЦ УЖЕ ИЗУЧЕН\nОтчёт по нему отправлен.";
@@ -101,6 +101,7 @@ public class MineralScanner_Renderer : MonoBehaviour
         else ResetText();
 
         GenerateCrystalLetterOrder(currentMineral);
+        UpdateReportButtonInteractability();
     }
 
     private void OnMineralRemoved()
@@ -116,6 +117,20 @@ public class MineralScanner_Renderer : MonoBehaviour
         ResetText();
     }
 
+    private bool AreAllThreeValuesScanned()
+    {
+        if (currentMineral == null) return false;
+        return !string.IsNullOrEmpty(currentMineral.savedAgeLine) &&
+               !string.IsNullOrEmpty(currentMineral.savedRadioactivityLine) &&
+               !string.IsNullOrEmpty(currentMineral.savedCrystalLine);
+    }
+
+    private void UpdateReportButtonInteractability()
+    {
+        if (reportButton != null && currentMineral != null && !currentMineral.isResearched)
+            reportButton.interactable = AreAllThreeValuesScanned();
+    }
+
     private void OnReportSubmitted(bool correct)
     {
         isReportSubmitted = true;
@@ -128,9 +143,10 @@ public class MineralScanner_Renderer : MonoBehaviour
             currentMineral.isResearched = true;
             string name = currentMineral.transform.name.Replace("(Clone)", "").Trim();
             ResearchReportViewer.LogResearchResult(name, correct);
-
-            // ИСПРАВЛЕНО: было mineral, стало currentMineral.UniqueInstanceID
             GameDayManager.Instance.RegisterMineralResearched(currentMineral);
+
+            if (TutorialManager.Instance != null)
+                TutorialManager.Instance.OnReportSubmittedFirstMineral();
         }
     }
 
@@ -138,7 +154,7 @@ public class MineralScanner_Renderer : MonoBehaviour
 
     public void OpenReportPanel()
     {
-        if (currentMineral == null || isReportSubmitted) return;
+        if (currentMineral == null || isReportSubmitted || !AreAllThreeValuesScanned()) return;
         reportPanel.SetActive(true);
         CameraController.Instance.SetMode(CameraController.ControlMode.UI);
         reportUI.StartReport(currentMineral);
@@ -147,14 +163,9 @@ public class MineralScanner_Renderer : MonoBehaviour
     private void LateUpdate()
     {
         if (JoystickController.Instance == null) return;
-
-        if (JoystickController.Instance.IsGrabbed || !JoystickController.Instance.SmoothVelocity.Equals(Vector2.zero))
-        {
-            Vector2 delta = JoystickController.Instance.SmoothVelocity * scannerSpeed * Time.deltaTime;
-            Vector2 target = ClampToBounds(scanningPoint.anchoredPosition + delta);
-            scanningPoint.anchoredPosition = Vector2.Lerp(scanningPoint.anchoredPosition, target, 20f * Time.deltaTime);
-        }
-
+        Vector2 delta = JoystickController.Instance.CurrentDirection * scannerSpeed * Time.deltaTime;
+        Vector2 newPos = scanningPoint.anchoredPosition + delta;
+        scanningPoint.anchoredPosition = ClampToBounds(newPos);
         CheckScanPoints(scanningPoint.anchoredPosition);
     }
 
@@ -173,7 +184,6 @@ public class MineralScanner_Renderer : MonoBehaviour
             if (currentMineral != null) { currentMineral = null; nearestPoint = null; lastSuccessfulScan = null; OnProximityChanged?.Invoke(0f); ResetText(); }
             return;
         }
-
         if (mineral != currentMineral)
         {
             currentMineral = mineral;
@@ -184,7 +194,6 @@ public class MineralScanner_Renderer : MonoBehaviour
 
         float bestDist = float.MaxValue;
         ScanPoint closest = null;
-
         foreach (var point in new[] { mineral.AgePoint, mineral.CrystalPoint, mineral.RadioactivityPoint })
         {
             if (point == null) continue;
@@ -199,7 +208,6 @@ public class MineralScanner_Renderer : MonoBehaviour
 
         float proximity = (closest != null && bestDist <= detectionRadius)
             ? Mathf.InverseLerp(detectionRadius, captureRadius, bestDist) : 0f;
-
         nearestPoint = closest;
         OnProximityChanged?.Invoke(proximity);
     }
@@ -238,9 +246,12 @@ public class MineralScanner_Renderer : MonoBehaviour
             return;
         }
 
+        TutorialManager.Instance?.OnRecordButtonPressed();
+
         string line = GenerateResultLine(nearestPoint, accuracy);
         lastSuccessfulScan = new LastScan { Point = nearestPoint, ScannerPos = scanningPoint.anchoredPosition, ResultLine = line };
         UpdateResultTextWithFixed(nearestPoint, line);
+        UpdateReportButtonInteractability();
     }
 
     private Vector2 GetPointLocalPos(ScanPoint p)
@@ -249,7 +260,7 @@ public class MineralScanner_Renderer : MonoBehaviour
         RectTransformUtility.ScreenPointToLocalPointInRectangle(myRect, screen, renderCam, out Vector2 local);
         return local;
     }
-
+   
     private string GenerateResultLine(ScanPoint p, float acc) => p switch
     {
         var x when x == currentMineral.AgePoint => $"Возраст: {FormatAge(currentMineral.AgeMya, acc)} {currentMineral.AgeUnitText}",
@@ -257,7 +268,7 @@ public class MineralScanner_Renderer : MonoBehaviour
         var x when x == currentMineral.CrystalPoint => $"Крист. решётка: {FormatCrystal(currentMineral.CrystalSystem_, acc)}",
         _ => "???"
     };
-
+    
     private string FormatAge(float v, float a) => (a >= 0.95f ? v : v * Mathf.Lerp(0.2f, 1f, a)).ToString("F1");
     private string FormatRadioactivity(float v, float a) => (a >= 0.95f ? v : v * Mathf.Lerp(0.2f, 1f, a)).ToString("F3");
 
@@ -266,7 +277,6 @@ public class MineralScanner_Renderer : MonoBehaviour
         if (acc >= 0.95f) return GetCrystalName(sys);
         string name = GetCrystalName(sys);
         if (!crystalLetterOrder.TryGetValue(currentMineral, out var order)) return new string('?', name.Length);
-
         char[] result = new char[name.Length];
         for (int i = 0; i < result.Length; i++) result[i] = '?';
         int visible = Mathf.RoundToInt(acc * name.Length);

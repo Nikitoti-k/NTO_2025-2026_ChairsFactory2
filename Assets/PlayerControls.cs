@@ -145,6 +145,15 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""DialogueButton"",
+                    ""type"": ""Button"",
+                    ""id"": ""a7745626-e759-429f-897d-bd847358f0ed"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -257,6 +266,17 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
                     ""action"": ""PauseButton"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""1684512c-0fe2-4bc0-80bf-d324569c5b43"",
+                    ""path"": ""<Keyboard>/enter"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""DialogueButton"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -271,6 +291,7 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         m_Player_Physical_Interact_Button = m_Player.FindAction("Physical_Interact_Button", throwIfNotFound: true);
         m_Player_FlareButton = m_Player.FindAction("FlareButton", throwIfNotFound: true);
         m_Player_PauseButton = m_Player.FindAction("PauseButton", throwIfNotFound: true);
+        m_Player_DialogueButton = m_Player.FindAction("DialogueButton", throwIfNotFound: true);
     }
 
     ~@PlayerControls()
@@ -357,6 +378,7 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
     private readonly InputAction m_Player_Physical_Interact_Button;
     private readonly InputAction m_Player_FlareButton;
     private readonly InputAction m_Player_PauseButton;
+    private readonly InputAction m_Player_DialogueButton;
     /// <summary>
     /// Provides access to input actions defined in input action map "Player".
     /// </summary>
@@ -392,6 +414,10 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         /// Provides access to the underlying input action "Player/PauseButton".
         /// </summary>
         public InputAction @PauseButton => m_Wrapper.m_Player_PauseButton;
+        /// <summary>
+        /// Provides access to the underlying input action "Player/DialogueButton".
+        /// </summary>
+        public InputAction @DialogueButton => m_Wrapper.m_Player_DialogueButton;
         /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
@@ -436,6 +462,9 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
             @PauseButton.started += instance.OnPauseButton;
             @PauseButton.performed += instance.OnPauseButton;
             @PauseButton.canceled += instance.OnPauseButton;
+            @DialogueButton.started += instance.OnDialogueButton;
+            @DialogueButton.performed += instance.OnDialogueButton;
+            @DialogueButton.canceled += instance.OnDialogueButton;
         }
 
         /// <summary>
@@ -465,6 +494,9 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
             @PauseButton.started -= instance.OnPauseButton;
             @PauseButton.performed -= instance.OnPauseButton;
             @PauseButton.canceled -= instance.OnPauseButton;
+            @DialogueButton.started -= instance.OnDialogueButton;
+            @DialogueButton.performed -= instance.OnDialogueButton;
+            @DialogueButton.canceled -= instance.OnDialogueButton;
         }
 
         /// <summary>
@@ -547,5 +579,12 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnPauseButton(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "DialogueButton" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnDialogueButton(InputAction.CallbackContext context);
     }
 }

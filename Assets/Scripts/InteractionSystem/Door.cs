@@ -5,8 +5,8 @@ public class Door : GrabbableItem
 {
     [Header("Настройки двери")]
     [SerializeField] private float maxAngle = 110f;
-    [SerializeField] private float closeSpring = 80f;
-    [SerializeField] private float closeDamper = 12f;
+    [SerializeField] private float closeSpring = 0;
+    [SerializeField] private float closeDamper = 0;
 
     private HingeJoint _hinge;
     private JointSpring _closedSpring;

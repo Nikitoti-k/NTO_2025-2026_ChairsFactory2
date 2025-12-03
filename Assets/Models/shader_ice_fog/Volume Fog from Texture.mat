@@ -21,8 +21,7 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Volume Fog from Texture
-  m_Shader: {fileID: -6465566751694194690, guid: 7f0c3240ab8bee84ebf1ef9b1887b3dc,
-    type: 3}
+  m_Shader: {fileID: -6465566751694194690, guid: 38c57bb18edc4e94c934c6a6e84107b3, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -42,11 +41,19 @@ Material:
         m_Texture: {fileID: 2800000, guid: c6df472464156ec4ba970094a2621292, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _IceNormals:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _Noise:
         m_Texture: {fileID: 11700000, guid: 9ccde404fcde16a4eb2f4a6e59c7a52f, type: 2}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Noise3D:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _SampleTexture2D_f27ed123a73543e1bc804870fd7e1520_Texture_1_Texture2D:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
@@ -79,10 +86,14 @@ Material:
     - Vector1_B0641435: 102.9
     - _BUILTIN_QueueControl: -1
     - _BUILTIN_QueueOffset: 0
+    - _FresnelStrength: 0.25
     - _QueueControl: 0
     - _QueueOffset: 2
+    - _RefractStrength: -1
     m_Colors:
     - Color_69AD1AD: {r: 1, g: 1, b: 1, a: 0}
+    - _IceColor: {r: 0.1098039, g: 1.145098, b: 2, a: 1}
+    - _IceTiling: {r: 1, g: 1, b: 0, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
 --- !u!114 &4438634431086709394

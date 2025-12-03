@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.Rendering.HighDefinition;
 
 [RequireComponent(typeof(MineralPointSpawner))]
 public class MineralData : MonoBehaviour
@@ -14,6 +15,8 @@ public class MineralData : MonoBehaviour
         public Vector3 crystalPointLocalPos;
         public Vector3 radioactivityPointLocalPos;
         public bool isResearched;
+        public bool isTutorialHighlighted;
+        public bool isLastInTutorialQueue;
     }
 
     [Header("Точки сканирования")]
@@ -23,6 +26,9 @@ public class MineralData : MonoBehaviour
 
     [Header("Класс минерала")]
     [SerializeField] private MineralClass mineralClass;
+
+    [Header("Tutorial Outline — назначай на дочерний объект с Outline!")]
+    [SerializeField] private Outline tutorialOutline;
 
     public float AgeMya => realAge + Random.Range(-mineralClass.ageError, mineralClass.ageError);
     public float RadioactivityUsv => realRadioactivity + Random.Range(-mineralClass.radioactivityError, mineralClass.radioactivityError);
@@ -35,21 +41,43 @@ public class MineralData : MonoBehaviour
     public float realRadioactivity;
     public string UniqueInstanceID;
     public bool isResearched = false;
+    public bool isTutorialHighlighted = false;
+    public bool isLastInTutorialQueue = false;
 
     [HideInInspector] public string savedAgeLine = "";
-    [HideInInspector] public string savedRadioactivityLine = "";
     [HideInInspector] public string savedCrystalLine = "";
+    [HideInInspector] public string savedRadioactivityLine = "";
 
     private void Awake()
     {
         if (string.IsNullOrEmpty(UniqueInstanceID))
             UniqueInstanceID = System.Guid.NewGuid().ToString();
+
+        // ← ВАЖНО: находим Outline при старте — даже если он на дочернем объекте
+        if (tutorialOutline == null)
+            tutorialOutline = GetComponentInChildren<Outline>();
+
+        if (tutorialOutline != null)
+            tutorialOutline.enabled = false;
+    }
+
+    public void EnableTutorialOutline(bool enable)
+    {
+        if (tutorialOutline == null)
+            tutorialOutline = GetComponentInChildren<Outline>();
+
+        if (tutorialOutline != null)
+            tutorialOutline.enabled = enable;
+    }
+
+    public void SetAsLastInTutorialQueue(bool isLast)
+    {
+        isLastInTutorialQueue = isLast;
     }
 
     public void GenerateData()
     {
         if (mineralClass == null) return;
-
         realAge = Random.Range(mineralClass.ageMin, mineralClass.ageMax);
         realRadioactivity = Random.Range(mineralClass.radioactivityMin, mineralClass.radioactivityMax);
     }
@@ -63,7 +91,9 @@ public class MineralData : MonoBehaviour
             agePointLocalPos = AgePoint ? AgePoint.transform.localPosition : Vector3.zero,
             crystalPointLocalPos = CrystalPoint ? CrystalPoint.transform.localPosition : Vector3.zero,
             radioactivityPointLocalPos = RadioactivityPoint ? RadioactivityPoint.transform.localPosition : Vector3.zero,
-            isResearched = isResearched
+            isResearched = isResearched,
+            isTutorialHighlighted = isTutorialHighlighted,
+            isLastInTutorialQueue = isLastInTutorialQueue
         };
     }
 
@@ -72,10 +102,18 @@ public class MineralData : MonoBehaviour
         realAge = data.realAge;
         realRadioactivity = data.realRadioactivity;
         isResearched = data.isResearched;
+        isTutorialHighlighted = data.isTutorialHighlighted;
+        isLastInTutorialQueue = data.isLastInTutorialQueue;
 
         if (AgePoint) AgePoint.transform.localPosition = data.agePointLocalPos;
         if (CrystalPoint) CrystalPoint.transform.localPosition = data.crystalPointLocalPos;
         if (RadioactivityPoint) RadioactivityPoint.transform.localPosition = data.radioactivityPointLocalPos;
+
+        if (tutorialOutline == null)
+            tutorialOutline = GetComponentInChildren<Outline>();
+
+        if (tutorialOutline != null)
+            tutorialOutline.enabled = isTutorialHighlighted;
     }
 
 #if UNITY_EDITOR

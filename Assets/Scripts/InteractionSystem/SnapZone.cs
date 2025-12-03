@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine.Events;
 
 [RequireComponent(typeof(Collider))]
 public class SnapZone : MonoBehaviour
@@ -18,7 +19,16 @@ public class SnapZone : MonoBehaviour
     [SerializeField] private bool makeKinematicInMultiSlot = true;
     [SerializeField] private bool makeTriggerInMultiSlot = true;
     [SerializeField] private float liftHeight = 0.6f;
+    // === ДОБАВЬ ЭТО В КОНЕЦ КЛАССА SnapZone ===
+    [System.Serializable]
+    public class GrabbableItemEvent : UnityEvent<GrabbableItem> { }
 
+    [Header("События")]
+    public GrabbableItemEvent onItemSnapped = new GrabbableItemEvent();
+    public GrabbableItemEvent onItemRemoved = new GrabbableItemEvent();
+
+    // Публичное свойство для количества прикреплённых предметов
+    public int AttachedItemsCount => isMultiSlot ? attachedItems.Count : (attachedItem != null ? 1 : 0);
     public bool IsOccupied => isMultiSlot ? attachedItems.Count > 0 : attachedItem != null;
     public GameObject CurrentSnappedObject => isMultiSlot
         ? (attachedItems.Count > 0 ? attachedItems[0].gameObject : null)
@@ -26,7 +36,7 @@ public class SnapZone : MonoBehaviour
 
     private GrabbableItem attachedItem;
     private Coroutine snapRoutine;
-    private readonly List<GrabbableItem> attachedItems = new List<GrabbableItem>();
+    public readonly List<GrabbableItem> attachedItems = new List<GrabbableItem>();
     private readonly Dictionary<GrabbableItem, Coroutine> snapRoutines = new Dictionary<GrabbableItem, Coroutine>();
 
     private void Awake()
@@ -36,12 +46,31 @@ public class SnapZone : MonoBehaviour
         if (isMultiSlot && multiSnapPoints.Count == 0) multiSnapPoints.Add(transform);
     }
 
+    private void OnTriggerEnter(Collider other)
+    {
+        var grabbable = other.GetComponent<GrabbableItem>();
+        if (grabbable != null && grabbable.ItemType == GrabbableType.Mineral)
+        {
+            var col = other.GetComponent<Collider>();
+            if (col != null) col.isTrigger = true;
+        }
+    }
+
+    private void OnTriggerStay(Collider other)
+    {
+        var grabbable = other.GetComponent<GrabbableItem>();
+        if (grabbable != null && grabbable.ItemType == GrabbableType.Mineral)
+        {
+            var col = other.GetComponent<Collider>();
+            if (col != null) col.isTrigger = true;
+        }
+    }
+
     public bool CanSnap(GrabbableItem item)
     {
         if (item == null || item.ItemType != requiredType) return false;
         if (isMultiSlot ? attachedItems.Contains(item) : attachedItem == item) return false;
         if (isMultiSlot && attachedItems.Count >= multiSnapPoints.Count) return false;
-
         var target = isMultiSlot ? GetBestMultiPoint(item) : singleSnapPoint;
         return target != null && Vector3.Distance(item.transform.position, target.position) <= snapDistance;
     }
@@ -49,10 +78,8 @@ public class SnapZone : MonoBehaviour
     public void Snap(GrabbableItem item)
     {
         if (item == null || (isMultiSlot ? snapRoutines.ContainsKey(item) : snapRoutine != null)) return;
-
         Transform target = isMultiSlot ? GetBestMultiPoint(item) : singleSnapPoint;
         if (target == null) return;
-
         if (!isMultiSlot)
         {
             attachedItem = item;
@@ -69,7 +96,6 @@ public class SnapZone : MonoBehaviour
     {
         var available = multiSnapPoints.Where(p => p != null &&
             !attachedItems.Any(i => i != null && i.transform.parent == p)).ToList();
-
         if (available.Count == 0) return null;
         return prioritizeClosestPoint
             ? available.OrderBy(p => Vector3.Distance(item.transform.position, p.position)).First()
@@ -80,10 +106,8 @@ public class SnapZone : MonoBehaviour
     {
         CanGrab grabber = FindFirstObjectByType<CanGrab>();
         grabber?.StartSnappingToZone();
-
         Rigidbody rb = item.GetComponent<Rigidbody>();
         Collider col = item.GetComponent<Collider>();
-
         if (rb)
         {
             rb.isKinematic = true;
@@ -92,54 +116,44 @@ public class SnapZone : MonoBehaviour
         }
         if (col && (isMulti ? makeTriggerInMultiSlot : true))
             col.isTrigger = true;
-
         grabber?.ForceRelease();
-
         Vector3 startPos = item.transform.position;
         Quaternion startRot = item.transform.rotation;
         Vector3 liftPos = startPos + Vector3.up * liftHeight;
         Vector3 finalPos = target.position;
-
         float liftDist = Vector3.Distance(startPos, liftPos);
         float dropDist = Vector3.Distance(liftPos, finalPos);
         float totalDist = liftDist + dropDist;
         float duration = Mathf.Max(minSnapDuration, totalDist / snapSpeed);
-
         float t = 0f;
         while (t < 1f)
         {
             t += Time.deltaTime / duration;
             float curve = snapCurve.Evaluate(t);
-
             Vector3 currentPos = t < 0.5f
                 ? Vector3.Lerp(startPos, liftPos, t * 2f)
                 : Vector3.Lerp(liftPos, finalPos, (t - 0.5f) * 2f);
-
             item.transform.position = currentPos;
             item.transform.rotation = Quaternion.Slerp(startRot, target.rotation, curve);
             yield return null;
         }
-
         item.transform.SetParent(target);
+        onItemSnapped?.Invoke(item);
         item.transform.localPosition = Vector3.zero;
         item.transform.localRotation = Quaternion.identity;
-
         if (isMulti && rb)
         {
             rb.isKinematic = makeKinematicInMultiSlot;
             rb.useGravity = false;
         }
-
         if (!isMulti) snapRoutine = null;
         else snapRoutines.Remove(item);
-
         grabber?.EndSnappingToZoneComplete();
     }
 
     public void LoadSnappedItem(GrabbableItem item, int pointIndex = -1)
     {
         if (item == null) return;
-
         Transform target;
         if (!isMultiSlot)
         {
@@ -158,16 +172,12 @@ public class SnapZone : MonoBehaviour
                 target = GetBestMultiPoint(item) ?? multiSnapPoints.FirstOrDefault(p => p != null);
             }
         }
-
         if (target == null) return;
-
         item.transform.SetParent(target);
         item.transform.localPosition = Vector3.zero;
         item.transform.localRotation = Quaternion.identity;
-
         var rb = item.GetComponent<Rigidbody>();
         var col = item.GetComponent<Collider>();
-
         if (rb)
         {
             rb.linearVelocity = Vector3.zero;
@@ -180,12 +190,10 @@ public class SnapZone : MonoBehaviour
         }
         if (col && (isMultiSlot ? makeTriggerInMultiSlot : true))
             col.isTrigger = true;
-
         if (!isMultiSlot)
             attachedItem = item;
         else if (!attachedItems.Contains(item))
             attachedItems.Add(item);
-
         if (MineralScannerManager.Instance != null && this == MineralScannerManager.Instance.targetSnapZone)
             MineralScannerManager.Instance.ForceScanCurrentMineral();
         else
@@ -203,6 +211,28 @@ public class SnapZone : MonoBehaviour
     public void OnItemGrabbedFromZone(GrabbableItem grabbedItem)
     {
         if (grabbedItem == null) return;
+
+        // ← БЛОКИРОВКА ВЗЯТИЯ ЛЮБОГО МИНЕРАЛА ДО ВТОРОГО МОНОЛОГА
+        if (grabbedItem.ItemType == GrabbableType.Mineral)
+        {
+            if (TutorialManager.Instance != null && !TutorialManager.Instance.CanGrabAnyMineralFromVehicle())
+            {
+                FindObjectOfType<CanGrab>()?.ForceRelease();
+                return;
+            }
+
+            var mineralData = grabbedItem.GetComponentInChildren<MineralData>();
+            if (mineralData != null && mineralData.isLastInTutorialQueue)
+            {
+                if (TutorialManager.Instance != null && !TutorialManager.Instance.CanGrabLastTutorialMineral())
+                {
+                    FindObjectOfType<CanGrab>()?.ForceRelease();
+                    return;
+                }
+            }
+        }
+
+        onItemRemoved?.Invoke(grabbedItem);
 
         if (!isMultiSlot)
         {
@@ -228,6 +258,7 @@ public class SnapZone : MonoBehaviour
             }
         }
     }
+
 
     public void ReleaseItem(GrabbableItem item)
     {
