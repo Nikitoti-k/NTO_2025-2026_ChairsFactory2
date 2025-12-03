@@ -1,5 +1,5 @@
 ﻿using UnityEngine;
-using UnityEngine.Rendering.HighDefinition;
+
 
 [RequireComponent(typeof(MineralPointSpawner))]
 public class MineralData : MonoBehaviour

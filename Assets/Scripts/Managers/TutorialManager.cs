@@ -5,6 +5,7 @@ using System.Collections;
 
 public class TutorialManager : MonoBehaviour, ISaveableV2
 {
+
     public static TutorialManager Instance { get; private set; }
 
     [SerializeField] private GameObject hintPanel;
@@ -66,6 +67,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
     private bool bedHintShown = false;
     private bool playerSlept = false;
     private bool finalMonologuePlayed = false;
+  
 
     private void Awake()
     {
@@ -367,8 +369,15 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
             hintPanel.SetActive(false);
         Success();
     }
+ 
 
-    public bool CanGrabAnyMineralFromVehicle() => returnedHintShown;
+    public bool CanGrabAnyMineralFromVehicle()
+    {
+        // Можно брать минералы ТОЛЬКО ПОСЛЕ ВТОРОГО МОНОЛОГА
+        return radioMonologue != null
+               && radioMonologue.HasPlayedReturnMonologue;
+    }
+
     public bool CanGrabLastTutorialMineral() => researchedCount >= 2;
 
     public bool CanGrabMineralFromVehicle(GrabbableItem item)
@@ -383,25 +392,17 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
     private void HighlightFirstTwoMineralsInVehicle()
     {
         if (vehicleMineralSnapZone == null) return;
-        var items = vehicleMineralSnapZone.attachedItems;
-        int highlighted = 0;
-        foreach (var item in items)
+
+        foreach (var item in vehicleMineralSnapZone.attachedItems)
         {
-            var mineralData = item.GetComponentInChildren<MineralData>();
-            if (mineralData == null) continue;
-            if (highlighted < 2)
-            {
-                mineralData.EnableTutorialOutline(true);
-                mineralData.isTutorialHighlighted = true;
-                highlighted++;
-            }
-            else
-            {
-                mineralData.SetAsLastInTutorialQueue(true);
-                mineralData.EnableTutorialOutline(false);
-            }
+            var md = item.GetComponentInChildren<MineralData>();
+            if (md == null) continue;
+
+            // Подсвечиваем только те, что ТЫ УКАЗАЛ
+            md.EnableTutorialOutline(md.isTutorialHighlighted);
         }
     }
+
 
     private void Success()
     {

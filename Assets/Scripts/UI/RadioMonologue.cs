@@ -28,22 +28,21 @@ public class RadioMonologue : MonoBehaviour
     public TutorialManager tutorialManager;
     public bool IsPlaying => radioPanel != null && radioPanel.activeSelf;
 
+    private bool hasPlayedFinalMonologue = false;
+    public bool HasPlayedFinalMonologue => hasPlayedFinalMonologue;
+
     private void Awake()
     {
         tutorialManager = FindObjectOfType<TutorialManager>();
     }
 
-  private void Start()
-{
-    if (radioPanel) radioPanel.SetActive(false);
-    if (promptText) promptText.text = "Press Enter to continue";
-
-    
-    // ====================
-
-    if (monologueSets != null && monologueSets.Length > 0)
-        StartMonologue(0);
-}
+    private void Start()
+    {
+        if (radioPanel) radioPanel.SetActive(false);
+        if (promptText) promptText.text = "Press Enter to continue";
+        if (monologueSets != null && monologueSets.Length > 0)
+            StartMonologue(0);
+    }
 
     public void StartMonologue(int setIndex)
     {
@@ -112,14 +111,12 @@ public class RadioMonologue : MonoBehaviour
         }
     }
 
-    [ContextMenu("Запустить финальный монолог туториала")]
     public void PlayFinalTutorialMonologue()
     {
         if (monologueSets.Length > 2)
             StartMonologue(2);
     }
 
-    [ContextMenu("Запустить монолог возвращения на базу")]
     public void PlayReturnToBaseMonologue()
     {
         StartMonologue(1);
@@ -130,15 +127,18 @@ public class RadioMonologue : MonoBehaviour
         radioPanel.SetActive(false);
         BlockPlayerControls(false);
 
-        // ← ВОТ ТУТ СТАВИМ ФЛАГ!
-        if (currentSet == 2)
+        // === ФИКС: отмечаем проигрывание монологов ===
+        if (currentSet == 1)                   // ← ЭТО ВТОРОЙ МОНOЛОГ
+            hasPlayedReturnMonologue = true;
+
+        if (currentSet == 2)                   // ← финальный
             hasPlayedFinalMonologue = true;
 
         if (currentSet == 0 && tutorialManager != null)
-        {
             tutorialManager.ForceStartTutorial();
-        }
     }
+    private bool hasPlayedReturnMonologue = false;
+    public bool HasPlayedReturnMonologue => hasPlayedReturnMonologue;
 
     private void BlockPlayerControls(bool block)
     {
@@ -155,10 +155,5 @@ public class RadioMonologue : MonoBehaviour
             InputManager.ClearAll();
     }
 
-    [ContextMenu("Тест монолога 0")]
     private void Test0() => StartMonologue(0);
-    // ← ЭТО ВАЖНО! TutorialManager будет читать именно это
-    private bool hasPlayedFinalMonologue = false;
-
-    public bool HasPlayedFinalMonologue => hasPlayedFinalMonologue;
 }
