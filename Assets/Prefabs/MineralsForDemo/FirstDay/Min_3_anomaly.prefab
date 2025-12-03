@@ -336,10 +336,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 88d1d150cb6793349aadf4e28d23b24d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  mineralClass: {fileID: 11400000, guid: acabc1d8bbd6c684f9376ab4d0555020, type: 2}
+  isAnomalyOverride: 1
+  overrideAge: 4
+  overrideAgeUnit: 0
+  overrideRadioactivity: 10
+  overrideCrystalSystem: 2
   AgePoint: {fileID: 0}
   CrystalPoint: {fileID: 0}
   RadioactivityPoint: {fileID: 0}
-  mineralClass: {fileID: 11400000, guid: acabc1d8bbd6c684f9376ab4d0555020, type: 2}
   tutorialOutline: {fileID: 8870428679003990641}
   realAge: 0
   realRadioactivity: 0
@@ -347,6 +352,7 @@ MonoBehaviour:
   isResearched: 0
   isTutorialHighlighted: 0
   isLastInTutorialQueue: 1
+  isAnomaly: 0
   savedAgeLine: 
   savedCrystalLine: 
   savedRadioactivityLine: 

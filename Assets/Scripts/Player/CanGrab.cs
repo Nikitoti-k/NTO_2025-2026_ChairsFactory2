@@ -135,7 +135,8 @@ public class CanGrab : MonoBehaviour
         var rb = item.GetComponent<Rigidbody>();
         var snapZone = item.GetComponentInParent<SnapZone>();
         snapZone?.OnItemGrabbedFromZone(item);
-
+       var col = item.GetComponent<Collider>();
+        col.isTrigger = false;
         heldRb = rb;
         heldTransform = rb.transform;
         heldItem = item;

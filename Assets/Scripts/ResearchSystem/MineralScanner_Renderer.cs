@@ -8,9 +8,15 @@ public class MineralScanner_Renderer : MonoBehaviour
 {
     public static MineralScanner_Renderer Instance { get; private set; }
 
+    // === СОБЫТИЯ ===
     private event System.Action<float> OnProximityChanged;
     public void SubscribeToProximity(System.Action<float> c) => OnProximityChanged += c;
     public void UnsubscribeFromProximity(System.Action<float> c) => OnProximityChanged -= c;
+
+    // ← НОВОЕ СОБЫТИЕ: когда все 3 значения получены
+    private event System.Action OnAllThreeValuesScanned;
+    public void SubscribeToAllThreeScanned(System.Action callback) => OnAllThreeValuesScanned += callback;
+    public void UnsubscribeFromAllThreeScanned(System.Action callback) => OnAllThreeValuesScanned -= callback;
 
     [SerializeField] private RectTransform scanningPoint;
     [SerializeField] private Button recordButtonUI;
@@ -43,6 +49,7 @@ public class MineralScanner_Renderer : MonoBehaviour
         myRect = GetComponent<RectTransform>();
         resultText.text = "Крист. решётка: ???\nВозраст: ???\nРадиоактивность: ???";
         noConnectionOverlay.SetActive(true);
+
         noConnectionText.text = "НЕТ СОЕДИНЕНИЯ";
 
         recordButtonUI.onClick.RemoveAllListeners();
@@ -74,7 +81,7 @@ public class MineralScanner_Renderer : MonoBehaviour
         if (currentMineral == null) return;
 
         isReportSubmitted = currentMineral.isResearched;
-        reportButton.interactable = !isReportSubmitted && AreAllThreeValuesScanned();
+        reportButton.interactable = false;
         recordButtonUI.interactable = !isReportSubmitted;
 
         noConnectionOverlay.SetActive(isReportSubmitted);
@@ -90,18 +97,14 @@ public class MineralScanner_Renderer : MonoBehaviour
         lastSuccessfulScan = null;
         crystalLetterOrder.Remove(currentMineral);
 
-        if (!string.IsNullOrEmpty(currentMineral.savedAgeLine) ||
-            !string.IsNullOrEmpty(currentMineral.savedRadioactivityLine) ||
-            !string.IsNullOrEmpty(currentMineral.savedCrystalLine))
+        if (HasSavedData())
         {
-            resultText.text = $"{(string.IsNullOrEmpty(currentMineral.savedCrystalLine) ? "Крист. решётка: ???" : currentMineral.savedCrystalLine)}\n" +
-                              $"{(string.IsNullOrEmpty(currentMineral.savedAgeLine) ? "Возраст: ???" : currentMineral.savedAgeLine)}\n" +
-                              $"{(string.IsNullOrEmpty(currentMineral.savedRadioactivityLine) ? "Радиоактивность: ???" : currentMineral.savedRadioactivityLine)}";
+            RestoreSavedDataToText();
         }
         else ResetText();
 
         GenerateCrystalLetterOrder(currentMineral);
-        UpdateReportButtonInteractability();
+        UpdateReportButtonAndNotify();
     }
 
     private void OnMineralRemoved()
@@ -115,6 +118,7 @@ public class MineralScanner_Renderer : MonoBehaviour
         reportPanel.SetActive(false);
         crystalLetterOrder.Clear();
         ResetText();
+        OnAllThreeValuesScanned?.Invoke(); // ← сбрасываем подсказку
     }
 
     private bool AreAllThreeValuesScanned()
@@ -125,10 +129,14 @@ public class MineralScanner_Renderer : MonoBehaviour
                !string.IsNullOrEmpty(currentMineral.savedCrystalLine);
     }
 
-    private void UpdateReportButtonInteractability()
+    private void UpdateReportButtonAndNotify()
     {
-        if (reportButton != null && currentMineral != null && !currentMineral.isResearched)
-            reportButton.interactable = AreAllThreeValuesScanned();
+        if (currentMineral != null && !currentMineral.isResearched)
+        {
+            bool allScanned = AreAllThreeValuesScanned();
+            reportButton.interactable = allScanned;
+            if (allScanned) OnAllThreeValuesScanned?.Invoke();
+        }
     }
 
     private void OnReportSubmitted(bool correct)
@@ -144,10 +152,10 @@ public class MineralScanner_Renderer : MonoBehaviour
             string name = currentMineral.transform.name.Replace("(Clone)", "").Trim();
             ResearchReportViewer.LogResearchResult(name, correct);
             GameDayManager.Instance.RegisterMineralResearched(currentMineral);
-
-            if (TutorialManager.Instance != null)
-                TutorialManager.Instance.OnReportSubmittedFirstMineral();
         }
+
+        // ← УБИРАЕМ ПОДСКАЗКУ ПОСЛЕ ОТПРАВКИ ОТЧЁТА
+        OnAllThreeValuesScanned?.Invoke();
     }
 
     private void OnReportCancelled() => CameraController.Instance.SetMode(CameraController.ControlMode.FPS);
@@ -184,6 +192,7 @@ public class MineralScanner_Renderer : MonoBehaviour
             if (currentMineral != null) { currentMineral = null; nearestPoint = null; lastSuccessfulScan = null; OnProximityChanged?.Invoke(0f); ResetText(); }
             return;
         }
+
         if (mineral != currentMineral)
         {
             currentMineral = mineral;
@@ -212,21 +221,6 @@ public class MineralScanner_Renderer : MonoBehaviour
         OnProximityChanged?.Invoke(proximity);
     }
 
-    private void GenerateCrystalLetterOrder(MineralData mineral)
-    {
-        if (crystalLetterOrder.ContainsKey(mineral)) return;
-        string name = GetCrystalName(mineral.CrystalSystem_);
-        var order = Enumerable.Range(0, name.Length).ToList();
-        int seed = mineral.GetHashCode() + (int)(mineral.AgeMya * 1000) + (int)(mineral.RadioactivityUsv * 10000);
-        UnityEngine.Random.InitState(seed);
-        for (int i = order.Count - 1; i > 0; i--)
-        {
-            int j = UnityEngine.Random.Range(0, i + 1);
-            (order[i], order[j]) = (order[j], order[i]);
-        }
-        crystalLetterOrder[mineral] = order;
-    }
-
     public void TryRecordData()
     {
         if (currentMineral == null || nearestPoint == null || isReportSubmitted)
@@ -251,7 +245,22 @@ public class MineralScanner_Renderer : MonoBehaviour
         string line = GenerateResultLine(nearestPoint, accuracy);
         lastSuccessfulScan = new LastScan { Point = nearestPoint, ScannerPos = scanningPoint.anchoredPosition, ResultLine = line };
         UpdateResultTextWithFixed(nearestPoint, line);
-        UpdateReportButtonInteractability();
+
+        // ← ВЫЗЫВАЕМ СОБЫТИЕ ПОСЛЕ КАЖДОЙ ЗАПИСИ
+        UpdateReportButtonAndNotify();
+    }
+
+    // === ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ===
+    private bool HasSavedData() => currentMineral != null &&
+        (!string.IsNullOrEmpty(currentMineral.savedAgeLine) ||
+         !string.IsNullOrEmpty(currentMineral.savedRadioactivityLine) ||
+         !string.IsNullOrEmpty(currentMineral.savedCrystalLine));
+
+    private void RestoreSavedDataToText()
+    {
+        resultText.text = $"{(string.IsNullOrEmpty(currentMineral.savedCrystalLine) ? "Крист. решётка: ???" : currentMineral.savedCrystalLine)}\n" +
+                          $"{(string.IsNullOrEmpty(currentMineral.savedAgeLine) ? "Возраст: ???" : currentMineral.savedAgeLine)}\n" +
+                          $"{(string.IsNullOrEmpty(currentMineral.savedRadioactivityLine) ? "Радиоактивность: ???" : currentMineral.savedRadioactivityLine)}";
     }
 
     private Vector2 GetPointLocalPos(ScanPoint p)
@@ -260,7 +269,7 @@ public class MineralScanner_Renderer : MonoBehaviour
         RectTransformUtility.ScreenPointToLocalPointInRectangle(myRect, screen, renderCam, out Vector2 local);
         return local;
     }
-   
+
     private string GenerateResultLine(ScanPoint p, float acc) => p switch
     {
         var x when x == currentMineral.AgePoint => $"Возраст: {FormatAge(currentMineral.AgeMya, acc)} {currentMineral.AgeUnitText}",
@@ -268,7 +277,7 @@ public class MineralScanner_Renderer : MonoBehaviour
         var x when x == currentMineral.CrystalPoint => $"Крист. решётка: {FormatCrystal(currentMineral.CrystalSystem_, acc)}",
         _ => "???"
     };
-    
+
     private string FormatAge(float v, float a) => (a >= 0.95f ? v : v * Mathf.Lerp(0.2f, 1f, a)).ToString("F1");
     private string FormatRadioactivity(float v, float a) => (a >= 0.95f ? v : v * Mathf.Lerp(0.2f, 1f, a)).ToString("F3");
 
@@ -292,6 +301,21 @@ public class MineralScanner_Renderer : MonoBehaviour
         _ => "аморфная"
     };
 
+    private void GenerateCrystalLetterOrder(MineralData mineral)
+    {
+        if (crystalLetterOrder.ContainsKey(mineral)) return;
+        string name = GetCrystalName(mineral.CrystalSystem_);
+        var order = Enumerable.Range(0, name.Length).ToList();
+        int seed = mineral.GetHashCode() + (int)(mineral.AgeMya * 1000) + (int)(mineral.RadioactivityUsv * 10000);
+        UnityEngine.Random.InitState(seed);
+        for (int i = order.Count - 1; i > 0; i--)
+        {
+            int j = UnityEngine.Random.Range(0, i + 1);
+            (order[i], order[j]) = (order[j], order[i]);
+        }
+        crystalLetterOrder[mineral] = order;
+    }
+
     private void UpdateResultTextWithFixed(ScanPoint point, string line)
     {
         if (point == currentMineral.AgePoint) currentMineral.savedAgeLine = line;
@@ -308,7 +332,5 @@ public class MineralScanner_Renderer : MonoBehaviour
         resultText.text = string.Join("\n", lines);
     }
 
-    private void ResetText() => resultText.text = !isReportSubmitted
-        ? "Крист. решётка: ???\nВозраст: ???\nРадиоактивность: ???"
-        : resultText.text;
+    private void ResetText() => resultText.text = "Крист. решётка: ???\nВозраст: ???\nРадиоактивность: ???";
 }

@@ -10,7 +10,7 @@ public class MineralReportUI : MonoBehaviour
     public event Action OnReportCancelled;
 
     [Header("UI Элементы")]
-    [SerializeField] private Button[] classButtons = new Button[7];
+    [SerializeField] private Button[] classButtons = new Button[5];
     [SerializeField] private Button submitButton;
     [SerializeField] private Button closeButton;
     [SerializeField] private TextMeshProUGUI statusText;
@@ -56,6 +56,25 @@ public class MineralReportUI : MonoBehaviour
         classDetailsText.text = "Выберите класс для просмотра характеристик";
         statusText.text = "Выберите правильный класс";
         ResetButtonHighlights();
+        if (TutorialManager.Instance != null &&
+    TutorialManager.Instance.radioMonologue != null &&
+    TutorialManager.Instance.radioMonologue.HasPlayedFinalMonologue)
+        {
+            foreach (var btn in classButtons)
+            {
+                var mc = allClasses[System.Array.IndexOf(classButtons, btn)];
+                if (mc != null && !mc.isAnomalyClass)
+                {
+                    btn.interactable = false;
+                    btn.GetComponentInChildren<TextMeshProUGUI>().color = new Color(0.5f, 0.5f, 0.5f, 0.7f);
+                }
+                else if (mc != null && mc.isAnomalyClass)
+                {
+                    btn.interactable = true;
+                    btn.GetComponentInChildren<TextMeshProUGUI>().color = Color.red;
+                }
+            }
+        }
     }
 
     private void SelectClass(MineralClass mc)
@@ -82,9 +101,19 @@ public class MineralReportUI : MonoBehaviour
             $"Решётка: <color=#CC66FF>{crystal}</color>";
     }
 
-    
+
     private void UpdateClassDetails(MineralClass mc)
     {
+        if (mc.isAnomalyClass)
+        {
+            classDetailsText.text = $"{mc.className}\n\n" +
+                                    "Возраст: ???\n" +
+                                    "Радиация: ??? Бк\n" +
+                                    "Решётка: ???";
+            return;
+        }
+
+        // Обычные классы — показываем диапазоны
         string ageRange = mc.ageMin == mc.ageMax
             ? $"{mc.ageMin:F0}"
             : $"{mc.ageMin:F0}–{mc.ageMax:F0}";
@@ -96,26 +125,34 @@ public class MineralReportUI : MonoBehaviour
         string unit = mc.ageUnit == MineralClass.AgeUnit.Days ? "дней" : "млн лет";
         string crystal = GetCrystalName(mc.crystalSystem);
 
-        classDetailsText.text =
-            $"<b><size=120%>{mc.className}</size></b>\n\n" +
-            $"Возраст: <color=#66CCFF>{ageRange} {unit}</color>\n" +
-            $"Радиация: <color=#66CCFF>{radRange} Бк</color>\n" +
-            $"Решётка: <color=#CC66FF>{crystal}</color>";
+        classDetailsText.text = $"{mc.className}\n\n" +
+                                $"Возраст: {ageRange} {unit}\n" +
+                                $"Радиация: {radRange} Бк\n" +
+                                $"Решётка: {crystal}";
     }
-
     private void Submit()
     {
         if (selectedClass == null)
         {
-            statusText.text = "<color=red>Сначала выберите класс!</color>";
+            statusText.text = "Сначала выберите класс!";
             return;
         }
 
         bool correct = selectedClass == correctClass;
+
+        // Если выбрали класс «Аномалия» — помечаем и уведомляем туториал
+        if (selectedClass.isAnomalyClass)
+        {
+            currentSample.isAnomaly = true;
+
+            // УВЕДОМЛЯЕМ ТУТОРИАЛ!
+            if (TutorialManager.Instance != null)
+                TutorialManager.Instance.OnAnomalyReportSubmitted();
+        }
+
         OnReportSubmitted?.Invoke(correct);
         gameObject.SetActive(false);
     }
-
     private void ClosePanel()
     {
         OnReportCancelled?.Invoke();

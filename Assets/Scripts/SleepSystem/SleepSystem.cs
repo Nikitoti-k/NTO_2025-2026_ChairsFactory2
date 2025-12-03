@@ -69,6 +69,7 @@ public class SleepSystem : MonoBehaviour
         if (playerRb) playerRb.isKinematic = false;
         player.enabled = true;
         player.EndSleep();
+        TutorialManager.Instance?.OnPlayerSlept();
     }
 
     IEnumerator FadeTo(float a)

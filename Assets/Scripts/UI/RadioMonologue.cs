@@ -26,7 +26,6 @@ public class RadioMonologue : MonoBehaviour
     private Coroutine typingCoroutine;
 
     public TutorialManager tutorialManager;
-
     public bool IsPlaying => radioPanel != null && radioPanel.activeSelf;
 
     private void Awake()
@@ -34,14 +33,17 @@ public class RadioMonologue : MonoBehaviour
         tutorialManager = FindObjectOfType<TutorialManager>();
     }
 
-    private void Start()
-    {
-        if (radioPanel) radioPanel.SetActive(false);
-        if (promptText) promptText.text = "Press Enter to continue";
+  private void Start()
+{
+    if (radioPanel) radioPanel.SetActive(false);
+    if (promptText) promptText.text = "Press Enter to continue";
 
-        if (monologueSets != null && monologueSets.Length > 0)
-            StartMonologue(0);
-    }
+    
+    // ====================
+
+    if (monologueSets != null && monologueSets.Length > 0)
+        StartMonologue(0);
+}
 
     public void StartMonologue(int setIndex)
     {
@@ -78,6 +80,7 @@ public class RadioMonologue : MonoBehaviour
         while (charIndex < text.Length)
         {
             if (!isTyping) yield break;
+
             radioText.text = text.Substring(0, charIndex + 1);
             charIndex++;
             yield return new WaitForSeconds(delay);
@@ -108,16 +111,28 @@ public class RadioMonologue : MonoBehaviour
             }
         }
     }
+
     [ContextMenu("Запустить финальный монолог туториала")]
     public void PlayFinalTutorialMonologue()
     {
         if (monologueSets.Length > 2)
-            StartMonologue(2); // ← индекс 2 — третий монолог
+            StartMonologue(2);
     }
+
+    [ContextMenu("Запустить монолог возвращения на базу")]
+    public void PlayReturnToBaseMonologue()
+    {
+        StartMonologue(1);
+    }
+
     private void EndMonologue()
     {
         radioPanel.SetActive(false);
         BlockPlayerControls(false);
+
+        // ← ВОТ ТУТ СТАВИМ ФЛАГ!
+        if (currentSet == 2)
+            hasPlayedFinalMonologue = true;
 
         if (currentSet == 0 && tutorialManager != null)
         {
@@ -140,9 +155,10 @@ public class RadioMonologue : MonoBehaviour
             InputManager.ClearAll();
     }
 
-    [ContextMenu("Запустить монолог 0 (тест)")]
+    [ContextMenu("Тест монолога 0")]
     private void Test0() => StartMonologue(0);
+    // ← ЭТО ВАЖНО! TutorialManager будет читать именно это
+    private bool hasPlayedFinalMonologue = false;
 
-    [ContextMenu("Запустить монолог 1 (возвращение на базу)")]
-    public void PlayReturnToBaseMonologue() => StartMonologue(1);
+    public bool HasPlayedFinalMonologue => hasPlayedFinalMonologue;
 }

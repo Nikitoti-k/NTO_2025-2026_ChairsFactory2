@@ -20,8 +20,6 @@ public class GameDayManager : MonoBehaviour
     public UnityEvent OnDayFullyCompleted = new();
     public UnityEvent<int> OnDepositsChanged = new();
     public UnityEvent<int> OnMineralsResearchedChanged = new();
-
-    // ← НОВОЕ СОБЫТИЕ ДЛЯ ТУТОРИАЛА
     public UnityEvent<MineralData> OnMineralResearched = new();
 
     public int CurrentDay { get; private set; } = 1;
@@ -40,6 +38,7 @@ public class GameDayManager : MonoBehaviour
             Destroy(gameObject);
             return;
         }
+
         Instance = this;
         DontDestroyOnLoad(gameObject);
 
@@ -71,11 +70,13 @@ public class GameDayManager : MonoBehaviour
     {
         depositsBrokenToday++;
         OnDepositsChanged.Invoke(depositsBrokenToday);
+
         if (depositsBrokenToday >= DepositsToBreak && !allDepositsBroken)
         {
             allDepositsBroken = true;
             OnAllDepositsBroken.Invoke();
         }
+
         CheckFullCompletion();
     }
 
@@ -88,8 +89,6 @@ public class GameDayManager : MonoBehaviour
 
         mineralsResearchedToday++;
         OnMineralsResearchedChanged.Invoke(mineralsResearchedToday);
-
-        // ← ВЫЗЫВАЕМ СОБЫТИЕ ДЛЯ ТУТОРИАЛА
         OnMineralResearched?.Invoke(mineral);
 
         if (mineralsResearchedToday >= MineralsToResearch && !allReportsSubmitted)
@@ -97,6 +96,7 @@ public class GameDayManager : MonoBehaviour
             allReportsSubmitted = true;
             OnAllReportsSubmitted.Invoke();
         }
+
         CheckFullCompletion();
     }
 
@@ -107,7 +107,24 @@ public class GameDayManager : MonoBehaviour
     }
 
 #if UNITY_EDITOR
-    [ContextMenu("Тест: Сломать все залежи")] private void TestBreakAll() { depositsBrokenToday = DepositsToBreak; allDepositsBroken = true; OnAllDepositsBroken.Invoke(); CheckFullCompletion(); OnDepositsChanged.Invoke(depositsBrokenToday); }
-    [ContextMenu("Тест: Завершить все отчёты")] private void TestSubmitAll() { mineralsResearchedToday = MineralsToResearch; allReportsSubmitted = true; OnAllReportsSubmitted.Invoke(); CheckFullCompletion(); OnMineralsResearchedChanged.Invoke(mineralsResearchedToday); }
+    [ContextMenu("Тест: Сломать все залежи")]
+    private void TestBreakAll()
+    {
+        depositsBrokenToday = DepositsToBreak;
+        allDepositsBroken = true;
+        OnAllDepositsBroken.Invoke();
+        CheckFullCompletion();
+        OnDepositsChanged.Invoke(depositsBrokenToday);
+    }
+
+    [ContextMenu("Тест: Завершить все отчёты")]
+    private void TestSubmitAll()
+    {
+        mineralsResearchedToday = MineralsToResearch;
+        allReportsSubmitted = true;
+        OnAllReportsSubmitted.Invoke();
+        CheckFullCompletion();
+        OnMineralsResearchedChanged.Invoke(mineralsResearchedToday);
+    }
 #endif
 }
