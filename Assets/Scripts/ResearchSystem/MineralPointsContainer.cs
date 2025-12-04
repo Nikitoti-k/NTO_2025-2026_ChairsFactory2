@@ -1,5 +1,5 @@
 ﻿using UnityEngine;
-
+using System;
 
 [RequireComponent(typeof(MineralPointSpawner))]
 public class MineralData : MonoBehaviour
@@ -29,13 +29,10 @@ public class MineralData : MonoBehaviour
     [Space]
     [Tooltip("Ручной возраст (например: 0.001, -500, 999999)")]
     public float overrideAge = 0.001f;
-
     [Tooltip("Дни или миллионы лет?")]
     public MineralClass.AgeUnit overrideAgeUnit = MineralClass.AgeUnit.Days;
-
     [Tooltip("Ручная радиация (например: 99999.999)")]
     public float overrideRadioactivity = 99999f;
-
     [Tooltip("Ручная кристаллическая решётка")]
     public CrystalSystem overrideCrystalSystem = CrystalSystem.Molecular;
 
@@ -50,27 +47,45 @@ public class MineralData : MonoBehaviour
     // ────────────────────────
     // УМНЫЕ СВОЙСТВА — что видит игрок
     // ────────────────────────
-    public float AgeMya => isAnomalyOverride ? overrideAge : realAge + Random.Range(-mineralClass.ageError, mineralClass.ageError);
-    public float RadioactivityUsv => isAnomalyOverride ? overrideRadioactivity : realRadioactivity + Random.Range(-mineralClass.radioactivityError, mineralClass.radioactivityError);
-    public CrystalSystem CrystalSystem_ => isAnomalyOverride ? overrideCrystalSystem : mineralClass.crystalSystem;
-    public string AgeUnitText => isAnomalyOverride
-        ? (overrideAgeUnit == MineralClass.AgeUnit.Days ? "дней" : "млн лет")
-        : (mineralClass.ageUnit == MineralClass.AgeUnit.Days ? "дней" : "млн лет");
 
-    public string ClassName => mineralClass != null ? mineralClass.className : "Неизвестно";
+    public float AgeMya => isAnomalyOverride
+        ? overrideAge
+        : realAge + UnityEngine.Random.Range(-mineralClass.ageError, mineralClass.ageError);
+
+    public float RadioactivityUsv => isAnomalyOverride
+        ? overrideRadioactivity
+        : realRadioactivity + UnityEngine.Random.Range(-mineralClass.radioactivityError, mineralClass.radioactivityError);
+
+    public CrystalSystem CrystalSystem_ => isAnomalyOverride
+        ? overrideCrystalSystem
+        : mineralClass.crystalSystem;
+
+    // ← КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: теперь единицы полностью локализованы!
+    public string AgeUnitText
+    {
+        get
+        {
+            MineralClass.AgeUnit unit = isAnomalyOverride ? overrideAgeUnit : mineralClass.ageUnit;
+            return unit == MineralClass.AgeUnit.Days
+                ? LocalizationManager.Loc("REPORT_AGE_UNIT_DAYS")
+                : LocalizationManager.Loc("REPORT_AGE_UNIT_MILLION");
+        }
+    }
+
+    public string ClassName => mineralClass != null ? mineralClass.localizationKey : "Неизвестно";
     public MineralClass MineralClassSO => mineralClass;
 
-    // Базовые значения (автоматически генерируются для обычных минералов)
+    // Базовые значения (генерируются для обычных минералов)
     public float realAge;
     public float realRadioactivity;
-
     public string UniqueInstanceID;
     public bool isResearched = false;
     public bool isTutorialHighlighted = false;
     public bool isLastInTutorialQueue = false;
 
-    [HideInInspector] public bool isAnomaly = false; // ← ставится при выборе класса «Аномалия»
+    [HideInInspector] public bool isAnomaly = false; // ставится при выборе класса «Аномалия»
 
+    // Сохранённые строки сканирования (уже с префиксами и локализацией)
     [HideInInspector] public string savedAgeLine = "";
     [HideInInspector] public string savedCrystalLine = "";
     [HideInInspector] public string savedRadioactivityLine = "";
@@ -78,12 +93,10 @@ public class MineralData : MonoBehaviour
     private void Awake()
     {
         if (string.IsNullOrEmpty(UniqueInstanceID))
-            UniqueInstanceID = System.Guid.NewGuid().ToString();
+            UniqueInstanceID = Guid.NewGuid().ToString();
 
         if (tutorialOutline == null)
             tutorialOutline = GetComponentInChildren<Outline>();
-        if (tutorialOutline != null)
-            tutorialOutline.enabled = false;
     }
 
     public void EnableTutorialOutline(bool enable)
@@ -98,8 +111,8 @@ public class MineralData : MonoBehaviour
     {
         if (mineralClass == null || mineralClass.isAnomalyClass || isAnomalyOverride) return;
 
-        realAge = Random.Range(mineralClass.ageMin, mineralClass.ageMax);
-        realRadioactivity = Random.Range(mineralClass.radioactivityMin, mineralClass.radioactivityMax);
+        realAge = UnityEngine.Random.Range(mineralClass.ageMin, mineralClass.ageMax);
+        realRadioactivity = UnityEngine.Random.Range(mineralClass.radioactivityMin, mineralClass.radioactivityMax);
     }
 
     // Save / Load
@@ -132,6 +145,7 @@ public class MineralData : MonoBehaviour
     }
 
 #if UNITY_EDITOR
-    [ContextMenu("Сгенерировать данные")] private void EditorGenerate() => GenerateData();
+    [ContextMenu("Сгенерировать данные")]
+    private void EditorGenerate() => GenerateData();
 #endif
 }

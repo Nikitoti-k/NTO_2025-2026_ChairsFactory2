@@ -4,6 +4,7 @@ using UnityEngine.Events;
 public class WeatherManager : MonoBehaviour
 {
     public enum TimeOfDay { Night, Morning, Day, Evening }
+
     public static WeatherManager Instance { get; private set; }
 
     [SerializeField] Light mainDirectionalLight;
@@ -16,10 +17,14 @@ public class WeatherManager : MonoBehaviour
     [Tooltip("Если включено — время идёт всегда, даже без разрешений фаз")]
     public bool forceTimeFlow = false;
 
-    [Header("=== ЗОНЫ ДЛЯ СМЕНЫ ВРЕМЕНИ ===")]
-    [SerializeField] private Transform baseCenterPoint;        // Центр базы (кровать/дом)
-    [SerializeField] private float distanceToStartDay = 150f;  // Отъехал → день (12:00)
-    [SerializeField] private float distanceToTriggerEvening = 80f; // Вернулся → вечер (18:00)
+    [Header("=== НОВЫЙ РЕЖИМ: ВРЕМЯ ДО 00:00 + СОН ===")]
+    [Tooltip("Время течёт непрерывно от 8:00 до 00:00, потом останавливается до сна")]
+    public bool isTimeFlow = false;
+
+    [Header("=== ЗОНЫ ДЛЯ СМЕНЫ ВРЕМЕНИ (используется только без isTimeFlow) ===")]
+    [SerializeField] private Transform baseCenterPoint; // Центр базы
+    [SerializeField] private float distanceToStartDay = 150f;
+    [SerializeField] private float distanceToTriggerEvening = 80f;
 
     public UnityEvent<int> OnDayChanged = new UnityEvent<int>();
     public UnityEvent<TimeOfDay> OnPeriodChanged = new UnityEvent<TimeOfDay>();
@@ -34,14 +39,18 @@ public class WeatherManager : MonoBehaviour
     private Vector3 moonDefaultAngles;
     private TimeOfDay currentPeriodCache;
 
-    // === ФАЗЫ ВРЕМЕНИ ===
-    private bool dayTriggered = false;     // Отъехал далеко → день разрешён
-    private bool depositsBroken = false;    // Сломаны все залежи → вечер разрешён
-    private bool eveningTriggered = false;  // Вернулся → ночь разрешена
+    // Флаги фаз (используются только если isTimeFlow == false)
+    private bool dayTriggered = false;
+    private bool depositsBroken = false;
+    private bool eveningTriggered = false;
 
     private void Awake()
     {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
         Instance = this;
         DontDestroyOnLoad(gameObject);
 
@@ -56,31 +65,51 @@ public class WeatherManager : MonoBehaviour
     {
         if (!Application.isPlaying) return;
 
-        // === 1. ВРЕМЯ ИДЁТ ТОЛЬКО ЕСЛИ ФАЗА РАЗРЕШЕНА ===
-        if (forceTimeFlow || CanTimeProgress())
+        bool shouldAdvanceTime = false;
+
+        if (isTimeFlow)
+        {
+            // === РЕЖИМ: Время идёт до 00:00, потом ждём сон ===
+            shouldAdvanceTime = CurrentTimeInMinutes < 1440f;
+        }
+        else
+        {
+            // === СТАРЫЙ РЕЖИМ: по фазам и триггерам ===
+            shouldAdvanceTime = forceTimeFlow || CanTimeProgress();
+        }
+
+        // === ПРОДВИЖЕНИЕ ВРЕМЕНИ ===
+        if (shouldAdvanceTime)
         {
             timeProgress += Time.deltaTime / realSecondsPerGameDay;
             CurrentTimeInMinutes = timeProgress * 1440f;
         }
 
-        // === 2. НОВЫЙ ДЕНЬ ===
+        // === ОБРАБОТКА ПОЛУНОЧИ ===
         if (CurrentTimeInMinutes >= 1440f)
         {
-            timeProgress = 0f;
-            CurrentTimeInMinutes = 480f; // 8:00 утра
-            CurrentDay++;
-            OnDayChanged.Invoke(CurrentDay);
-            ResetPhaseFlags();
-            GameDayManager.Instance?.SetDay(CurrentDay);
+            if (isTimeFlow)
+            {
+                // Замораживаем на 23:59:59 — день НЕ переходит автоматически
+                CurrentTimeInMinutes = 1439.99f;
+                timeProgress = CurrentTimeInMinutes / 1440f;
+            }
+            else
+            {
+                // Классический автоматический переход на новый день
+                StartNewDay();
+            }
         }
 
-        // === 3. ПРОВЕРЯЕМ УСЛОВИЯ ФАЗ ===
-        HandlePhaseTriggers();
+        // Обновляем триггеры фаз (только если не в режиме isTimeFlow)
+        if (!isTimeFlow)
+            HandlePhaseTriggers();
 
-        // === 4. ОБНОВЛЯЕМ ОСВЕЩЕНИЕ ===
+        // Обновляем освещение и поворот солнца/луны
         timeProgress = CurrentTimeInMinutes / 1440f;
         UpdateLightingAndRotation();
 
+        // События смены периода и времени
         TimeOfDay newPeriod = GetCurrentPeriod();
         if (newPeriod != currentPeriodCache)
         {
@@ -91,20 +120,23 @@ public class WeatherManager : MonoBehaviour
         OnTimeChanged.Invoke(CurrentDay, CurrentTimeInMinutes);
     }
 
-    // === МОЖНО ЛИ ПРОГРЕССИРОВАТЬ ВРЕМЯ? ===
-    private bool CanTimeProgress()
+    private void StartNewDay()
     {
-        // 8:00-12:00 — всегда идёт (утро)
-        if (CurrentTimeInMinutes < 720f) return true;
-
-        // 12:00-18:00 — ждём все залежи
-        if (CurrentTimeInMinutes < 1080f) return depositsBroken;
-
-        // 18:00-24:00 — ждём возвращения
-        return eveningTriggered;
+        timeProgress = 0f;
+        CurrentTimeInMinutes = 480f; // 8:00 утра
+        CurrentDay++;
+        OnDayChanged.Invoke(CurrentDay);
+        ResetPhaseFlags();
+        GameDayManager.Instance?.SetDay(CurrentDay);
     }
 
-    // === ПРОВЕРКА ТРИГГЕРОВ ФАЗ ===
+    private bool CanTimeProgress()
+    {
+        if (CurrentTimeInMinutes < 720f) return true;                   // 8:00–12:00 — утро всегда идёт
+        if (CurrentTimeInMinutes < 1080f) return depositsBroken;       // 12:00–18:00 — ждём сломанные залежи
+        return eveningTriggered;                                        // 18:00–00:00 — ждём возвращения на базу
+    }
+
     private void HandlePhaseTriggers()
     {
         var player = GameObject.FindGameObjectWithTag("Player")?.transform;
@@ -112,14 +144,14 @@ public class WeatherManager : MonoBehaviour
 
         float distFromBase = Vector3.Distance(player.position, baseCenterPoint.position);
 
-        // 1. ОТЪЕЗЖАЕТ ДАЛЕКО → ДЕНЬ РАЗРЕШЁН (12:00)
+        // 1. Отъехал далеко → день (12:00) разрешён
         if (!dayTriggered && distFromBase >= distanceToStartDay && CurrentTimeInMinutes >= 720f)
         {
             dayTriggered = true;
             Debug.Log("[Weather] День начался — игрок отъехал далеко от базы!");
         }
 
-        // 2. СЛОМАНЫ ВСЕ ЗАЛЕЖИ → ВЕЧЕР РАЗРЕШЁН (18:00)
+        // 2. Сломаны все залежи → вечер (18:00) разрешён
         if (dayTriggered && !depositsBroken && GameDayManager.Instance != null &&
             GameDayManager.Instance.DepositsBrokenToday >= GameDayManager.Instance.DepositsToBreak &&
             CurrentTimeInMinutes >= 1080f)
@@ -128,29 +160,34 @@ public class WeatherManager : MonoBehaviour
             Debug.Log("[Weather] Вечер разрешён — все залежи сломаны!");
         }
 
-        // 3. ВЕРНУЛСЯ НА БАЗУ → НОЧЬ РАЗРЕШЕНА (24:00)
-        if (depositsBroken && !eveningTriggered && distFromBase <= distanceToTriggerEvening &&
-            CurrentTimeInMinutes >= 1080f)
+        // 3. Вернулся на базу → ночь (00:00) разрешена
+        if (depositsBroken && !eveningTriggered && distFromBase <= distanceToTriggerEvening && CurrentTimeInMinutes >= 1080f)
         {
             eveningTriggered = true;
             Debug.Log("[Weather] Ночь разрешена — игрок вернулся на базу!");
         }
     }
 
-    // === СПАТЬ МОЖНО ТОЛЬКО ПОСЛЕ ВСЕХ ЗАДАНИЙ ===
+    // === СОН — теперь работает в обоих режимах ===
     public bool CanSleepNow()
     {
-        return depositsBroken && eveningTriggered && GameDayManager.Instance != null &&
-               GameDayManager.Instance.CanSleep;
+        if (isTimeFlow)
+            return CurrentTimeInMinutes >= 1439f; // можно спать только в 00:00 и позже
+
+        return depositsBroken && eveningTriggered && GameDayManager.Instance != null && GameDayManager.Instance.CanSleep;
     }
 
     public void SleepAndNextDay()
     {
         CurrentDay++;
         JumpTo(480f); // 8:00 утра следующего дня
+        timeProgress = 480f / 1440f;
+
         ResetPhaseFlags();
         OnDayChanged.Invoke(CurrentDay);
         GameDayManager.Instance?.SetDay(CurrentDay);
+
+        Debug.Log($"[Weather] Новый день! День {CurrentDay}, 8:00 утра.");
     }
 
     public void SetTimeDirectly(int day, float minutes)
@@ -204,6 +241,9 @@ public class WeatherManager : MonoBehaviour
 
     public string GetFormattedTime()
     {
+        if (isTimeFlow && CurrentTimeInMinutes >= 1439f)
+            return "00:00 — Спать!"; // Подсказка игроку
+
         int h = Mathf.FloorToInt(CurrentTimeInMinutes / 60f);
         int m = Mathf.FloorToInt(CurrentTimeInMinutes % 60f);
         return $"{h:00}:{m:00}";

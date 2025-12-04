@@ -4,7 +4,7 @@ using TMPro;
 using System.Collections.Generic;
 using System;
 
-public class MineralReportUI : MonoBehaviour
+public class MineralReportUI : MonoBehaviour, ILocalizable
 {
     public event Action<bool> OnReportSubmitted;
     public event Action OnReportCancelled;
@@ -16,10 +16,10 @@ public class MineralReportUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI statusText;
 
     [Header("Тексты")]
-    [SerializeField] private TextMeshProUGUI measuredDataText;     
-    [SerializeField] private TextMeshProUGUI classDetailsText;   
+    [SerializeField] private TextMeshProUGUI measuredDataText;
+    [SerializeField] private TextMeshProUGUI classDetailsText;
 
-    [Header("Все классы (7 SO)")]
+    [Header("Все классы")]
     [SerializeField] private List<MineralClass> allClasses = new List<MineralClass>(7);
 
     private MineralData currentSample;
@@ -31,20 +31,47 @@ public class MineralReportUI : MonoBehaviour
         closeButton.onClick.AddListener(ClosePanel);
         submitButton.onClick.AddListener(Submit);
 
-        
         for (int i = 0; i < classButtons.Length && i < allClasses.Count; i++)
         {
             int idx = i;
             MineralClass mc = allClasses[i];
 
-            
             TextMeshProUGUI btnText = classButtons[i].GetComponentInChildren<TextMeshProUGUI>();
             if (btnText != null)
-                btnText.text = mc.className;
+                btnText.text = mc.LocalizedName; // ← Только твои NAME_MINERAL_CLASS_*
 
+            classButtons[i].onClick.RemoveAllListeners();
             classButtons[i].onClick.AddListener(() => SelectClass(mc));
         }
+
+        Localize();
     }
+
+    public void Localize()
+    {
+        for (int i = 0; i < classButtons.Length && i < allClasses.Count; i++)
+        {
+            TextMeshProUGUI btnText = classButtons[i].GetComponentInChildren<TextMeshProUGUI>();
+            if (btnText != null)
+                btnText.text = allClasses[i].LocalizedName;
+        }
+    }
+
+    private void OnEnable()
+    {
+        LocalizationManager.Register(this);
+        LocalizationManager.OnLanguageChanged += OnLanguageChanged;
+    }
+
+    private void OnDisable()
+    {
+        LocalizationManager.Unregister(this);
+        LocalizationManager.OnLanguageChanged -= OnLanguageChanged;
+    }
+
+   
+
+    private void OnLanguageChanged(LocalizationManager.Language lang) => Localize();
 
     public void StartReport(MineralData mineral)
     {
@@ -53,26 +80,43 @@ public class MineralReportUI : MonoBehaviour
         selectedClass = null;
 
         UpdateMeasuredData();
-        classDetailsText.text = "Выберите класс для просмотра характеристик";
-        statusText.text = "Выберите правильный класс";
+        classDetailsText.text = LocalizationManager.Loc("REPORT_SELECT_CLASS");
+        statusText.text = LocalizationManager.Loc("REPORT_CHOOSE_CORRECT");
+
         ResetButtonHighlights();
-        if (TutorialManager.Instance != null &&
-    TutorialManager.Instance.radioMonologue != null &&
-    TutorialManager.Instance.radioMonologue.HasPlayedFinalMonologue)
+        UpdateClassButtonsState();
+    }
+
+    private void UpdateClassButtonsState()
+    {
+        bool isAnomaly = correctClass != null && correctClass.isAnomalyClass;
+        bool isFirstDay = GameDayManager.Instance != null && GameDayManager.Instance.CurrentDay == 1;
+
+        bool shouldLockNormal = isAnomaly && isFirstDay;
+
+        for (int i = 0; i < classButtons.Length && i < allClasses.Count; i++)
         {
-            foreach (var btn in classButtons)
+            Button btn = classButtons[i];
+            MineralClass mc = allClasses[i];
+            TextMeshProUGUI txt = btn.GetComponentInChildren<TextMeshProUGUI>();
+
+            if (shouldLockNormal)
             {
-                var mc = allClasses[System.Array.IndexOf(classButtons, btn)];
-                if (mc != null && !mc.isAnomalyClass)
-                {
-                    btn.interactable = false;
-                    btn.GetComponentInChildren<TextMeshProUGUI>().color = new Color(0.5f, 0.5f, 0.5f, 0.7f);
-                }
-                else if (mc != null && mc.isAnomalyClass)
+                if (mc.isAnomalyClass)
                 {
                     btn.interactable = true;
-                    btn.GetComponentInChildren<TextMeshProUGUI>().color = Color.red;
+                    if (txt) txt.color = Color.red;
                 }
+                else
+                {
+                    btn.interactable = false;
+                    if (txt) txt.color = new Color(0.5f, 0.5f, 0.5f, 0.7f);
+                }
+            }
+            else
+            {
+                btn.interactable = true;
+                if (txt) txt.color = Color.white;
             }
         }
     }
@@ -81,39 +125,38 @@ public class MineralReportUI : MonoBehaviour
     {
         selectedClass = mc;
         UpdateClassDetails(mc);
-        statusText.text = $"Выбран: <color=yellow>{mc.className}</color>\nНажмите «Отправить отчёт»";
+        statusText.text = string.Format(LocalizationManager.Loc("REPORT_SELECTED"), $"<color=yellow>{mc.LocalizedName}</color>");
         HighlightSelectedButton(mc);
     }
 
-    
     private void UpdateMeasuredData()
     {
         if (currentSample == null) return;
 
-        string ageStr = currentSample.AgeMya.ToString("F1");
-        string radStr = currentSample.RadioactivityUsv.ToString("F3");
-        string crystal = GetCrystalName(currentSample.CrystalSystem_);
+        string ageValue = currentSample.AgeMya.ToString("F1");
+        string radValue = currentSample.RadioactivityUsv.ToString("F3");
+        string crystal = LocalizationManager.Loc(GetCrystalKey(currentSample.CrystalSystem_));
 
-        measuredDataText.text =
-            $"<b>ИЗМЕРЕННЫЕ ДАННЫЕ:</b>\n\n" +
-            $"Возраст: <color=#FFD700>{ageStr}</color> {currentSample.AgeUnitText}\n" +
-            $"Радиация: <color=#FF6666>{radStr}</color> Бк\n" +
-            $"Решётка: <color=#CC66FF>{crystal}</color>";
+        measuredDataText.text = string.Format(
+            LocalizationManager.Loc("REPORT_MEASURED_DATA"),
+            ageValue,
+            currentSample.AgeUnitText,  // Это уже локализовано в MineralData, или используй ниже
+            radValue,
+            crystal
+        );
     }
-
 
     private void UpdateClassDetails(MineralClass mc)
     {
         if (mc.isAnomalyClass)
         {
-            classDetailsText.text = $"{mc.className}\n\n" +
-                                    "Возраст: ???\n" +
-                                    "Радиация: ??? Бк\n" +
-                                    "Решётка: ???";
+            classDetailsText.text = string.Format(
+                LocalizationManager.Loc("REPORT_CLASS_DETAILS_ANOMALY"),
+                mc.LocalizedName
+            );
             return;
         }
 
-        // Обычные классы — показываем диапазоны
         string ageRange = mc.ageMin == mc.ageMax
             ? $"{mc.ageMin:F0}"
             : $"{mc.ageMin:F0}–{mc.ageMax:F0}";
@@ -122,39 +165,42 @@ public class MineralReportUI : MonoBehaviour
             ? $"{mc.radioactivityMin:F3}"
             : $"{mc.radioactivityMin:F3}–{mc.radioactivityMax:F3}";
 
-        string unit = mc.ageUnit == MineralClass.AgeUnit.Days ? "дней" : "млн лет";
-        string crystal = GetCrystalName(mc.crystalSystem);
+        string unitKey = mc.ageUnit == MineralClass.AgeUnit.Days
+            ? "REPORT_AGE_UNIT_DAYS"
+            : "REPORT_AGE_UNIT_MILLION";
 
-        classDetailsText.text = $"{mc.className}\n\n" +
-                                $"Возраст: {ageRange} {unit}\n" +
-                                $"Радиация: {radRange} Бк\n" +
-                                $"Решётка: {crystal}";
+        string crystal = LocalizationManager.Loc(GetCrystalKey(mc.crystalSystem));
+
+        classDetailsText.text = string.Format(
+            LocalizationManager.Loc("REPORT_CLASS_DETAILS"),
+            mc.LocalizedName,
+            ageRange,
+            LocalizationManager.Loc(unitKey),
+            radRange,
+            crystal
+        );
     }
+
     private void Submit()
     {
         if (selectedClass == null)
         {
-            statusText.text = "Сначала выберите класс!";
+            statusText.text = LocalizationManager.Loc("REPORT_SELECT_FIRST");
             return;
         }
 
         bool correct = selectedClass == correctClass;
 
-        // ← УСТАНАВЛИВАЕМ isAnomaly СРАЗУ
         if (selectedClass.isAnomalyClass)
-        {
             currentSample.isAnomaly = true;
-        }
 
-        // Уведомляем туториал
         if (selectedClass.isAnomalyClass && TutorialManager.Instance != null)
-        {
             TutorialManager.Instance.OnAnomalyReportSubmitted();
-        }
 
         OnReportSubmitted?.Invoke(correct);
         gameObject.SetActive(false);
     }
+
     private void ClosePanel()
     {
         OnReportCancelled?.Invoke();
@@ -165,8 +211,11 @@ public class MineralReportUI : MonoBehaviour
     {
         for (int i = 0; i < classButtons.Length; i++)
         {
+            if (i >= allClasses.Count) break;
+            bool isSelected = allClasses[i] == mc;
             var colors = classButtons[i].colors;
-           
+            colors.normalColor = isSelected ? new Color(0.2f, 0.8f, 1f) : Color.white;
+            colors.highlightedColor = isSelected ? new Color(0.3f, 0.9f, 1f) : new Color(0.9f, 0.9f, 0.9f);
             classButtons[i].colors = colors;
         }
     }
@@ -182,16 +231,11 @@ public class MineralReportUI : MonoBehaviour
         }
     }
 
-    private string GetCrystalName(MineralData.CrystalSystem system)
+    private string GetCrystalKey(MineralData.CrystalSystem system) => system switch
     {
-        return system switch
-        {
-            MineralData.CrystalSystem.Cubic => "кубическая",
-            MineralData.CrystalSystem.Molecular => "молекулярная",
-            MineralData.CrystalSystem.Monoclinic => "моноклинная",
-            
-          
-            _ => "неизвестная"
-        };
-    }
+        MineralData.CrystalSystem.Cubic => "CRYSTAL_CUBIC",
+        MineralData.CrystalSystem.Molecular => "CRYSTAL_MOLECULAR",
+        MineralData.CrystalSystem.Monoclinic => "CRYSTAL_MONOCLINIC",
+        _ => "CRYSTAL_AMORPHOUS"
+    };
 }

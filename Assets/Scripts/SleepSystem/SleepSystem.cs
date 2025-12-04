@@ -1,4 +1,4 @@
-using UnityEngine;
+п»їusing UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
 
@@ -31,7 +31,7 @@ public class SleepSystem : MonoBehaviour
 
         player = FindFirstObjectByType<PlayerMovement>();
         if (player) playerRb = player.GetComponent<Rigidbody>();
-        else Debug.LogError("[SleepSystem] PlayerMovement не найден!");
+        else Debug.LogError("[SleepSystem] PlayerMovement РЅРµ РЅР°Р№РґРµРЅ!");
     }
 
     public bool CanSleepNow()
@@ -58,17 +58,17 @@ public class SleepSystem : MonoBehaviour
     {
         if (!CanSleepNow())
         {
-            Debug.LogWarning("[SleepSystem] StartSleep() заблокирован — CanSleepNow() == false");
+            Debug.LogWarning("[SleepSystem] StartSleep() Р·Р°Р±Р»РѕРєРёСЂРѕРІР°РЅ вЂ” CanSleepNow() == false");
             return;
         }
 
         if (player == null || sleepImage == null)
         {
-            Debug.LogError("[SleepSystem] Player или sleepImage == null!");
+            Debug.LogError("[SleepSystem] Player РёР»Рё sleepImage == null!");
             return;
         }
 
-        Debug.Log("[SleepSystem] Начинаем сон... Доброй ночи!");
+        Debug.Log("[SleepSystem] РќР°С‡РёРЅР°РµРј СЃРѕРЅ... Р”РѕР±СЂРѕР№ РЅРѕС‡Рё!");
 
         player.enabled = false;
         if (playerRb) playerRb.isKinematic = true;
@@ -86,7 +86,7 @@ public class SleepSystem : MonoBehaviour
         {
             player.transform.position = spawnPointAfterSleep.position;
             player.transform.rotation = spawnPointAfterSleep.rotation;
-            Debug.Log("[SleepSystem] Телепорт после сна: " + spawnPointAfterSleep.position);
+            Debug.Log("[SleepSystem] РўРµР»РµРїРѕСЂС‚ РїРѕСЃР»Рµ СЃРЅР°: " + spawnPointAfterSleep.position);
         }
 
         yield return FadeTo(0f);
@@ -94,11 +94,29 @@ public class SleepSystem : MonoBehaviour
         if (playerRb) playerRb.isKinematic = false;
         player.enabled = true;
         player.EndSleep();
+
         TutorialManager.Instance?.OnPlayerSlept();
 
-        Debug.Log("[SleepSystem] Проснулись! Новый день!");
-    }
+        // === Р’РћРў Р­РўРђ РЎРўР РћРљРђ вЂ” Р“Р›РђР’РќРћР• Р”РћР‘РђР’Р›Р•РќРР• ===
+        TriggerPostSleepMonologue();
 
+        Debug.Log("[SleepSystem] РџСЂРѕСЃРЅСѓР»РёСЃСЊ! РќРѕРІС‹Р№ РґРµРЅСЊ!");
+    }
+    public static bool HasPlayedPostFirstSleepMonologue { get; private set; } = false;
+
+    private void TriggerPostSleepMonologue()
+    {
+        if (HasPlayedPostFirstSleepMonologue) return;
+        if (GameDayManager.Instance == null || GameDayManager.Instance.CurrentDay != 2) return;
+
+        var radio = FindObjectOfType<RadioMonologue>();
+        if (radio != null && radio.monologueSets.Length > 3)
+        {
+            radio.StartMonologue(3);
+            HasPlayedPostFirstSleepMonologue = true;
+            Debug.Log("<color=magenta>гЂђР РђР”РРћгЂ‘ РџРµСЂРІС‹Р№ РјРѕРЅРѕР»РѕРі РїРѕСЃР»Рµ СЃРЅР° вЂ” Р”РµРЅСЊ 2</color>");
+        }
+    }
     IEnumerator FadeTo(float a)
     {
         sleepImage.raycastTarget = a > 0f;

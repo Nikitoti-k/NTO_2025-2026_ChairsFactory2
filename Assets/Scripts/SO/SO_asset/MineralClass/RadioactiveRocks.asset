@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9dc88466fb3dae4bbc933e6cf50d87d, type: 3}
   m_Name: RadioactiveRocks
   m_EditorClassIdentifier: 
-  className: "\u0420\u0430\u0434\u0438\u043E\u0430\u043A\u0442\u0438\u0432\u043D\u044B\u0435
-    \u043F\u043E\u0440\u043E\u0434\u044B"
+  localizationKey: NAME_MINERAL_CLASS_2
+  isAnomalyClass: 0
   ageUnit: 1
   ageMin: 500
   ageMax: 4000

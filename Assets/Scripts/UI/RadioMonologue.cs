@@ -7,18 +7,20 @@ using System;
 [Serializable]
 public class MonologueSet
 {
-    public string speakerName;
-    [TextArea(3, 5)] public string[] phrases;
+    public string speakerNameKey;                    // ← Теперь ключ! Например "RADIO_SPEAKER_BASE"
+    [TextArea(3, 5)] public string[] phraseKeys;     // ← Ключи фраз: "MONOLOGUE_INTRO_01" и т.д.
 }
 
-public class RadioMonologue : MonoBehaviour
+public class RadioMonologue : MonoBehaviour, ILocalizable
 {
     [SerializeField] private GameObject radioPanel;
     [SerializeField] private TMP_Text radioText;
     [SerializeField] private TMP_Text speakerText;
     [SerializeField] private TMP_Text promptText;
     [SerializeField] private float charsPerSecond = 45f;
-    [SerializeField] private MonologueSet[] monologueSets;
+
+    [Header("Monologue Sets (заполняй ключи из LocalizationData)")]
+    [SerializeField] public MonologueSet[] monologueSets;
 
     private int currentSet = 0;
     private int currentPhrase = 0;
@@ -26,14 +28,12 @@ public class RadioMonologue : MonoBehaviour
     private Coroutine typingCoroutine;
 
     public TutorialManager tutorialManager;
+
     public bool IsPlaying => radioPanel != null && radioPanel.activeSelf;
 
-  //  private bool hasPlayedFinalMonologue = false;
-  //  public bool HasPlayedFinalMonologue => hasPlayedFinalMonologue;
-
-    public bool HasPlayedIntroMonologue { get; set; } = false;  // Новый
+    public bool HasPlayedIntroMonologue { get; set; } = false;
     public bool HasPlayedReturnMonologue { get; set; } = false;
-    public bool HasPlayedFinalMonologue { get; set; } = false;  // Переименуй hasPlayedFinalMonologue
+    public bool HasPlayedFinalMonologue { get; set; } = false;
 
     private void Awake()
     {
@@ -43,10 +43,25 @@ public class RadioMonologue : MonoBehaviour
     private void Start()
     {
         if (radioPanel) radioPanel.SetActive(false);
-        if (promptText) promptText.text = "Press Enter to continue";
-       /// if (monologueSets != null && monologueSets.Length > 0 && HasPlayedIntroMonologue==false)
-          //  StartMonologue(0);
+        Localize(); // Локализуем подсказку сразу
+        LocalizationManager.OnLanguageChanged += OnLanguageChanged;
     }
+
+    private void OnDestroy()
+    {
+        LocalizationManager.OnLanguageChanged -= OnLanguageChanged;
+    }
+
+    private void OnEnable() => LocalizationManager.Register(this);
+    private void OnDisable() => LocalizationManager.Unregister(this);
+
+    public void Localize()
+    {
+        if (promptText != null)
+            promptText.text = LocalizationManager.Loc("RADIO_PROMPT");
+    }
+
+    private void OnLanguageChanged(LocalizationManager.Language lang) => Localize();
 
     public void StartMonologue(int setIndex)
     {
@@ -61,18 +76,21 @@ public class RadioMonologue : MonoBehaviour
 
     private void UpdateSpeakerAndStartTyping()
     {
-        if (currentPhrase >= monologueSets[currentSet].phrases.Length)
+        if (currentPhrase >= monologueSets[currentSet].phraseKeys.Length)
         {
             EndMonologue();
             return;
         }
 
         radioText.text = "";
-        if (speakerText) speakerText.text = monologueSets[currentSet].speakerName;
+        if (speakerText)
+            speakerText.text = LocalizationManager.Loc(monologueSets[currentSet].speakerNameKey);
+
         if (promptText) promptText.gameObject.SetActive(false);
 
         isTyping = true;
-        typingCoroutine = StartCoroutine(TypeText(monologueSets[currentSet].phrases[currentPhrase]));
+        string fullText = LocalizationManager.Loc(monologueSets[currentSet].phraseKeys[currentPhrase]);
+        typingCoroutine = StartCoroutine(TypeText(fullText));
     }
 
     private IEnumerator TypeText(string text)
@@ -83,7 +101,6 @@ public class RadioMonologue : MonoBehaviour
         while (charIndex < text.Length)
         {
             if (!isTyping) yield break;
-
             radioText.text = text.Substring(0, charIndex + 1);
             charIndex++;
             yield return new WaitForSeconds(delay);
@@ -103,7 +120,7 @@ public class RadioMonologue : MonoBehaviour
             if (isTyping && typingCoroutine != null)
             {
                 StopCoroutine(typingCoroutine);
-                radioText.text = monologueSets[currentSet].phrases[currentPhrase];
+                radioText.text = LocalizationManager.Loc(monologueSets[currentSet].phraseKeys[currentPhrase]);
                 isTyping = false;
                 if (promptText) promptText.gameObject.SetActive(true);
             }
@@ -131,16 +148,17 @@ public class RadioMonologue : MonoBehaviour
         radioPanel.SetActive(false);
         BlockPlayerControls(false);
 
-        // === ФИКС: отмечаем проигрывание монологов ===
-        if (currentSet == 0) HasPlayedIntroMonologue = true;
-        if (currentSet == 1) HasPlayedReturnMonologue = true;
-        if (currentSet == 2) HasPlayedFinalMonologue = true;
+        // Отмечаем проигранные монологи
+        switch (currentSet)
+        {
+            case 0: HasPlayedIntroMonologue = true; break;
+            case 1: HasPlayedReturnMonologue = true; break;
+            case 2: HasPlayedFinalMonologue = true; break;
+        }
 
         if (currentSet == 0 && tutorialManager != null)
             tutorialManager.ForceStartTutorial();
     }
-    private bool hasPlayedReturnMonologue = false;
-   // public bool HasPlayedReturnMonologue => hasPlayedReturnMonologue;
 
     private void BlockPlayerControls(bool block)
     {
@@ -157,5 +175,6 @@ public class RadioMonologue : MonoBehaviour
             InputManager.ClearAll();
     }
 
+    [ContextMenu("TEST → Intro Monologue")]
     private void Test0() => StartMonologue(0);
 }
