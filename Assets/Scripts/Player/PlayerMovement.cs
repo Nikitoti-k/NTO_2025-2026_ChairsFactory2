@@ -1,5 +1,5 @@
-using System.Linq;
 using UnityEngine;
+using System.Linq;
 
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerMovement : MonoBehaviour, IControllable
@@ -59,11 +59,14 @@ public class PlayerMovement : MonoBehaviour, IControllable
     {
         bool grounded = IsGrounded();
         if (input.sqrMagnitude < stopThreshold * stopThreshold) input = Vector2.zero;
+
         float accel = grounded ? acceleration : airAcceleration;
         float decel = grounded ? deceleration : airAcceleration;
+
         _smoothedInput = input.sqrMagnitude > 0.01f
             ? Vector2.MoveTowards(_smoothedInput, input, accel * Time.fixedDeltaTime)
             : Vector2.MoveTowards(_smoothedInput, Vector2.zero, decel * Time.fixedDeltaTime);
+
         Vector3 dir = (transform.right * _smoothedInput.x + transform.forward * _smoothedInput.y).normalized;
         Vector3 target = dir * walkSpeed;
         Vector3 horiz = new Vector3(_rb.linearVelocity.x, 0f, _rb.linearVelocity.z);
@@ -104,40 +107,25 @@ public class PlayerMovement : MonoBehaviour, IControllable
             return;
         }
 
-        // === ПОПЫТКА СПАТЬ ===
-        if (sleepSystem != null)
+        if (sleepSystem != null && sleepSystem.CanSleepNow())
         {
-            bool canSleep = sleepSystem.CanSleepNow();
-            Debug.Log($"[Player] Нажал E → Проверка сна: CanSleep = {canSleep}");
-
-            if (canSleep)
-            {
-                Debug.Log("[Player] Ложимся спать! Z-z-z...");
-                _isSleeping = true;
-                sleepSystem.StartSleep();
-                return;
-            }
-            else
-            {
-                Debug.LogWarning("[Player] НЕЛЬЗЯ СПАТЬ! Смотри логи выше ↑");
-            }
+            _isSleeping = true;
+            sleepSystem.StartSleep();
+            return;
         }
 
         TryMountTransport();
 
         if (TryOpenResearchReport())
             return;
-
-        Debug.Log("[Player] Нечего интерактировать рядом.");
     }
 
     private bool TryOpenResearchReport()
     {
-        var viewers = Physics.OverlapSphere(transform.position, 3f)
+        var nearest = Physics.OverlapSphere(transform.position, 3f)
             .Select(c => c.GetComponent<ResearchReportViewer>())
-            .Where(v => v != null);
+            .FirstOrDefault(v => v != null);
 
-        var nearest = viewers.FirstOrDefault();
         if (nearest != null)
         {
             nearest.OpenPanel();
@@ -155,9 +143,11 @@ public class PlayerMovement : MonoBehaviour, IControllable
     {
         var item = objectGrabber.GetGrabbedItem();
         if (item == null) return;
+
         var zone = Physics.OverlapSphere(transform.position, 2.5f)
             .Select(c => c.GetComponent<SnapZone>())
             .FirstOrDefault(z => z != null && z.CanSnap(item));
+
         zone?.Snap(item);
     }
 
@@ -168,6 +158,7 @@ public class PlayerMovement : MonoBehaviour, IControllable
             .Where(t => t != null)
             .OrderBy(t => Vector3.Distance(transform.position, t.transform.position))
             .FirstOrDefault();
+
         if (nearest != null)
         {
             _isMounting = true;
@@ -180,8 +171,11 @@ public class PlayerMovement : MonoBehaviour, IControllable
         _rb.isKinematic = true;
         _rb.useGravity = false;
         _rb.linearVelocity = Vector3.zero;
+        _rb.interpolation = RigidbodyInterpolation.None;
+
         var col = GetComponent<Collider>();
         col.enabled = false;
+
         Transform seat = transport.seatTransform;
         if (seat == null)
         {
@@ -189,9 +183,11 @@ public class PlayerMovement : MonoBehaviour, IControllable
             seat.SetParent(transport.transform, false);
             seat.localPosition = transport.fallbackMountOffset;
         }
+
         transform.SetParent(seat);
         transform.localPosition = Vector3.zero;
         transform.localRotation = Quaternion.identity;
+
         _router.SetController(transport);
         _isMounting = false;
     }

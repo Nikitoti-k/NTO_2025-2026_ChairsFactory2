@@ -4,7 +4,6 @@ using UnityEngine.Events;
 public class WeatherManager : MonoBehaviour
 {
     public enum TimeOfDay { Night, Morning, Day, Evening }
-
     public static WeatherManager Instance { get; private set; }
 
     [SerializeField] Light mainDirectionalLight;
@@ -14,15 +13,13 @@ public class WeatherManager : MonoBehaviour
     [SerializeField, Range(60f, 3600f)] float realSecondsPerGameDay = 300f;
 
     [Space]
-    [Tooltip("Если включено — время идёт всегда, даже без разрешений фаз")]
     public bool forceTimeFlow = false;
 
     [Header("=== НОВЫЙ РЕЖИМ: ВРЕМЯ ДО 00:00 + СОН ===")]
-    [Tooltip("Время течёт непрерывно от 8:00 до 00:00, потом останавливается до сна")]
     public bool isTimeFlow = false;
 
-    [Header("=== ЗОНЫ ДЛЯ СМЕНЫ ВРЕМЕНИ (используется только без isTimeFlow) ===")]
-    [SerializeField] private Transform baseCenterPoint; // Центр базы
+    [Header("=== ЗОНЫ ДЛЯ СМЕНЫ ВРЕМЕНИ (без isTimeFlow) ===")]
+    [SerializeField] private Transform baseCenterPoint;
     [SerializeField] private float distanceToStartDay = 150f;
     [SerializeField] private float distanceToTriggerEvening = 80f;
 
@@ -31,7 +28,7 @@ public class WeatherManager : MonoBehaviour
     public UnityEvent<float, float> OnTimeChanged = new UnityEvent<float, float>();
 
     public int CurrentDay { get; private set; } = 1;
-    public float CurrentTimeInMinutes { get; private set; } = 480f; // 8:00 утра
+    public float CurrentTimeInMinutes { get; private set; } = 480f; // 8:00
     public TimeOfDay CurrentPeriod => GetCurrentPeriod();
 
     private float timeProgress;
@@ -39,7 +36,6 @@ public class WeatherManager : MonoBehaviour
     private Vector3 moonDefaultAngles;
     private TimeOfDay currentPeriodCache;
 
-    // Флаги фаз (используются только если isTimeFlow == false)
     private bool dayTriggered = false;
     private bool depositsBroken = false;
     private bool eveningTriggered = false;
@@ -58,67 +54,97 @@ public class WeatherManager : MonoBehaviour
         sunDefaultAngles = mainDirectionalLight.transform.localEulerAngles;
         if (moonLight) moonDefaultAngles = moonLight.transform.localEulerAngles;
 
-        JumpTo(480f); // 8:00 утра
+        JumpTo(480f);
     }
 
     private void Update()
     {
         if (!Application.isPlaying) return;
 
-        bool shouldAdvanceTime = false;
+        bool shouldAdvanceTime = isTimeFlow
+            ? CurrentTimeInMinutes < 1440f
+            : forceTimeFlow || CanTimeProgress();
 
-        if (isTimeFlow)
-        {
-            // === РЕЖИМ: Время идёт до 00:00, потом ждём сон ===
-            shouldAdvanceTime = CurrentTimeInMinutes < 1440f;
-        }
-        else
-        {
-            // === СТАРЫЙ РЕЖИМ: по фазам и триггерам ===
-            shouldAdvanceTime = forceTimeFlow || CanTimeProgress();
-        }
-
-        // === ПРОДВИЖЕНИЕ ВРЕМЕНИ ===
         if (shouldAdvanceTime)
         {
             timeProgress += Time.deltaTime / realSecondsPerGameDay;
             CurrentTimeInMinutes = timeProgress * 1440f;
         }
 
-        // === ОБРАБОТКА ПОЛУНОЧИ ===
         if (CurrentTimeInMinutes >= 1440f)
         {
             if (isTimeFlow)
             {
-                // Замораживаем на 23:59:59 — день НЕ переходит автоматически
                 CurrentTimeInMinutes = 1439.99f;
                 timeProgress = CurrentTimeInMinutes / 1440f;
             }
             else
             {
-                // Классический автоматический переход на новый день
                 StartNewDay();
             }
         }
 
-        // Обновляем триггеры фаз (только если не в режиме isTimeFlow)
         if (!isTimeFlow)
             HandlePhaseTriggers();
 
-        // Обновляем освещение и поворот солнца/луны
         timeProgress = CurrentTimeInMinutes / 1440f;
-        UpdateLightingAndRotation();
+        UpdateLightingAndRotation(); // ← Здесь теперь проверка на пещеру!
 
-        // События смены периода и времени
         TimeOfDay newPeriod = GetCurrentPeriod();
         if (newPeriod != currentPeriodCache)
         {
             currentPeriodCache = newPeriod;
             OnPeriodChanged.Invoke(newPeriod);
         }
-
         OnTimeChanged.Invoke(CurrentDay, CurrentTimeInMinutes);
     }
+
+    private void UpdateLightingAndRotation()
+    {
+        // === 1. Солнце (Directional Light) — обновляется всегда ===
+        if (mainDirectionalLight != null)
+        {
+            mainDirectionalLight.color = directionalLightGradient.Evaluate(timeProgress);
+
+            // Поворот солнца по кругу
+            mainDirectionalLight.transform.localEulerAngles = new Vector3(
+                360f * timeProgress - 90f,
+                sunDefaultAngles.y,
+                sunDefaultAngles.z
+            );
+
+            // Интенсивность солнца (день — ярко, ночь — почти 0)
+            float sunValue = Mathf.Clamp01(Mathf.Sin(timeProgress * Mathf.PI));
+            sunValue = Mathf.Max(sunValue, 0.03f); // минимальный свет, чтобы не было полной тьмы снаружи ночью
+            mainDirectionalLight.intensity = sunValue * 2f;
+        }
+
+        // === 2. Луна — обновляется всегда ===
+        if (moonLight != null)
+        {
+            moonLight.transform.localEulerAngles = new Vector3(
+                360f * timeProgress + 90f,
+                moonDefaultAngles.y,
+                moonDefaultAngles.z
+            );
+
+            // Луна светит сильнее, когда солнце внизу
+            float moonValue = 1f - Mathf.Abs(Mathf.Sin(timeProgress * Mathf.PI));
+            moonLight.intensity = moonValue * 0.8f;
+        }
+
+        // === 3. Ambient Light — ТОЛЬКО если игрок НЕ в пещере! ===
+        // Это главное условие — защищает пещеры от перезаписи
+        if (CaveDarkness.IsInsideAnyCave)
+        {
+            // НИЧЕГО НЕ ДЕЛАЕМ — пещерный скрипт сам управляет ambient и fog
+            return;
+        }
+
+        // Только снаружи — применяем красивый градиент дня/ночи
+        RenderSettings.ambientLight = ambientLightGradient.Evaluate(timeProgress);
+    }
+
 
     private void StartNewDay()
     {
@@ -203,25 +229,7 @@ public class WeatherManager : MonoBehaviour
         UpdateLightingAndRotation();
     }
 
-    private void UpdateLightingAndRotation()
-    {
-        if (mainDirectionalLight)
-        {
-            mainDirectionalLight.color = directionalLightGradient.Evaluate(timeProgress);
-            mainDirectionalLight.transform.localEulerAngles = new Vector3(360f * timeProgress - 90f, sunDefaultAngles.y, sunDefaultAngles.z);
-            float sun = Mathf.Clamp01(Mathf.Sin(timeProgress * Mathf.PI));
-            sun = Mathf.Max(sun, 0.03f);
-            mainDirectionalLight.intensity = sun * 2f;
-        }
-
-        if (moonLight)
-        {
-            moonLight.transform.localEulerAngles = new Vector3(360f * timeProgress + 90f, moonDefaultAngles.y, moonDefaultAngles.z);
-            moonLight.intensity = (1f - Mathf.Abs(Mathf.Sin(timeProgress * Mathf.PI))) * 0.8f;
-        }
-
-        RenderSettings.ambientLight = ambientLightGradient.Evaluate(timeProgress);
-    }
+   
 
     private TimeOfDay GetCurrentPeriod()
     {

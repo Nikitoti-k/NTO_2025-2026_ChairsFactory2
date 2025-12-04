@@ -19,6 +19,11 @@ public static class LocalizationData
         ["RADIO_PROMPT"] = "Ќажмите Enter, чтобы продолжить",
         ["RADIO_SPEAKER_COMMAND"] = "–адио",
 
+        ["UI_PauseMenu_Continue"] = "ѕродолжить",
+        ["UI_PauseMenu_SaveGame"] = "—охранитьс€",
+        ["UI_PauseMenu_ExitToMenu"] = "¬ыйти в меню",
+        ["UI_PauseMenu_ExitToDesktop"] = "¬ыйти на рабочий стол",
+
         // LocalizationData.RU
         ["SCANNER_DEFAULT"] = " рист. решЄтка: {0}\n¬озраст: {1}\n–адиоактивность: {2}",
         ["CRYSTAL_LABEL"] = "{0}",
@@ -26,6 +31,7 @@ public static class LocalizationData
         ["RAD_LABEL"] = "{0} Ѕк",
 
         ["SCANNER_NO_CONNECTION"] = "Ќ≈“ —ќ≈ƒ»Ќ≈Ќ»я",
+        ["SCANNER_ADD_TEXT"] = "¬ыберите другой образец дл€ изучени€.",
         ["SCANNER_ALREADY_RESEARCHED"] = "ќЅ–ј«≈÷ ”∆≈ »«”„≈Ќ\nќтчЄт по нему отправлен.",
         ["SCANNER_ALREADY_DONE"] = "<color=#888888>»сследование завершено ранее</color>",
         ["SCANNER_NO_SIGNAL"] = "<color=red>Ќет сигнала или исследование завершено!</color>\n рист. решЄтка: ???\n¬озраст: ???\n–адиоактивность: ???",
@@ -40,9 +46,9 @@ public static class LocalizationData
         ["REPORT_CRYSTAL"] = "–ешЄтка: {0}",
         ["REPORT_DAYS"] = "дней",
         ["REPORT_MILLION_YEARS"] = "млн лет",
-    ["REPORT_SELECT_FIRST"] = "—начала выберите класс!",
+        ["REPORT_SELECT_FIRST"] = "—начала выберите класс!",
         // === ћетки данных ===
-        
+
 
         // ===  лассы минералов ===
         ["CLASS_ANOMALY"] = "јномали€",
@@ -101,6 +107,12 @@ public static class LocalizationData
         ["REPORT_CLASS_DETAILS_ANOMALY"] = "{0}\n\n¬озраст: ???\n–адиоактивность: ???\n рист. решЄтка: ???",
         ["REPORT_AGE_UNIT_DAYS"] = "дней",
         ["REPORT_AGE_UNIT_MILLION"] = "млн лет",
+
+        ["REPORT_SEND_REPORT"] = "ќтправить отчЄт",
+        ["REPORT_Open_Panel"] = "—оставить отчЄт",
+        ["SCANNER_RECORD_DATA"] = "ќтправить отчЄт"
+
+
     };
 
     public static readonly Dictionary<string, string> EN = new()
@@ -115,38 +127,33 @@ public static class LocalizationData
         ["UI_MainMenu_ContinueGame"] = "Continue Game",
         ["UI_SetingButton"] = "Settings",
         ["UI_MainMenu_ExitGame"] = "Exit Game",
-
-        // === Radio ===
+        ["UI_PauseMenu_Continue"] = "Continue",
+        ["UI_PauseMenu_SaveGame"] = "Save Game",
+        ["UI_PauseMenu_ExitToMenu"] = "Exit to Main Menu",
+        ["UI_PauseMenu_ExitToDesktop"] = "Exit to Desktop",
+        ["REPORT_SEND_REPORT"] = "Send Report",
+        ["REPORT_Open_Panel"] = "File Report",
+        ["SCANNER_RECORD_DATA"] = "Record Data",
+        // === Radio / Monologues ===
         ["RADIO_PROMPT"] = "Press Enter to continue",
         ["RADIO_SPEAKER_COMMAND"] = "Radio",
 
         // === Scanner ===
         ["SCANNER_DEFAULT"] = "Crystal system: {0}\nAge: {1}\nRadioactivity: {2}",
+        ["CRYSTAL_LABEL"] = "{0}",
+        ["AGE_LABEL"] = "{0} {1}",
+        ["RAD_LABEL"] = "{0} Bq",
         ["SCANNER_NO_CONNECTION"] = "NO CONNECTION",
+        ["SCANNER_ADD_TEXT"] = "Select another sample for analysis.",
         ["SCANNER_ALREADY_RESEARCHED"] = "SAMPLE ALREADY RESEARCHED\nReport has been sent.",
         ["SCANNER_ALREADY_DONE"] = "<color=#888888>Research completed previously</color>",
         ["SCANNER_NO_SIGNAL"] = "<color=red>No signal or research completed!</color>\nCrystal system: ???\nAge: ???\nRadioactivity: ???",
 
-        ["REPORT_MEASURED_DATA"] = "<b>MEASURED DATA:</b>\n\nAge: <color=#FFD700>{0}</color> {1}\nRadiation: <color=#FF6666>{2}</color> Bq\nCrystal system: <color=#CC66FF>{3}</color>",
-        ["REPORT_CLASS_DETAILS"] = "{0}\n\nAge: {1} {2}\nRadiation: {3} Bq\nCrystal system: {4}",
-        ["REPORT_CLASS_DETAILS_ANOMALY"] = "{0}\n\nAge: ???\nRadiation: ??? Bq\nCrystal system: ???",
-        ["REPORT_AGE_UNIT_DAYS"] = "days",
-        ["REPORT_AGE_UNIT_MILLION"] = "million years",
-
-        // === Data labels ===
-        ["AGE_LABEL"] = "{0} {1}",
-        ["RAD_LABEL"] = "{0} Bq",
-        ["CRYSTAL_LABEL"] = "{0}",
-
-        // === Mineral classes ===
-        ["CLASS_ANOMALY"] = "Anomaly",
-        ["CLASS_IRON"] = "Native Elements",
-        ["CLASS_RADIOACTIVE"] = "Oxides",
-        ["CLASS_FLORA"] = "Sulfides",
-        ["CLASS_DINOSAUR"] = "Carbonates",
+        // === Report system ===
         ["REPORT_SELECT_CLASS"] = "Select a class to view its characteristics",
         ["REPORT_CHOOSE_CORRECT"] = "Choose the correct class",
         ["REPORT_SELECTED"] = "Selected: {0}\nPress ЂSubmit Reportї",
+        ["REPORT_SELECT_FIRST"] = "First select a class!",
         ["REPORT_MEASURED_DATA"] = "<b>MEASURED DATA:</b>\n\nAge: <color=#FFD700>{0}</color> {1}\nRadiation: <color=#FF6666>{2}</color> Bq\nCrystal system: <color=#CC66FF>{3}</color>",
         ["REPORT_UNKNOWN"] = "Age: ???\nRadiation: ??? Bq\nCrystal system: ???",
         ["REPORT_AGE"] = "Age: {0} {1}",
@@ -154,39 +161,19 @@ public static class LocalizationData
         ["REPORT_CRYSTAL"] = "Crystal system: {0}",
         ["REPORT_DAYS"] = "days",
         ["REPORT_MILLION_YEARS"] = "million years",
-        ["REPORT_SELECT_FIRST"] = "First select a class!",
-        // === Tutorial ===
-        ["TUT_LOOK"] = "Look around Ч move your mouse",
-        ["TUT_MOVE"] = "Move using <color=#ffff00>W A S D</color>",
-        ["TUT_DOOR"] = "To open the door Ч approach and <color=#ffff00>hold LMB</color>",
-        ["TUT_VEHICLE"] = "Approach the snowmobile and press <color=#ffff00>E</color>",
-        ["TUT_FLARE"] = "Throw a flare Ч press <color=#ffff00>F</color>",
-        ["TUT_BREAK"] = "Break the ice deposit Ч <color=#ffff00>LMB</color>",
-        ["TUT_CARRY"] = "Carry the sample\ninto the <color=#ffff00>snowmobile</color>",
-        ["TUT_RETURN"] = "You've collected enough samples.\n<color=#00ff00>Return to base and analyze them</color>",
-        ["TUT_TABLE"] = "Take the sample and bring it\nto the <color=#ffff00>research table</color>",
-        ["TUT_SCAN_MOVE"] = "Move the joystick with <color=#ffff00>LMB</color>, find active zones on the sample!",
-        ["TUT_SCAN_CLICK"] = "Press the <color=#ffff00>Record Data</color> button",
-        ["TUT_ACCURACY"] = "The more accurately you aim,\nthe more precise data you'll get.",
-        ["TUT_FIND_MORE"] = "Find <color=#ffff00>2 more points</color> to collect all data",
-        ["TUT_CONCLUSION"] = "Conclude which class the sample belongs to Ч <color=#ffff00>submit report</color>",
-        ["TUT_ANOMALY_PLACE"] = "Place the strange sample\nin the <color=#ff3333>anomaly box</color>",
-        ["TUT_GO_TO_BED"] = "Go to bed Ч press <color=#ffff00>E</color>",
+        ["REPORT_AGE_UNIT_DAYS"] = "days",
+        ["REPORT_AGE_UNIT_MILLION"] = "million years",
+        ["REPORT_CLASS_DETAILS"] = "{0}\n\nAge: {1} {2}\nRadioactivity: {3} Bq\nCrystal system: {4}",
+        ["REPORT_CLASS_DETAILS_ANOMALY"] = "{0}\n\nAge: ???\nRadioactivity: ???\nCrystal system: ???",
 
-        // === Monologues (updated for current story) ===
-        ["MONOLOGUE_INTRO_01"] = "Receiving... This is Command. We detected a massive meteor shower in your sector tonight.",
-        ["MONOLOGUE_INTRO_02"] = "Your task is to go to the estimated coordinates and examine mineral samples from the impact site.",
-        ["MONOLOGUE_INTRO_03"] = "The debris will soon be buried under Antarctic snow Ч these research results are critical for the expedition!",
+        // === Mineral classes (general) ===
+        ["CLASS_ANOMALY"] = "Anomaly",
+        ["CLASS_NATIVE"] = "Native Elements",
+        ["CLASS_OXIDE"] = "Oxides",
+        ["CLASS_SULFIDE"] = "Sulfides",
+        ["CLASS_CARBONATE"] = "Carbonates",
 
-        ["MONOLOGUE_RETURN_01"] = "Receiving... We can see on the cameras that you managed to collect the samples Ч excellent work!",
-        ["MONOLOGUE_RETURN_02"] = "Now you need to analyze them Ч use the equipment at the base.",
-        ["MONOLOGUE_RETURN_03"] = "Once you determine all the characteristics of the sample, classify the mineral and send us the report.",
-
-        ["MONOLOGUE_FINAL_01"] = "Receiving... This is Command... we're seeing strange readings from that sample too...",
-        ["MONOLOGUE_FINAL_02"] = "Most likely a scanner error. Don't worry Ч it happens sometimes.",
-        ["MONOLOGUE_FINAL_03"] = "Just put this sample in the quarantine box and mark it as \"Anomaly\" in the report.",
-
-        // === Mineral class names (for reports) ===
+        // === Specific mineral class names used in reports ===
         ["NAME_MINERAL_CLASS_1"] = "Sedimentary Ironstone",
         ["NAME_MINERAL_CLASS_2"] = "Radioactive Rocks",
         ["NAME_MINERAL_CLASS_3"] = "Petrified Flora",
@@ -198,5 +185,34 @@ public static class LocalizationData
         ["CRYSTAL_MOLECULAR"] = "molecular",
         ["CRYSTAL_MONOCLINIC"] = "monoclinic",
         ["CRYSTAL_AMORPHOUS"] = "amorphous",
+
+        // === Tutorial ===
+        ["TUT_LOOK"] = "Look around Ч move your mouse",
+        ["TUT_MOVE"] = "Move using <color=#ffff00>W A S D</color>",
+        ["TUT_DOOR"] = "To open the door Ч approach and <color=#ffff00>hold LMB</color>",
+        ["TUT_VEHICLE"] = "Approach the snowmobile and press <color=#ffff00>E</color>",
+        ["TUT_FLARE"] = "Throw a flare Ч press <color=#ffff00>F</color>",
+        ["TUT_BREAK"] = "Break the ice deposit Ч <color=#ffff00>LMB</color>",
+        ["TUT_CARRY"] = "Carry the mined sample\nto the <color=#ffff00>snowmobile</color>",
+        ["TUT_RETURN"] = "You have collected enough samples.\n<color=#00ff00>Return to base and analyze them</color>",
+        ["TUT_TABLE"] = "Take the sample and bring it\nto the <color=#ffff00>research table</color>",
+        ["TUT_SCAN_MOVE"] = "Rotate the joystick with <color=#ffff00>LMB</color>, find active zones on the sample!",
+        ["TUT_SCAN_CLICK"] = "Press the <color=#ffff00>Record Data</color> button",
+        ["TUT_ACCURACY"] = "The more precisely you select a point on the mineral,\nthe more accurate data you will receive.",
+        ["TUT_FIND_MORE"] = "Find <color=#ffff00>2 more points</color> to collect all data",
+        ["TUT_CONCLUSION"] = "Determine which class the sample belongs to Ч <color=#ffff00>submit the report</color>",
+        ["TUT_ANOMALY_PLACE"] = "Place the strange sample\nin the <color=#ff3333>anomaly box</color>",
+        ["TUT_GO_TO_BED"] = "Go to bed Ч press <color=#ffff00>E</color>",
+
+        // === Monologues ===
+        ["MONOLOGUE_INTRO_01"] = "Receiving... This is Command. We detected a massive meteor shower in your sector tonight.",
+        ["MONOLOGUE_INTRO_02"] = "Your task is to go to the estimated coordinates and examine mineral samples from the impact site.",
+        ["MONOLOGUE_INTRO_03"] = "The debris will soon be buried under Antarctic snow Ч these research results are critical for the expedition!",
+        ["MONOLOGUE_RETURN_01"] = "Receiving... We can see on the cameras that you managed to collect the minerals Ч excellent!",
+        ["MONOLOGUE_RETURN_02"] = "Now you need to analyze them Ч use the equipment at the base.",
+        ["MONOLOGUE_RETURN_03"] = "Once you determine all the characteristics of the sample Ч classify the mineral and send us the report.",
+        ["MONOLOGUE_FINAL_01"] = "Receiving... This is Command... we're seeing strange characteristics from that sample too...",
+        ["MONOLOGUE_FINAL_02"] = "Probably a scanner error! Don't worry Ч it happens sometimes.",
+        ["MONOLOGUE_FINAL_03"] = "Just put this sample in the quarantine box and mark it as УAnomalyФ in the report."
     };
 }
