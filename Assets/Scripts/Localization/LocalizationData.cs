@@ -110,7 +110,7 @@ public static class LocalizationData
 
         ["REPORT_SEND_REPORT"] = "Отправить отчёт",
         ["REPORT_Open_Panel"] = "Составить отчёт",
-        ["SCANNER_RECORD_DATA"] = "Отправить отчёт"
+        ["SCANNER_RECORD_DATA"] = "Зафиксировать колебания"
 
 
     };
