@@ -28,8 +28,12 @@ public class RadioMonologue : MonoBehaviour
     public TutorialManager tutorialManager;
     public bool IsPlaying => radioPanel != null && radioPanel.activeSelf;
 
-    private bool hasPlayedFinalMonologue = false;
-    public bool HasPlayedFinalMonologue => hasPlayedFinalMonologue;
+  //  private bool hasPlayedFinalMonologue = false;
+  //  public bool HasPlayedFinalMonologue => hasPlayedFinalMonologue;
+
+    public bool HasPlayedIntroMonologue { get; set; } = false;  // Новый
+    public bool HasPlayedReturnMonologue { get; set; } = false;
+    public bool HasPlayedFinalMonologue { get; set; } = false;  // Переименуй hasPlayedFinalMonologue
 
     private void Awake()
     {
@@ -40,8 +44,8 @@ public class RadioMonologue : MonoBehaviour
     {
         if (radioPanel) radioPanel.SetActive(false);
         if (promptText) promptText.text = "Press Enter to continue";
-        if (monologueSets != null && monologueSets.Length > 0)
-            StartMonologue(0);
+       /// if (monologueSets != null && monologueSets.Length > 0 && HasPlayedIntroMonologue==false)
+          //  StartMonologue(0);
     }
 
     public void StartMonologue(int setIndex)
@@ -128,17 +132,15 @@ public class RadioMonologue : MonoBehaviour
         BlockPlayerControls(false);
 
         // === ФИКС: отмечаем проигрывание монологов ===
-        if (currentSet == 1)                   // ← ЭТО ВТОРОЙ МОНOЛОГ
-            hasPlayedReturnMonologue = true;
-
-        if (currentSet == 2)                   // ← финальный
-            hasPlayedFinalMonologue = true;
+        if (currentSet == 0) HasPlayedIntroMonologue = true;
+        if (currentSet == 1) HasPlayedReturnMonologue = true;
+        if (currentSet == 2) HasPlayedFinalMonologue = true;
 
         if (currentSet == 0 && tutorialManager != null)
             tutorialManager.ForceStartTutorial();
     }
     private bool hasPlayedReturnMonologue = false;
-    public bool HasPlayedReturnMonologue => hasPlayedReturnMonologue;
+   // public bool HasPlayedReturnMonologue => hasPlayedReturnMonologue;
 
     private void BlockPlayerControls(bool block)
     {

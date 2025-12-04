@@ -200,29 +200,56 @@ public class SaveManager : MonoBehaviour
     {
         if (scene.name.Contains("Menu")) return;
 
+        // Если мы явно грузим слот — это загрузка сохранения
         if (pendingLoadSlot != -1)
         {
             string path = Path.Combine(BasePath, $"Save_{pendingLoadSlot}", "data.json");
             if (File.Exists(path))
-                StartCoroutine(LoadCoroutine(path));
+                StartCoroutine(LoadCoroutine(path, isNewGame: false));
             pendingLoadSlot = -1;
             return;
         }
 
+        // Проверяем, есть ли хоть одно сохранение
+        bool hasAnySave = false;
         for (int i = 0; i < MAX_SLOTS; i++)
         {
             string path = Path.Combine(BasePath, $"Save_{i}", "data.json");
             if (File.Exists(path))
             {
-                StartCoroutine(LoadCoroutine(path));
-                return;
+                StartCoroutine(LoadCoroutine(path, isNewGame: false));
+                hasAnySave = true;
+                break;
             }
         }
 
-        CameraController.Instance?.SetMode(CameraController.ControlMode.FPS);
+        // Если сохранений вообще нет — это новая игра!
+        if (!hasAnySave)
+        {
+            StartCoroutine(NewGameSetup());
+        }
     }
 
-    private IEnumerator LoadCoroutine(string path)
+    private IEnumerator NewGameSetup()
+    {
+        yield return new WaitForEndOfFrame(); // Ждём, пока всё проснётся
+
+        CameraController.Instance?.SetMode(CameraController.ControlMode.FPS);
+
+        var tutorial = FindObjectOfType<TutorialManager>();
+        if (tutorial != null)
+        {
+            tutorial.ForceStartTutorial(); // Внутри ForceStartTutorial уже есть ShowHint(lookText)
+
+            // ← ВАЖНО: именно здесь стартуем первый монолог!
+            if (tutorial.radioMonologue != null)
+            {
+                tutorial.radioMonologue.StartMonologue(0);
+            }
+        }
+    }
+
+    private IEnumerator LoadCoroutine(string path, bool isNewGame = false)
     {
         yield return new WaitForEndOfFrame();
 
@@ -296,12 +323,44 @@ public class SaveManager : MonoBehaviour
                     d.LoadDepositData(dep);
             }
         }
+      /*  var tutorial = FindObjectOfType<TutorialManager>();
+        if (tutorial != null)
+        {
+            var tutData = new TutorialSaveData
+            {
+                step = save.tutorialStep,
+                researchedCount = save.researchedCount,
+                hasPlayedReturnMonologue = save.hasPlayedReturnMonologue,
+                hasPlayedFinalMonologue = save.hasPlayedFinalMonologue,
+                anomalyPlaced = save.anomalyPlaced,
+                playerSlept = save.playerSlept
+            };
+            tutorial.LoadTutorialSaveData(tutData);
 
+            // Если туториал уже завершён — выключаем его полностью
+            if (save.tutorialStep >= 10 || save.playerSlept)
+                tutorial.gameObject.SetActive(false);
+        }*/
         yield return new WaitForFixedUpdate();
         Physics.SyncTransforms();
         CameraController.Instance?.ForceCameraSync();
         CameraController.Instance?.SetMode(CameraController.ControlMode.FPS);
 
+        yield return new WaitForSeconds(0.1f);  // Небольшая задержка, чтобы все Start() прошли
+
+        var tutorial = FindObjectOfType<TutorialManager>();
+        if (tutorial != null && save.tutorialData != null)
+        {
+            tutorial.LoadTutorialSaveData(save.tutorialData);
+
+            // ← Если это загрузка сохранения — первый монолог НЕ играем!
+            if (!isNewGame && save.tutorialData.hasPlayedIntroMonologue)
+            {
+                // Убеждаемся, что монолог не запустится сам
+                if (tutorial.radioMonologue != null)
+                    tutorial.radioMonologue.HasPlayedIntroMonologue = true;
+            }
+        }
         SaveFeedbackUI.ShowLoad();
     }
 
@@ -389,7 +448,11 @@ public class SaveManager : MonoBehaviour
             var cam = CameraController.Instance.transform;
             save.cameraLookDirection = new Vector2(cam.eulerAngles.y, cam.eulerAngles.x);
         }
-
+        var tutorial = FindObjectOfType<TutorialManager>();
+        if (tutorial != null)
+        {
+            save.tutorialData = tutorial.GetTutorialSaveData();
+        }
         var saveables = FindObjectsOfType<MonoBehaviour>(true).OfType<ISaveableV2>();
         foreach (var s in saveables)
         {

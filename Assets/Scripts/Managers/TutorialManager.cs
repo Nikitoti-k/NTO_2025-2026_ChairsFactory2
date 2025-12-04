@@ -3,7 +3,7 @@ using UnityEngine.InputSystem;
 using TMPro;
 using System.Collections;
 
-public class TutorialManager : MonoBehaviour, ISaveableV2
+public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData
 {
 
     public static TutorialManager Instance { get; private set; }
@@ -67,8 +67,91 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
     private bool bedHintShown = false;
     private bool playerSlept = false;
     private bool finalMonologuePlayed = false;
-  
 
+    public ObjectSaveData GetCommonSaveData()
+    {
+        return new ObjectSaveData
+        {
+            uniqueID = GetUniqueID(),
+            isActive = gameObject.activeSelf  // Сохраняем активность объекта
+        };
+    }
+
+    public void LoadCommonData(ObjectSaveData data)
+    {
+        if (data != null)
+        {
+            gameObject.SetActive(data.isActive);  // Восстанавливаем активность
+        }
+    }
+
+    public TutorialSaveData GetTutorialSaveData()
+    {
+        return new TutorialSaveData
+        {
+            step = step,
+            researchedCount = researchedCount,
+            hasPlayedIntroMonologue = radioMonologue != null && radioMonologue.HasPlayedIntroMonologue,
+            hasPlayedReturnMonologue = radioMonologue != null && radioMonologue.HasPlayedReturnMonologue,
+            hasPlayedFinalMonologue = radioMonologue != null && radioMonologue.HasPlayedFinalMonologue,
+            anomalyPlaced = anomalyPlaced,
+            playerSlept = playerSlept,
+          //  flareHintWasShown = flareHintWasShown  // Если используешь этот флаг где-то
+        };
+    }
+
+    public void LoadTutorialSaveData(TutorialSaveData data)
+    {
+        if (data == null) return;
+
+        ResetAllFlags();  // Сбрасываем, чтобы не было конфликтов
+
+        step = data.step;
+        researchedCount = data.researchedCount;
+        anomalyPlaced = data.anomalyPlaced;
+        playerSlept = data.playerSlept;
+      //  flareHintWasShown = data.flareHintWasShown;
+
+        if (radioMonologue != null)
+        {
+            radioMonologue.HasPlayedIntroMonologue = data.hasPlayedIntroMonologue;
+            radioMonologue.HasPlayedReturnMonologue = data.hasPlayedReturnMonologue;
+            radioMonologue.HasPlayedFinalMonologue = data.hasPlayedFinalMonologue;
+        }
+
+        // Восстанавливаем подсказку в зависимости от шага
+        gameObject.SetActive(true);  // Включаем, если был выключен
+        enabled = true;
+        if (step == 0) ShowHint(lookText);
+        else if (step == 1) ShowHint(moveText);
+        else if (step == 2) ShowHint(doorText);
+        else if (step == 3) ShowHint(vehicleText);
+        else if (step == 5) ShowHint(breakDepositText);
+        else if (step == 6) ShowHint(carryToVehicleText);
+        else if (step == 8 && returnedHintShown) ShowHint(returnToBaseText);
+        else if (step == 9 && researchTableHintShown) ShowHint(bringToTableText);
+        // Добавь для других шагов, если нужно (scan и т.д.)
+        // Если туториал завершён (playerSlept), выключаем
+        if (playerSlept)
+        {
+            if (hintPanel) hintPanel.SetActive(false);
+            gameObject.SetActive(false);
+        }
+    }
+
+    // В Start() убери gameObject.SetActive(false); — пусть загружается в OnEnable или после
+    private void Start()
+    {
+        if (skipToResearchTableOnStart)
+            SkipToPutMineralOnTable();
+        // НЕ ForceStartTutorial() здесь — оно только для новой игры
+    }
+
+    public string GetUniqueID() => "TutorialSystem";
+
+   
+
+  
     private void Awake()
     {
         player = GameObject.FindGameObjectWithTag("Player")?.transform;
@@ -76,12 +159,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
         else Instance = this;
     }
 
-    private void Start()
-    {
-        gameObject.SetActive(false);
-        if (skipToResearchTableOnStart)
-            SkipToPutMineralOnTable();
-    }
+ 
 
     [ContextMenu("SKIP → Положите минерал на стол")]
     public void SkipToPutMineralOnTable()
@@ -105,15 +183,25 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
         finalMonologuePlayed = false;
         ShowHint(lookText);
     }
+   
 
+    private IEnumerator SubscribeWhenReady()
+    {
+        // Ждём один кадр + пока Instance не появится
+        yield return new WaitUntil(() => GameDayManager.Instance != null);
+
+        var gdm = GameDayManager.Instance;
+
+        // Теперь точно безопасно подписываемся
+        gdm.OnAnyDepositBroken.AddListener(OnAnyDepositBroken_Tutorial);
+        gdm.OnMineralResearched.AddListener(OnMineralResearched);
+        gdm.OnAllReportsSubmitted.AddListener(OnAllReportsSubmitted);
+
+        Debug.Log("<color=cyan>[TUTORIAL] Успешно подписались на события GameDayManager</color>");
+    }
     private void OnEnable()
     {
-        if (GameDayManager.Instance != null)
-        {
-            GameDayManager.Instance.OnDepositsChanged.AddListener(OnDepositBroken);
-            GameDayManager.Instance.OnMineralResearched.AddListener(OnMineralResearched);
-            GameDayManager.Instance.OnAllReportsSubmitted.AddListener(OnAllReportsSubmitted);
-        }
+        StartCoroutine(SubscribeWhenReady());
         if (vehicleMineralSnapZone != null)
             vehicleMineralSnapZone.onItemSnapped.AddListener(OnMineralPlacedInVehicle);
         if (baseResearchSnapZone != null)
@@ -131,7 +219,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
     {
         if (GameDayManager.Instance != null)
         {
-            GameDayManager.Instance.OnDepositsChanged.RemoveListener(OnDepositBroken);
+            GameDayManager.Instance.OnAnyDepositBroken.RemoveListener(OnAnyDepositBroken_Tutorial);
             GameDayManager.Instance.OnMineralResearched.RemoveListener(OnMineralResearched);
             GameDayManager.Instance.OnAllReportsSubmitted.RemoveListener(OnAllReportsSubmitted);
         }
@@ -147,7 +235,17 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
         if (quarantineBox != null)
             quarantineBox.onItemSnapped.RemoveListener(OnAnomalyPlacedInQuarantine);
     }
-
+    private void OnAnyDepositBroken_Tutorial()
+    {
+        Debug.Log("<color=lime>[TUTORIAL] Игрок сломал первую залежь — шаг пройден!</color>");
+        // Этот метод вызывается КАЖДЫЙ раз, когда ломается ЛЮБАЯ залежь
+        if ( !depositBroken)
+        {
+            depositBroken = true;
+            Success(); // ← Автоматически покажет "Готово" и перейдёт дальше
+           
+        }
+    }
     private void Update()
     {
         if (waitingHold)
@@ -209,14 +307,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
         ShowHint(flareText);
     }
 
-    private void OnDepositBroken(int count)
-    {
-        if (step == 5 && count >= 1 && !depositBroken)
-        {
-            depositBroken = true;
-            Success();
-        }
-    }
+  
 
     private void OnMineralPlacedInVehicle(GrabbableItem item)
     {
@@ -467,7 +558,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
         return canGrab != null && canGrab.IsHoldingObject() && canGrab.GetGrabbedItem()?.CompareTag("Door") == true;
     }
 
-    public string GetUniqueID() => "TutorialSystem";
-    public ObjectSaveData GetCommonSaveData() => null;
-    public void LoadCommonData(ObjectSaveData data) { }
+   // public string GetUniqueID() => "TutorialSystem";
+  //  public ObjectSaveData GetCommonSaveData() => null;
+   // public void LoadCommonData(ObjectSaveData data) { }
 }

@@ -14,15 +14,38 @@ public class SaveFile
 
     public Vector2 cameraLookDirection;
 
-    public int tutorialProgress = 0;        // 0..5 (5 = завершён)
-    public bool flareHintWasShown = false;  // чтобы не показывать повторно в пещере
+    public TutorialSaveData tutorialData = new TutorialSaveData();
+
+    public int tutorialStep = 0;                    // текущий step
+    public int researchedCount = 0;                 // сколько уже исследовано в туториале
+    public bool hasPlayedReturnMonologue = false;
+    public bool hasPlayedFinalMonologue = false;
+    public bool anomalyPlaced = false;
+    public bool playerSlept = false;
 
     public List<ObjectSaveData> objects = new List<ObjectSaveData>();
     public List<MineralSaveData> minerals = new List<MineralSaveData>();
     public List<DepositSaveData> deposits = new List<DepositSaveData>();
 }
+[System.Serializable]
+public class TutorialSaveData
+{
+    public int step = 0;
+    public int researchedCount = 0;
+    public bool hasPlayedIntroMonologue = false;  // Новый флаг для 0-го
+    public bool hasPlayedReturnMonologue = false;
+    public bool hasPlayedFinalMonologue = false;
+    public bool anomalyPlaced = false;
+    public bool playerSlept = false;
+    public bool flareHintWasShown = false;  // Используем существующий из SaveFile
+    // Добавь другие флаги, если нужно (looked, moved и т.д.), но для минимума хватит
+}
 
-
+public interface IHasTutorialData
+{
+    TutorialSaveData GetTutorialSaveData();
+    void LoadTutorialSaveData(TutorialSaveData data);
+}
 
 
 
@@ -60,6 +83,8 @@ public class GameStateBlock
     public float currentTimeInMinutes;
     public int depositsBrokenToday;
     public int mineralsResearchedToday;
+    // ← Единственное, что сохраняем от DayActivation
+  
 }
 
 [System.Serializable]
