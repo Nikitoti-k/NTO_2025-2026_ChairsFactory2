@@ -11,6 +11,13 @@ public class PlayerMovement : MonoBehaviour, IControllable
     [SerializeField, Range(1f, 50f)] private float airAcceleration = 8f;
     [SerializeField, Range(0f, 1f)] private float stopThreshold = 0.1f;
 
+    [Header("Шаги 👣")]
+    [SerializeField] private string footstepKey = "footstep_ice"; // ключ в базе
+    [SerializeField, Range(0.1f, 2f)] private float footstepInterval = 0.4f;
+    [SerializeField, Range(0f, 1f)] private float footstepVolumeMultiplier = 0.8f;
+    private float _lastFootstepTime;
+    private bool _lastGroundedState;
+
     [Header("Земля")]
     [SerializeField] private float groundCheckDistance = 0.2f;
     [SerializeField] private LayerMask groundMask = -1;
@@ -53,6 +60,7 @@ public class PlayerMovement : MonoBehaviour, IControllable
     {
         if (_router?.CurrentController != this || _isMounting || _isSleeping) return;
         Move(_input);
+        HandleFootsteps();
     }
 
     private void Move(Vector2 input)
@@ -72,6 +80,31 @@ public class PlayerMovement : MonoBehaviour, IControllable
         Vector3 horiz = new Vector3(_rb.linearVelocity.x, 0f, _rb.linearVelocity.z);
         horiz = Vector3.MoveTowards(horiz, target, accel * 10f * Time.fixedDeltaTime);
         _rb.linearVelocity = new Vector3(horiz.x, _rb.linearVelocity.y, horiz.z);
+    }
+
+    private void HandleFootsteps()
+    {
+        bool grounded = IsGrounded();
+
+        // Переход на землю — первый шаг
+        if (!_lastGroundedState && grounded)
+        {
+            PlayFootstep();
+        }
+
+        // Шаги при движении
+        if (grounded && _smoothedInput.sqrMagnitude > 0.1f && Time.time >= _lastFootstepTime + footstepInterval)
+        {
+            PlayFootstep();
+            _lastFootstepTime = Time.time;
+        }
+
+        _lastGroundedState = grounded;
+    }
+
+    private void PlayFootstep()
+    {
+        AudioManager.Instance?.PlaySFX(footstepKey, footstepVolumeMultiplier, 1f, transform.position);
     }
 
     private bool IsGrounded()
@@ -100,22 +133,18 @@ public class PlayerMovement : MonoBehaviour, IControllable
     public void HandleInteract(bool pressed)
     {
         if (!pressed || _isMounting || _isSleeping) return;
-
         if (objectGrabber?.IsHoldingObject() == true)
         {
             TrySnapObject();
             return;
         }
-
         if (sleepSystem != null && sleepSystem.CanSleepNow())
         {
             _isSleeping = true;
             sleepSystem.StartSleep();
             return;
         }
-
         TryMountTransport();
-
         if (TryOpenResearchReport())
             return;
     }
@@ -125,7 +154,6 @@ public class PlayerMovement : MonoBehaviour, IControllable
         var nearest = Physics.OverlapSphere(transform.position, 3f)
             .Select(c => c.GetComponent<ResearchReportViewer>())
             .FirstOrDefault(v => v != null);
-
         if (nearest != null)
         {
             nearest.OpenPanel();
@@ -143,11 +171,9 @@ public class PlayerMovement : MonoBehaviour, IControllable
     {
         var item = objectGrabber.GetGrabbedItem();
         if (item == null) return;
-
         var zone = Physics.OverlapSphere(transform.position, 2.5f)
             .Select(c => c.GetComponent<SnapZone>())
             .FirstOrDefault(z => z != null && z.CanSnap(item));
-
         zone?.Snap(item);
     }
 
@@ -158,7 +184,6 @@ public class PlayerMovement : MonoBehaviour, IControllable
             .Where(t => t != null)
             .OrderBy(t => Vector3.Distance(transform.position, t.transform.position))
             .FirstOrDefault();
-
         if (nearest != null)
         {
             _isMounting = true;
@@ -172,10 +197,8 @@ public class PlayerMovement : MonoBehaviour, IControllable
         _rb.useGravity = false;
         _rb.linearVelocity = Vector3.zero;
         _rb.interpolation = RigidbodyInterpolation.None;
-
         var col = GetComponent<Collider>();
         col.enabled = false;
-
         Transform seat = transport.seatTransform;
         if (seat == null)
         {
@@ -183,11 +206,9 @@ public class PlayerMovement : MonoBehaviour, IControllable
             seat.SetParent(transport.transform, false);
             seat.localPosition = transport.fallbackMountOffset;
         }
-
         transform.SetParent(seat);
         transform.localPosition = Vector3.zero;
         transform.localRotation = Quaternion.identity;
-
         _router.SetController(transport);
         _isMounting = false;
     }

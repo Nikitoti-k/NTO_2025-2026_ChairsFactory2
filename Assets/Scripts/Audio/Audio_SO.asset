@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 38b6a29527eaff4468f4cde8539caaa1, type: 3}
+  m_Name: Audio_SO
+  m_EditorClassIdentifier: 
+  soundEvents:
+  - key: footstep_ice
+    clip: {fileID: 8300000, guid: b0a4ea55fe05811458639322d8e84a4b, type: 3}
+    volume: 1
+    pitchVariation: 0.5
+  - key: ambience_wind
+    clip: {fileID: 8300000, guid: 6597aa255d37284409accb50a1bc3718, type: 3}
+    volume: 1
+    pitchVariation: 0.5
+  - key: ice_hit
+    clip: {fileID: 8300000, guid: e8cfa2651bd9f924ab4e6e660b457831, type: 3}
+    volume: 1
+    pitchVariation: 0.5
+  - key: engine_rev
+    clip: {fileID: 8300000, guid: 4e84f0307883a444d8902448a7bf60e0, type: 3}
+    volume: 1
+    pitchVariation: 0.5
+  - key: radio_static
+    clip: {fileID: 8300000, guid: 6d2948947249f844f82fddabb48daa72, type: 3}
+    volume: 1
+    pitchVariation: 0.5

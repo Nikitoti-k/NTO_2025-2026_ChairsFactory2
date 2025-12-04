@@ -4026,6 +4026,13 @@ MonoBehaviour:
   turnSmoothTime: 0.12
   minTurnSpeed: 1.5
   raycastDistance: 3
+  engineIdleKey: engine_idle
+  engineRevKey: engine_rev
+  engineStartKey: engine_start
+  engineVolume: 0.8
+  maxEnginePitch: 1.8
+  engineResponseSpeed: 2
+  engineSoundPosition: {fileID: 0}
   seatTransform: {fileID: 1955568569}
   fallbackMountOffset: {x: 0, y: 1.2, z: 0.6}
 --- !u!54 &238681552
@@ -7075,6 +7082,8 @@ MonoBehaviour:
   hitsRequired: 3
   mineralPrefab: {fileID: 3836979047366133623, guid: 47f3b9d3ac0fd3e459d83c5aacd47797, type: 3}
   spawnPoint: {fileID: 342020125}
+  hitSoundKey: ice_hit
+  breakSoundKey: ice_break
 --- !u!23 &342020128
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -9256,6 +9265,77 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 468292067}
   m_CullTransparentMesh: 1
+--- !u!1 &470900847
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 470900850}
+  - component: {fileID: 470900849}
+  - component: {fileID: 470900848}
+  m_Layer: 0
+  m_Name: AudioManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &470900848
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 470900847}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1251654a56ff57b4cbea1aee594b51e9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  poolSize: 20
+--- !u!114 &470900849
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 470900847}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 60b9a4b799d3dd44ba7d3fbc93aa395e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  audioDatabase: {fileID: 11400000, guid: dd8b88c18eac49a4ea520a565d3e968a, type: 2}
+  sfxPool: {fileID: 470900848}
+  masterVolume: 1
+  sfxVolume: 1
+  musicVolume: 1
+  ambienceVolume: 1
+  musicSourceA: {fileID: 0}
+  musicSourceB: {fileID: 0}
+  ambienceSource: {fileID: 0}
+  defaultAmbienceKey: ambience_wind
+  musicClips: []
+  minMusicInterval: 60
+  maxMusicInterval: 120
+--- !u!4 &470900850
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 470900847}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -26.122055, y: 7.2902937, z: -205.7425}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &482137747
 GameObject:
   m_ObjectHideFlags: 0
@@ -10719,6 +10799,8 @@ MonoBehaviour:
   hitsRequired: 3
   mineralPrefab: {fileID: 3836979047366133623, guid: 9ae6765dfb76da048a579afe50c48d24, type: 3}
   spawnPoint: {fileID: 561327515}
+  hitSoundKey: ice_hit
+  breakSoundKey: ice_break
 --- !u!23 &561327518
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -11794,6 +11876,8 @@ MonoBehaviour:
   hitsRequired: 3
   mineralPrefab: {fileID: 3836979047366133623, guid: ea3e2bc19dc995541ad3d4daf3f51c4f, type: 3}
   spawnPoint: {fileID: 640873027}
+  hitSoundKey: ice_hit
+  breakSoundKey: ice_break
 --- !u!23 &640873030
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -13627,6 +13711,8 @@ MonoBehaviour:
   hitsRequired: 3
   mineralPrefab: {fileID: 3836979047366133623, guid: 237ecba0a6b766b41bd94e0e537c1510, type: 3}
   spawnPoint: {fileID: 722236704}
+  hitSoundKey: ice_hit
+  breakSoundKey: ice_break
 --- !u!23 &722236707
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -16858,6 +16944,63 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 957813765}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1001 &960862041
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 4834058187007695671, guid: b775520f4d5274b4dbea4c765c9196e2, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 4.3977137
+      objectReference: {fileID: 0}
+    - target: {fileID: 4834058187007695671, guid: b775520f4d5274b4dbea4c765c9196e2, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.82
+      objectReference: {fileID: 0}
+    - target: {fileID: 4834058187007695671, guid: b775520f4d5274b4dbea4c765c9196e2, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -141.584
+      objectReference: {fileID: 0}
+    - target: {fileID: 4834058187007695671, guid: b775520f4d5274b4dbea4c765c9196e2, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4834058187007695671, guid: b775520f4d5274b4dbea4c765c9196e2, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4834058187007695671, guid: b775520f4d5274b4dbea4c765c9196e2, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4834058187007695671, guid: b775520f4d5274b4dbea4c765c9196e2, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4834058187007695671, guid: b775520f4d5274b4dbea4c765c9196e2, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4834058187007695671, guid: b775520f4d5274b4dbea4c765c9196e2, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4834058187007695671, guid: b775520f4d5274b4dbea4c765c9196e2, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7572829150447897209, guid: b775520f4d5274b4dbea4c765c9196e2, type: 3}
+      propertyPath: m_Name
+      value: IceDeposit
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: b775520f4d5274b4dbea4c765c9196e2, type: 3}
 --- !u!1 &962974717
 GameObject:
   m_ObjectHideFlags: 0
@@ -26436,6 +26579,8 @@ MonoBehaviour:
   hitsRequired: 3
   mineralPrefab: {fileID: 3836979047366133623, guid: c395a4469781d4c40b5b1f12d347b704, type: 3}
   spawnPoint: {fileID: 1562623541}
+  hitSoundKey: ice_hit
+  breakSoundKey: ice_break
 --- !u!23 &1562623544
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -30717,10 +30862,13 @@ MonoBehaviour:
   deceleration: 30
   airAcceleration: 8
   stopThreshold: 0.1
-  groundCheckDistance: 0.1
+  footstepKey: footstep_ice
+  footstepInterval: 1
+  footstepVolumeMultiplier: 0.3
+  groundCheckDistance: 0.7
   groundMask:
     serializedVersion: 2
-    m_Bits: 2056
+    m_Bits: 4294967295
   mountDistance: 2
   transportMask:
     serializedVersion: 2
@@ -31835,6 +31983,8 @@ MonoBehaviour:
   hitsRequired: 3
   mineralPrefab: {fileID: 3836979047366133623, guid: bb8ed4be9fb35434ca42f738afed6fb8, type: 3}
   spawnPoint: {fileID: 1901387681}
+  hitSoundKey: ice_hit
+  breakSoundKey: ice_break
 --- !u!23 &1901387684
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -34466,7 +34616,7 @@ MonoBehaviour:
     m_NumAlphaKeys: 2
   realSecondsPerGameDay: 300
   forceTimeFlow: 0
-  isTimeFlow: 0
+  isTimeFlow: 1
   baseCenterPoint: {fileID: 1401544960}
   distanceToStartDay: 60
   distanceToTriggerEvening: 60
@@ -36232,6 +36382,8 @@ MonoBehaviour:
   hitsRequired: 3
   mineralPrefab: {fileID: 3836979047366133623, guid: 237ecba0a6b766b41bd94e0e537c1510, type: 3}
   spawnPoint: {fileID: 4834058186964161387}
+  hitSoundKey: ice_hit
+  breakSoundKey: ice_break
 --- !u!114 &1730547613799669680
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -36249,6 +36401,8 @@ MonoBehaviour:
   hitsRequired: 3
   mineralPrefab: {fileID: 3836979047366133623, guid: bb8ed4be9fb35434ca42f738afed6fb8, type: 3}
   spawnPoint: {fileID: 4834058187758171102}
+  hitSoundKey: ice_hit
+  breakSoundKey: ice_break
 --- !u!114 &1730547614010992173
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -36266,6 +36420,8 @@ MonoBehaviour:
   hitsRequired: 3
   mineralPrefab: {fileID: 3836979047366133623, guid: 47f3b9d3ac0fd3e459d83c5aacd47797, type: 3}
   spawnPoint: {fileID: 4834058187534453315}
+  hitSoundKey: ice_hit
+  breakSoundKey: ice_break
 --- !u!114 &1730547614577086568
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -36283,6 +36439,8 @@ MonoBehaviour:
   hitsRequired: 3
   mineralPrefab: {fileID: 3836979047366133623, guid: ea3e2bc19dc995541ad3d4daf3f51c4f, type: 3}
   spawnPoint: {fileID: 4834058188050234374}
+  hitSoundKey: ice_hit
+  breakSoundKey: ice_break
 --- !u!114 &2183605983044652081
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -36377,6 +36535,8 @@ MonoBehaviour:
   hitsRequired: 3
   mineralPrefab: {fileID: 3836979047366133623, guid: 8d5726580eec5f04e808a63fb618b3d0, type: 3}
   spawnPoint: {fileID: 8873814805207103178}
+  hitSoundKey: ice_hit
+  breakSoundKey: ice_break
 --- !u!54 &2776548984562005808
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -37664,6 +37824,7 @@ SceneRoots:
   - {fileID: 749259769}
   - {fileID: 690059043}
   - {fileID: 1802104673}
+  - {fileID: 470900850}
   - {fileID: 325764260}
   - {fileID: 1206866902}
   - {fileID: 2071247393}
@@ -37681,3 +37842,4 @@ SceneRoots:
   - {fileID: 179665655}
   - {fileID: 1246809916}
   - {fileID: 176132416}
+  - {fileID: 960862041}

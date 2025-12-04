@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 public class IceDeposit : SaveableObject, IHasDepositData
 {
@@ -7,17 +7,36 @@ public class IceDeposit : SaveableObject, IHasDepositData
     [SerializeField] private GameObject mineralPrefab;
     [SerializeField] private Transform spawnPoint;
 
+    [Header("Звуки 🔊")]
+    [SerializeField] private string hitSoundKey = "ice_hit";     // удар киркой
+    [SerializeField] private string breakSoundKey = "ice_break"; // разрушение
+
     private int currentHits = 0;
+
+  
+    
 
     public void Hit()
     {
         currentHits++;
+
+        // Звук удара каждый раз
+        AudioManager.Instance?.PlaySFX(hitSoundKey, 1f, 1f, transform.position);
+
+        // Лёгкий эффект разрушения на последнем ударе
+        if (currentHits >= hitsRequired)
+        {
+            AudioManager.Instance?.PlaySFX(breakSoundKey, 1.2f, 1f, transform.position);
+        }
+
         if (currentHits >= hitsRequired)
             BreakDeposit();
     }
 
     private void BreakDeposit()
     {
+        // Звук разрушения уже сыгран в Hit()
+
         if (mineralPrefab != null)
         {
             var pos = spawnPoint ? spawnPoint.position : transform.position + Vector3.up * 0.5f;
@@ -26,11 +45,13 @@ public class IceDeposit : SaveableObject, IHasDepositData
             saveable.SetPrefabIdentifier(GetPrefabIdentifier(mineralPrefab));
         }
 
-        gameObject.SetActive(false);
-
-        // ���� ����� ��� �������� � ������!
+        // ✅ ФИКС: вызов GameDayManager ДО deactivation!
         GameDayManager.Instance.RegisterDepositBroken();
+
+        gameObject.SetActive(false);
     }
+
+  
 
     private string GetPrefabIdentifier(GameObject prefab)
     {

@@ -39,6 +39,7 @@ public class WeatherManager : MonoBehaviour
     private bool dayTriggered = false;
     private bool depositsBroken = false;
     private bool eveningTriggered = false;
+    private bool ambienceTriggered = false; // ← ИЗМЕНЕНИЕ: новая переменная для запуска ambience при отходе от базы
 
     private void Awake()
     {
@@ -170,6 +171,14 @@ public class WeatherManager : MonoBehaviour
 
         float distFromBase = Vector3.Distance(player.position, baseCenterPoint.position);
 
+        // ← ИЗМЕНЕНИЕ: Запуск ambience при отходе от базы (новая переменная ambienceTriggered)
+        if (!ambienceTriggered && distFromBase >= distanceToStartDay)
+        {
+            ambienceTriggered = true;
+            AudioManager.Instance.PlayDefaultAmbience();
+            Debug.Log("[Audio] Ambience запущено — игрок отошел от базы!");
+        }
+
         // 1. Отъехал далеко → день (12:00) разрешён
         if (!dayTriggered && distFromBase >= distanceToStartDay && CurrentTimeInMinutes >= 720f)
         {
@@ -229,8 +238,6 @@ public class WeatherManager : MonoBehaviour
         UpdateLightingAndRotation();
     }
 
-   
-
     private TimeOfDay GetCurrentPeriod()
     {
         float m = CurrentTimeInMinutes;
@@ -245,6 +252,7 @@ public class WeatherManager : MonoBehaviour
         dayTriggered = false;
         depositsBroken = false;
         eveningTriggered = false;
+        ambienceTriggered = false; // ← ИЗМЕНЕНИЕ: сброс новой переменной на новый день
     }
 
     public string GetFormattedTime()
