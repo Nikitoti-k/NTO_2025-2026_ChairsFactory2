@@ -337,7 +337,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   mineralClass: {fileID: 11400000, guid: acabc1d8bbd6c684f9376ab4d0555020, type: 2}
-  isAnomalyOverride: 0
+  isAnomalyOverride: 1
   overrideAge: 120000
   overrideAgeUnit: 1
   overrideRadioactivity: 0.3

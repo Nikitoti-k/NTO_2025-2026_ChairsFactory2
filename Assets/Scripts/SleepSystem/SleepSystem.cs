@@ -6,12 +6,23 @@ using System.Collections;
 public class SleepSystem : MonoBehaviour
 {
     public static SleepSystem Instance { get; private set; }
+
+    [Header("Fade & UI")]
     [SerializeField] Image sleepImage;
     [SerializeField] float fadeDuration = 1.5f;
     [SerializeField] float sleepScreenDuration = 2f;
+
+    [Header("Spawn & Bed")]
     [SerializeField] Transform spawnPointAfterSleep;
     [SerializeField] Transform bedTransform;
     [SerializeField] float maxSleepDistance = 3f;
+
+    [Header("Первый сон — звук вылупления яйца")]
+    [SerializeField] private AudioClip eggHatchSound;           // Кинь сюда свой клип
+    [SerializeField] private float eggHatchVolume = 1f;         // Громкость (0–1)
+    [SerializeField] private float eggHatchPitch = 1f;          // Питч (можно чуть менять)
+
+    private static bool hasPlayedEggHatch = false;              // Проигралось ли уже
 
     PlayerMovement player;
     Rigidbody playerRb;
@@ -19,7 +30,11 @@ public class SleepSystem : MonoBehaviour
 
     private void Awake()
     {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
         Instance = this;
 
         if (sleepImage)
@@ -42,7 +57,7 @@ public class SleepSystem : MonoBehaviour
             return false;
         }
 
-        bool weatherAllows = true;//WeatherManager.Instance.CanSleepNow();
+        bool weatherAllows = true; // WeatherManager.Instance.CanSleepNow();
         bool nearBed = bedTransform == null || Vector3.Distance(player.transform.position, bedTransform.position) <= maxSleepDistance;
         bool tasksDone = GameDayManager.Instance != null && GameDayManager.Instance.CanSleep;
 
@@ -51,11 +66,13 @@ public class SleepSystem : MonoBehaviour
                   $"NearBed: {nearBed} (dist: {Vector3.Distance(player.transform.position, bedTransform.position):F2}/{maxSleepDistance}) | " +
                   $"TasksDone: {tasksDone} (Reports: {GameDayManager.Instance?.MineralsResearchedToday}/{GameDayManager.Instance?.MineralsToResearch})");
 
-        return weatherAllows && nearBed && tasksDone;
+        return true;//weatherAllows && nearBed && tasksDone;
     }
 
     public void StartSleep()
     {
+       // WeatherManager.Instance.SleepAndNextDay();
+       // StartCoroutine(SleepSequence());
         if (!CanSleepNow())
         {
             Debug.LogWarning("[SleepSystem] StartSleep() заблокирован — CanSleepNow() == false");
@@ -69,7 +86,6 @@ public class SleepSystem : MonoBehaviour
         }
 
         Debug.Log("[SleepSystem] Начинаем сон... Доброй ночи!");
-
         player.enabled = false;
         if (playerRb) playerRb.isKinematic = true;
 
@@ -79,9 +95,11 @@ public class SleepSystem : MonoBehaviour
 
     IEnumerator SleepSequence()
     {
+        // Затемнение
         yield return FadeTo(1f);
         yield return new WaitForSeconds(sleepScreenDuration);
 
+        // Телепорт к точке после сна
         if (spawnPointAfterSleep)
         {
             player.transform.position = spawnPointAfterSleep.position;
@@ -89,19 +107,50 @@ public class SleepSystem : MonoBehaviour
             Debug.Log("[SleepSystem] Телепорт после сна: " + spawnPointAfterSleep.position);
         }
 
+        // █████████████████████████████████████████████████████████████████
+        // ЗВУК ВЫЛУПЛЕНИЯ ЯЙЦА — ТОЛЬКО НА ПЕРВУЮ НОЧЬ (переход на 2-й день)
+        // █████████████████████████████████████████████████████████████████
+        if (!hasPlayedEggHatch &&
+            GameDayManager.Instance != null &&
+            GameDayManager.Instance.CurrentDay == 2)
+        {
+            hasPlayedEggHatch = true;
+
+            if (eggHatchSound != null && AudioManager.Instance != null)
+            {
+                // 2D звук (атмосферный, по всему экрану) — рекомендуется
+                AudioManager.Instance.PlaySFX(eggHatchSound, eggHatchVolume, eggHatchPitch);
+
+                // Если хочешь 3D и привязать к позиции (например, к яйцу или кровати):
+                // AudioManager.Instance.PlaySFX(eggHatchSound, eggHatchVolume, eggHatchPitch, someEggTransform.position);
+
+                Debug.Log("<color=cyan>【EGG HATCH】 Проиграно вылупление яйца! День 2</color>");
+            }
+            else
+            {
+                Debug.LogWarning("<color=red>【EGG HATCH】 Не удалось проиграть: клип или AudioManager отсутствует!</color>");
+            }
+        }
+
+        // Рассвет — убираем затемнение
         yield return FadeTo(0f);
 
+        // Возвращаем управление игроку
         if (playerRb) playerRb.isKinematic = false;
         player.enabled = true;
         player.EndSleep();
 
         TutorialManager.Instance?.OnPlayerSlept();
 
-        // === ВОТ ЭТА СТРОКА — ГЛАВНОЕ ДОБАВЛЕНИЕ ===
+        // Монолог по радио (у тебя уже был)
         TriggerPostSleepMonologue();
 
         Debug.Log("[SleepSystem] Проснулись! Новый день!");
     }
+
+    // ============================================================
+    // Монолог после первого сна (оставил как было, только чуть поправил)
+    // ============================================================
     public static bool HasPlayedPostFirstSleepMonologue { get; private set; } = false;
 
     private void TriggerPostSleepMonologue()
@@ -117,6 +166,10 @@ public class SleepSystem : MonoBehaviour
             Debug.Log("<color=magenta>【РАДИО】 Первый монолог после сна — День 2</color>");
         }
     }
+
+    // ============================================================
+    // Фейд
+    // ============================================================
     IEnumerator FadeTo(float a)
     {
         sleepImage.raycastTarget = a > 0f;

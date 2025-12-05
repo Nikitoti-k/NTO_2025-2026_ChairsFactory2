@@ -88,6 +88,15 @@ public static class LocalizationData
         ["MONOLOGUE_FINAL_02"] = "Вероятно, ошибка сканера! Не заморачивайся — такое бывает.",
         ["MONOLOGUE_FINAL_03"] = "Просто положи этот образец в карантинный ящик и поставь в отчёте раздел «Аномалия».",
 
+        ["MONOLOGUE_MORNING_DAY2_01"] = "Приём, это руководство. Отправили координаты новой пещеры, порядок действий тот же.",
+        ["MONOLOGUE_MORNING_DAY2_02"] = "На сегодня план: четыре минерала. Образцы, которые нельзя классифицировать помечай как аномалии и клади в карантинный ящик.",
+
+        ["MONOLOGUE_MORNING_DAY2_03"] = "Надвигается буря, будь готов. :*:;%*?() удачи (*:.",
+        ["MONOLOGUE_MORNING_DAY2_04"] = "Будешь плохо работать, неправильно классифицировать образцы - будешь уволен. Не подводи нашу организацию.",
+
+        ["MONOLOGUE_MORNING_DAY3_01"] = "*%^$%#*^%^#%#^* координаты *(?%:*%? быстрее ?%?:;**",
+        ["MONOLOGUE_MORNING_DAY3_02"] = "Оно :%%:**?:( *(?*( близко",
+       
         // === Названия классов минералов (для отчётов) ===
         ["NAME_MINERAL_CLASS_1"] = "Осадочный железняк",
         ["NAME_MINERAL_CLASS_2"] = "Радиоактивные породы",
@@ -110,7 +119,10 @@ public static class LocalizationData
 
         ["REPORT_SEND_REPORT"] = "Отправить отчёт",
         ["REPORT_Open_Panel"] = "Составить отчёт",
-        ["SCANNER_RECORD_DATA"] = "Зафиксировать колебания"
+        ["SCANNER_RECORD_DATA"] = "Зафиксировать колебания",
+
+
+        ["ENDING_TEXT"] = "Вы видели то, что должно было остаться погребённым.\n\nРадиация и одиночество сожгли ваш разум. Вы уже не отличаете явь от бреда.\n\nКорпорация получила всё: данные, патенты, миллиарды. Вас в отчётах нет даже в сноске.\n\nВы остались здесь навсегда. Под снегом. Один.\n\nНикто не придёт.\nНикто не вспомнит.",
 
 
     };
@@ -137,6 +149,13 @@ public static class LocalizationData
         // === Radio / Monologues ===
         ["RADIO_PROMPT"] = "Press Enter to continue",
         ["RADIO_SPEAKER_COMMAND"] = "Radio",
+
+        ["MONOLOGUE_MORNING_DAY2_01"] = "Reception, this is command. New cave coordinates uploaded, same protocol as yesterday.",
+        ["MONOLOGUE_MORNING_DAY2_02"] = "Today's quota: four minerals. Any samples that cannot be classified — mark as anomalies and place in the quarantine container.",
+        ["MONOLOGUE_MORNING_DAY2_03"] = "Storm incoming, stay sharp. ::*;*%*?() good luck (*:.",
+
+        ["MONOLOGUE_MORNING_DAY3_01"] = "*%^$%#*^%^#%#^* coordinates *(?%:*%? hurry ?%?:;**",
+        ["MONOLOGUE_MORNING_DAY3_02"] = "It :%%:**?:( *(?*( is close",
 
         // === Scanner ===
         ["SCANNER_DEFAULT"] = "Crystal system: {0}\nAge: {1}\nRadioactivity: {2}",
@@ -213,6 +232,7 @@ public static class LocalizationData
         ["MONOLOGUE_RETURN_03"] = "Once you determine all the characteristics of the sample — classify the mineral and send us the report.",
         ["MONOLOGUE_FINAL_01"] = "Receiving... This is Command... we're seeing strange characteristics from that sample too...",
         ["MONOLOGUE_FINAL_02"] = "Probably a scanner error! Don't worry — it happens sometimes.",
-        ["MONOLOGUE_FINAL_03"] = "Just put this sample in the quarantine box and mark it as “Anomaly” in the report."
+        ["MONOLOGUE_FINAL_03"] = "Just put this sample in the quarantine box and mark it as “Anomaly” in the report.",
+        ["ENDING_TEXT"] = "You saw what was meant to remain buried.\n\nRadiation and solitude burned your mind away. You can no longer tell reality from delusion.\n\nThe corporation got everything: the data, the patents, the billions. You don’t even appear in the footnotes.\n\nYou stayed here forever. Under the snow. Alone.\n\nNo one is coming.\nNo one will remember.",
     };
 }

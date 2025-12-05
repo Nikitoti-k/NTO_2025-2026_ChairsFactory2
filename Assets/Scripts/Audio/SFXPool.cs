@@ -19,7 +19,7 @@ public class SFXPool : MonoBehaviour
             _pool[i].volume = 1f;
         }
     }
-
+  
     public AudioSource GetAvailableSource()
     {
         // »щем свободный источник

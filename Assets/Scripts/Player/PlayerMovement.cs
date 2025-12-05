@@ -48,7 +48,7 @@ public class PlayerMovement : MonoBehaviour, IControllable
     {
         _rb = GetComponent<Rigidbody>();
         _rb.freezeRotation = true;
-        _rb.interpolation = RigidbodyInterpolation.None;
+        _rb.interpolation = RigidbodyInterpolation.Interpolate;
         _router = FindFirstObjectByType<InputRouter>();
         if (objectGrabber == null) objectGrabber = GetComponent<CanGrab>();
         if (miningRayOrigin == null) miningRayOrigin = Camera.main ? Camera.main.transform : transform;

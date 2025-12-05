@@ -189,4 +189,34 @@ public class AudioManager : MonoBehaviour
             }
         }
     }
+    // Добавь это в AudioManager.cs где-нибудь внизу
+   
+    // ──────────────────────────────────────────────────────────────
+    // НОВАЯ ПЕРЕГРУЗКА: играть SFX напрямую по AudioClip (обходит базу данных)
+    // ──────────────────────────────────────────────────────────────
+    public void PlaySFX(AudioClip clip, float volumeMultiplier = 1f, float pitch = 1f, Vector3? position = null)
+    {
+        if (clip == null || sfxPool == null) return;
+
+        AudioSource source = sfxPool.GetAvailableSource();
+        if (source == null) return;
+
+        source.clip = clip;
+        source.pitch = pitch;
+        source.volume = volumeMultiplier * sfxVolume * masterVolume;
+
+        if (position.HasValue)
+        {
+            source.transform.position = position.Value;
+            source.spatialBlend = 1f;        // 3D звук
+            source.spread = 180f;
+            source.dopplerLevel = 0f;
+        }
+        else
+        {
+            source.spatialBlend = 0f;        // 2D звук
+        }
+
+        source.Play();
+    }
 }

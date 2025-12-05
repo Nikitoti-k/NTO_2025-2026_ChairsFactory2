@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
+using System.Collections;
 
 [RequireComponent(typeof(Collider))]
 public class CaveDarkness : MonoBehaviour
@@ -109,7 +110,7 @@ public class CaveDarkness : MonoBehaviour
 
             yield return null;
         }
-
+        StartCoroutine(PlayCaveScarySoundsRoutine());
         // Финальное состояние
         ApplyCaveMode();
     }
@@ -161,7 +162,48 @@ public class CaveDarkness : MonoBehaviour
         FindObjectsOfType<CaveDarkness>().ToList().ForEach(c =>
             c.caveTorches.ForEach(t => { if (t) t.intensity = c.normalTorchIntensity; }));
     }
+    [Header("=== СТРАШНЫЕ ЗВУКИ В ПЕЩЕРЕ ===")]
+    [SerializeField] private AudioClip[] caveScaryClips; // кинь сюда 2–4 страшных звука в инспекторе
+    [SerializeField] private float minScaryInterval = 18f;   // минимум секунд между звуками
+    [SerializeField] private float maxScaryInterval = 45f;   // максимум
+    [SerializeField, Range(0f, 1f)] private float scaryVolume = 0.7f;
+    [SerializeField, Range(0.8f, 1.2f)] private float scaryPitchMin = 0.9f;
+    [SerializeField, Range(0.8f, 1.2f)] private float scaryPitchMax = 1.1f;
+    private IEnumerator PlayCaveScarySoundsRoutine()
+    {
+        // Пауза перед первым звуком
+        yield return new WaitForSeconds(Random.Range(8f, 15f));
 
+        // Кэшируем ссылку на игрока (предполагаем, что игрок имеет тег "Player")
+        GameObject player = GameObject.FindGameObjectWithTag("Player");
+        if (player == null)
+        {
+            Debug.LogWarning("CaveDarkness: Игрок с тегом 'Player' не найден! Страшные звуки отключены.");
+            yield break;
+        }
+
+        while (true)
+        {
+            if (playersInCave <= 0)
+                yield break;
+
+            if (caveScaryClips.Length > 0 && AudioManager.Instance != null)
+            {
+                AudioClip clip = caveScaryClips[Random.Range(0, caveScaryClips.Length)];
+
+                // Играем ПРЯМО У ИГРОКА (3D, полный объём)
+                Vector3 playerPos = player.transform.position;
+                AudioManager.Instance.PlaySFX(
+                    clip: clip,
+                    volumeMultiplier: scaryVolume,  // теперь это базовая громкость, подкрути в инспекторе до 1f
+                    pitch: Random.Range(scaryPitchMin, scaryPitchMax),
+                    position: playerPos  // ← ЗВУК РЯДОМ С ИГРОКОМ!
+                );
+            }
+
+            yield return new WaitForSeconds(Random.Range(minScaryInterval, maxScaryInterval));
+        }
+    }
     private void SaveOriginalSettings()
     {
         if (settingsSaved) return;
