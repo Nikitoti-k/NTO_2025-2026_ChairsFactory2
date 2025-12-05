@@ -6,6 +6,8 @@ TagManager:
   tags:
   - DoorHandle
   - ScannerJoystick
+  - Door
+  - triger
   layers:
   - Default
   - TransparentFX
@@ -16,11 +18,11 @@ TagManager:
   - Transport
   - Grabbable
   - DoorHandle
-  - Caves
+  - Deposit
   - Joystick
-  - 
-  - 
-  - 
+  - Cave
+  - Player
+  - Door
   - 
   - 
   - 

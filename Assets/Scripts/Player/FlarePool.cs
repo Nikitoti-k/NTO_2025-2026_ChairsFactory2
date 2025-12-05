@@ -3,29 +3,43 @@ using System.Collections.Generic;
 
 public class FlarePool : MonoBehaviour
 {
-    [Header("Пул")]
     [SerializeField] private GameObject flarePrefab;
     [SerializeField] private int poolSize = 20;
-    [SerializeField] private bool autoExpand = true;
 
     private Queue<FlareObject> pool = new Queue<FlareObject>();
-    private static FlarePool instance;
 
-    public static FlarePool Instance => instance;
+    public static FlarePool Instance;
 
-    void Awake()
+    private void Awake()
     {
-        instance = this;
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
         InitializePool();
     }
 
-    void InitializePool()
+    private void InitializePool()
     {
         for (int i = 0; i < poolSize; i++)
         {
-            GameObject flareObj = Instantiate(flarePrefab, transform);
-            flareObj.SetActive(false);
-            FlareObject flare = flareObj.GetComponent<FlareObject>();
+            GameObject obj = Instantiate(flarePrefab, transform);
+            obj.SetActive(false);
+
+            var flare = obj.GetComponent<FlareObject>();
+            if (flare == null)
+            {
+                Debug.LogError("FlarePrefab должен иметь компонент FlareObject!");
+                continue;
+            }
+
+            // НЕ добавляем PooledSaveableObject здесь!
+            // Он добавится автоматически при первом использовании
+
+            flare.ReturnToPool();
             pool.Enqueue(flare);
         }
     }
@@ -34,29 +48,36 @@ public class FlarePool : MonoBehaviour
     {
         if (pool.Count == 0)
         {
-            if (autoExpand)
-            {
-                return CreateFlare(position);
-            }
-            return null;
+            Debug.LogWarning("Flare pool пуст! Создаём новый на лету.");
+            GameObject obj = Instantiate(flarePrefab, position, Quaternion.identity);
+            var flare = obj.GetComponent<FlareObject>();
+            var saveable = obj.GetComponent<PooledSaveableObject>() ?? obj.AddComponent<PooledSaveableObject>();
+            saveable.SetPrefabIdentifier("Flare");
+            obj.SetActive(true);
+            return flare;
         }
 
-        FlareObject flare = pool.Dequeue();
-        flare.transform.position = position;
-        flare.gameObject.SetActive(true);
-        return flare;
-    }
+        var flareFromPool = pool.Dequeue();
+        flareFromPool.transform.position = position;
+        flareFromPool.transform.rotation = Quaternion.identity;
+        flareFromPool.gameObject.SetActive(true);
 
-    private FlareObject CreateFlare(Vector3 position)
-    {
-        GameObject flareObj = Instantiate(flarePrefab, position, Quaternion.identity, transform);
-        FlareObject flare = flareObj.GetComponent<FlareObject>();
-        return flare;
+        // Гарантируем, что у активного факела есть PooledSaveableObject
+        var saveableComponent = flareFromPool.GetComponent<PooledSaveableObject>();
+        if (saveableComponent == null)
+        {
+            saveableComponent = flareFromPool.gameObject.AddComponent<PooledSaveableObject>();
+            saveableComponent.SetPrefabIdentifier("Flare");
+        }
+
+        return flareFromPool;
     }
 
     public void ReturnFlare(FlareObject flare)
     {
-        flare.SetHeld(false);  // Важно!
+        if (flare == null) return;
+
+        flare.ReturnToPool(); // Делает rb.isKinematic = true и т.д.
         flare.gameObject.SetActive(false);
         pool.Enqueue(flare);
     }

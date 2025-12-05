@@ -24,6 +24,9 @@ public class PlayerMovement : MonoBehaviour, IControllable
     [SerializeField] private LayerMask miningMask = -1;
     [SerializeField] private Transform miningRayOrigin;
 
+    [Header("Сон")]
+    [SerializeField] private SleepSystem sleepSystem;
+
     [Header("Компоненты")]
     [SerializeField] private CanGrab objectGrabber;
 
@@ -32,13 +35,13 @@ public class PlayerMovement : MonoBehaviour, IControllable
     private Vector2 _input;
     private Vector2 _smoothedInput;
     private bool _isMounting;
+    private bool _isSleeping;
 
     private void Awake()
     {
         _rb = GetComponent<Rigidbody>();
         _rb.freezeRotation = true;
         _rb.interpolation = RigidbodyInterpolation.Interpolate;
-
         _router = FindFirstObjectByType<InputRouter>();
         if (objectGrabber == null) objectGrabber = GetComponent<CanGrab>();
         if (miningRayOrigin == null) miningRayOrigin = Camera.main ? Camera.main.transform : transform;
@@ -48,7 +51,7 @@ public class PlayerMovement : MonoBehaviour, IControllable
 
     private void FixedUpdate()
     {
-        if (_router?.CurrentController != this || _isMounting) return;
+        if (_router?.CurrentController != this || _isMounting || _isSleeping) return;
         Move(_input);
     }
 
@@ -56,20 +59,15 @@ public class PlayerMovement : MonoBehaviour, IControllable
     {
         bool grounded = IsGrounded();
         if (input.sqrMagnitude < stopThreshold * stopThreshold) input = Vector2.zero;
-
         float accel = grounded ? acceleration : airAcceleration;
         float decel = grounded ? deceleration : airAcceleration;
-
         _smoothedInput = input.sqrMagnitude > 0.01f
             ? Vector2.MoveTowards(_smoothedInput, input, accel * Time.fixedDeltaTime)
             : Vector2.MoveTowards(_smoothedInput, Vector2.zero, decel * Time.fixedDeltaTime);
-
         Vector3 dir = (transform.right * _smoothedInput.x + transform.forward * _smoothedInput.y).normalized;
         Vector3 target = dir * walkSpeed;
-
         Vector3 horiz = new Vector3(_rb.linearVelocity.x, 0f, _rb.linearVelocity.z);
         horiz = Vector3.MoveTowards(horiz, target, accel * 10f * Time.fixedDeltaTime);
-
         _rb.linearVelocity = new Vector3(horiz.x, _rb.linearVelocity.y, horiz.z);
     }
 
@@ -77,11 +75,9 @@ public class PlayerMovement : MonoBehaviour, IControllable
     {
         var col = GetComponent<Collider>();
         if (!col) return false;
-
         var b = col.bounds;
         float r = b.extents.x * 0.9f;
         float d = b.extents.y - r + groundCheckDistance;
-
         return Physics.SphereCast(b.center, r, Vector3.down, out _, d, groundMask);
     }
 
@@ -100,7 +96,7 @@ public class PlayerMovement : MonoBehaviour, IControllable
 
     public void HandleInteract(bool pressed)
     {
-        if (!pressed || _isMounting) return;
+        if (!pressed || _isMounting || _isSleeping) return;
 
         if (objectGrabber?.IsHoldingObject() == true)
         {
@@ -108,18 +104,60 @@ public class PlayerMovement : MonoBehaviour, IControllable
             return;
         }
 
+        // === ПОПЫТКА СПАТЬ ===
+        if (sleepSystem != null)
+        {
+            bool canSleep = sleepSystem.CanSleepNow();
+            Debug.Log($"[Player] Нажал E → Проверка сна: CanSleep = {canSleep}");
+
+            if (canSleep)
+            {
+                Debug.Log("[Player] Ложимся спать! Z-z-z...");
+                _isSleeping = true;
+                sleepSystem.StartSleep();
+                return;
+            }
+            else
+            {
+                Debug.LogWarning("[Player] НЕЛЬЗЯ СПАТЬ! Смотри логи выше ↑");
+            }
+        }
+
         TryMountTransport();
+
+        if (TryOpenResearchReport())
+            return;
+
+        Debug.Log("[Player] Нечего интерактировать рядом.");
+    }
+
+    private bool TryOpenResearchReport()
+    {
+        var viewers = Physics.OverlapSphere(transform.position, 3f)
+            .Select(c => c.GetComponent<ResearchReportViewer>())
+            .Where(v => v != null);
+
+        var nearest = viewers.FirstOrDefault();
+        if (nearest != null)
+        {
+            nearest.OpenPanel();
+            return true;
+        }
+        return false;
+    }
+
+    public void EndSleep()
+    {
+        _isSleeping = false;
     }
 
     private void TrySnapObject()
     {
         var item = objectGrabber.GetGrabbedItem();
         if (item == null) return;
-
         var zone = Physics.OverlapSphere(transform.position, 2.5f)
             .Select(c => c.GetComponent<SnapZone>())
             .FirstOrDefault(z => z != null && z.CanSnap(item));
-
         zone?.Snap(item);
     }
 
@@ -127,9 +165,9 @@ public class PlayerMovement : MonoBehaviour, IControllable
     {
         var nearest = Physics.OverlapSphere(transform.position, mountDistance, transportMask)
             .Select(c => c.GetComponent<TransportMovement>())
+            .Where(t => t != null)
             .OrderBy(t => Vector3.Distance(transform.position, t.transform.position))
             .FirstOrDefault();
-
         if (nearest != null)
         {
             _isMounting = true;
@@ -142,10 +180,8 @@ public class PlayerMovement : MonoBehaviour, IControllable
         _rb.isKinematic = true;
         _rb.useGravity = false;
         _rb.linearVelocity = Vector3.zero;
-
         var col = GetComponent<Collider>();
         col.enabled = false;
-
         Transform seat = transport.seatTransform;
         if (seat == null)
         {
@@ -153,11 +189,9 @@ public class PlayerMovement : MonoBehaviour, IControllable
             seat.SetParent(transport.transform, false);
             seat.localPosition = transport.fallbackMountOffset;
         }
-
         transform.SetParent(seat);
         transform.localPosition = Vector3.zero;
         transform.localRotation = Quaternion.identity;
-
         _router.SetController(transport);
         _isMounting = false;
     }

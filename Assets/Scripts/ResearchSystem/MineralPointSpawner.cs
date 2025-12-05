@@ -1,126 +1,103 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
-using UnityEditor;
 
+[RequireComponent(typeof(MineralData))]
 public class MineralPointSpawner : MonoBehaviour
 {
-    [Header("РАЗБРОС ТОЧЕК — ПЛОСКИЙ КРУГ В XZ")]
-    [SerializeField] private float spawnRadius = 0.35f;                    // Максимальный радиус
-    [SerializeField] private float minDistanceFromCenter = 0.15f;          // Не ближе к центру
-    [SerializeField] private float minDistanceBetweenPoints = 0.18f;       // Не ближе друг к другу!
-
-    [Header("Автогенерация")]
+    [SerializeField] private float spawnRadius = 0.35f;
+    [SerializeField] private float minDistanceFromCenter = 0.15f;
+    [SerializeField] private float minDistanceBetweenPoints = 0.18f;
     [SerializeField] private bool spawnPointsOnStart = true;
     [SerializeField] private bool generateDataOnStart = true;
 
+    private MineralData mineralData;
+
+    private void Awake()
+    {
+        mineralData = GetComponent<MineralData>();
+    }
+
     private void Start()
     {
-        if (spawnPointsOnStart) SpawnDistributedPoints();
-        if (generateDataOnStart) GetComponent<MineralData>().GenerateData();
+        if (generateDataOnStart && Mathf.Approximately(mineralData.realAge, 0f))
+            mineralData.GenerateData();
+
+        if (spawnPointsOnStart &&
+            mineralData.AgePoint == null &&
+            mineralData.CrystalPoint == null &&
+            mineralData.RadioactivityPoint == null)
+        {
+            SpawnDistributedPoints();
+        }
     }
 
-    private void SpawnDistributedPoints()
+    public void RestorePointsFromSaveData(Vector3 agePos, Vector3 crystalPos, Vector3 radioPos)
     {
-        MineralData data = GetComponent<MineralData>();
-        if (data == null) return;
-
-        Vector3[] positions = GenerateFlatCirclePoints(
-            count: 3,
-            radius: spawnRadius,
-            minFromCenter: minDistanceFromCenter,
-            minBetween: minDistanceBetweenPoints
-        );
-
-        data.AgePoint = CreatePoint("Возраст", positions[0], Color.yellow);
-        data.CrystalPoint = CreatePoint("Крист. решётка", positions[1], Color.magenta);
-        data.RadioactivityPoint = CreatePoint("Радиоактивность", positions[2], Color.red);
-
-        Debug.Log($"<color=cyan>Точки спавн в XZ-плоскости на расстоянии {minDistanceFromCenter:F2}–{spawnRadius:F2} от центра</color>");
+        CreatePoint(ref mineralData.AgePoint, "Возраст", agePos, Color.yellow);
+        CreatePoint(ref mineralData.CrystalPoint, "Крист. решётка", crystalPos, Color.magenta);
+        CreatePoint(ref mineralData.RadioactivityPoint, "Радиоактивность", radioPos, Color.red);
     }
 
-    // ГЛАВНЫЙ МЕТОД — плоский круг + защита от кучкования
+    public void SpawnDistributedPoints()
+    {
+        Vector3[] positions = GenerateFlatCirclePoints(3, spawnRadius, minDistanceFromCenter, minDistanceBetweenPoints);
+        CreatePoint(ref mineralData.AgePoint, "Возраст", positions[0], Color.yellow);
+        CreatePoint(ref mineralData.CrystalPoint, "Крист. решётка", positions[1], Color.magenta);
+        CreatePoint(ref mineralData.RadioactivityPoint, "Радиоактивность", positions[2], Color.red);
+    }
+
+    private void CreatePoint(ref ScanPoint target, string name, Vector3 localPos, Color color)
+    {
+        if (target != null)
+            DestroyImmediate(target.gameObject);
+
+        GameObject go = new GameObject(name);
+        go.transform.SetParent(transform, false);
+        go.transform.localPosition = localPos;
+        go.transform.localRotation = Quaternion.identity;
+
+        var point = go.AddComponent<ScanPoint>();
+        point.pointName = name;
+        point.gizmoColor = color;
+        point.gizmoSize = 0.08f;
+        target = point;
+    }
+
     private Vector3[] GenerateFlatCirclePoints(int count, float radius, float minFromCenter, float minBetween)
     {
-        List<Vector3> points = new List<Vector3>();
-        List<float> angles = new List<float>();
+        var points = new List<Vector3>();
 
-        // Пробуем до 50 раз — чтобы не зависнуть
-        for (int i = 0; i < 50 && points.Count < count; i++)
+        for (int i = 0; i < 100 && points.Count < count; i++)
         {
             float angle = Random.Range(0f, 360f);
             float dist = Random.Range(minFromCenter, radius);
             Vector3 candidate = new Vector3(Mathf.Cos(angle * Mathf.Deg2Rad), 0f, Mathf.Sin(angle * Mathf.Deg2Rad)) * dist;
 
-            bool tooClose = false;
+            if (candidate.magnitude < minFromCenter) continue;
+            if (points.Exists(p => Vector3.Distance(p, candidate) < minBetween)) continue;
 
-            // Проверка: не слишком близко к центру?
-            if (candidate.magnitude < minFromCenter)
-                tooClose = true;
-
-            // Проверка: не слишком близко к другим точкам?
-            foreach (Vector3 p in points)
-            {
-                if (Vector3.Distance(p, candidate) < minBetween)
-                {
-                    tooClose = true;
-                    break;
-                }
-            }
-
-            if (!tooClose)
-            {
-                points.Add(candidate);
-                angles.Add(angle);
-            }
+            points.Add(candidate);
         }
 
-        // Если не получилось идеально — просто распределяем равномерно (запасной вариант)
         if (points.Count < count)
         {
             points.Clear();
             float step = 360f / count;
             float offset = Random.Range(0f, step);
+
             for (int i = 0; i < count; i++)
             {
                 float angle = (i * step + offset) * Mathf.Deg2Rad;
                 float dist = Mathf.Lerp(minFromCenter, radius, Random.Range(0.7f, 1f));
-                Vector3 pos = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * dist;
-                points.Add(pos);
+                points.Add(new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * dist);
             }
         }
 
         return points.ToArray();
     }
 
-    private ScanPoint CreatePoint(string name, Vector3 localPos, Color color)
-    {
-        GameObject go = new GameObject(name);
-        go.transform.SetParent(transform, false);
-        go.transform.localPosition = localPos;
-
-        var point = go.AddComponent<ScanPoint>();
-        point.pointName = name;
-        point.gizmoColor = color;
-        point.gizmoSize = 0.08f;
-        return point;
-    }
-
 #if UNITY_EDITOR
-    [ContextMenu("Переспавнить точки (XZ-плоскость)")]
-    private void Respawn() => SpawnDistributedPoints();
+    [ContextMenu("Переспавнить точки")]
+    private void EditorRespawn() => SpawnDistributedPoints();
 #endif
-
-    // ВИЗУАЛИЗАЦИЯ В SCENE VIEW
-    private void OnDrawGizmosSelected()
-    {
-        Gizmos.color = new Color(0.3f, 0.7f, 1f, 0.3f);
-        Gizmos.DrawSphere(transform.position, spawnRadius);
-
-        Gizmos.color = new Color(1f, 0.3f, 0.3f, 0.4f);
-        Gizmos.DrawSphere(transform.position, minDistanceFromCenter);
-
-        Handles.color = Color.cyan;
-        Handles.DrawWireDisc(transform.position, Vector3.up, spawnRadius);
-        Handles.DrawWireDisc(transform.position, Vector3.up, minDistanceFromCenter);
-    }
 }

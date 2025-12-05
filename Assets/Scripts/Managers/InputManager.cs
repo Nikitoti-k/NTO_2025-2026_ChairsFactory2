@@ -1,62 +1,33 @@
-using UnityEngine;
+п»їusing UnityEngine;
 using UnityEngine.InputSystem;
 
-[DefaultExecutionOrder(-100)]
 public class InputManager : MonoBehaviour
 {
     public static InputManager Instance { get; private set; }
 
-    // === Чтение ввода (доступно всем) ===
     public Vector2 Move => _move;
     public Vector2 Look => _look;
     public bool Interact => _interact;
     public bool Physical => _physical;
     public bool PhysicalHeld => _physicalHeld;
     public bool Flare => _flare;
+    public bool RadioNext => _radioNext; // РќРћР’РђРЇ РљРќРћРџРљРђ
+    public bool EscapePressed { get; private set; }
 
-    // === Приватные поля (внутри только мы меняем) ===
-    private Vector2 _move;
-    private Vector2 _look;
-    private bool _interact;
-    private bool _physical;
-    private bool _physicalHeld;
-    private bool _flare;
-
-    // ==== Публичные методы для принудительного сброса ====
-    public void ClearMovementInput() => _move = Vector2.zero;
-    public void ClearLookInput() => _look = Vector2.zero;
-    public void ClearAllInput()
-    {
-        _move = Vector2.zero;
-        _look = Vector2.zero;
-        _interact = false;
-        _physical = false;
-        _flare = false;
-    }
-   
-
-    
-    public static void ClearLook() => Instance?.ClearLookInput();
-   
-    public static void ClearMovement() => Instance?.ClearMovementInput();
-    public static void ClearAll() => Instance?.ClearAllInput();
+    private Vector2 _move, _look;
+    private bool _interact, _physical, _physicalHeld, _flare, _radioNext;
 
     private PlayerControls _actions;
 
     private void Awake()
     {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
+        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
         DontDestroyOnLoad(gameObject);
 
         _actions = new PlayerControls();
         _actions.Player.Enable();
 
-        // === Подписки ===
         _actions.Player.Move.performed += ctx => _move = ctx.ReadValue<Vector2>();
         _actions.Player.Move.canceled += _ => _move = Vector2.zero;
 
@@ -64,15 +35,11 @@ public class InputManager : MonoBehaviour
         _actions.Player.Look.canceled += _ => _look = Vector2.zero;
 
         _actions.Player.InteractButton.performed += _ => _interact = true;
-
-        _actions.Player.Physical_Interact_Button.performed += _ =>
-        {
-            _physical = true;
-            _physicalHeld = true;
-        };
+        _actions.Player.Physical_Interact_Button.performed += _ => { _physical = true; _physicalHeld = true; };
         _actions.Player.Physical_Interact_Button.canceled += _ => _physicalHeld = false;
-
         _actions.Player.FlareButton.performed += _ => _flare = true;
+        _actions.Player.DialogueButton.performed += _ => _radioNext = true; // в†ђ РќРћР’РђРЇ
+        _actions.Player.PauseButton.performed += _ => EscapePressed = true;
     }
 
     private void LateUpdate()
@@ -80,7 +47,17 @@ public class InputManager : MonoBehaviour
         _interact = false;
         _physical = false;
         _flare = false;
+        _radioNext = false;
+        EscapePressed = false;
     }
+
+    public void ClearLookInput() => _look = Vector2.zero;
+    public void ClearMovementInput() => _move = Vector2.zero;
+    public void ClearAllInput() => _move = _look = Vector2.zero;
+
+    public static void ClearLook() => Instance?.ClearLookInput();
+    public static void ClearMovement() => Instance?.ClearMovementInput();
+    public static void ClearAll() => Instance?.ClearAllInput();
 
     private void OnEnable() => _actions?.Player.Enable();
     private void OnDisable() => _actions?.Player.Disable();

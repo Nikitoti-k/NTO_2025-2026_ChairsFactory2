@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 319d32197227c3549bc0f23907c9dbc8
+TextScriptImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 317953
+  packageName: Waypoint Marker System
+  packageVersion: 2.0
+  assetPath: Assets/WaypointSystem/Demo/README.txt
+  uploadId: 755843
