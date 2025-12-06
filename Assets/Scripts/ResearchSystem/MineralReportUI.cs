@@ -24,7 +24,7 @@ public class MineralReportUI : MonoBehaviour, ILocalizable
     {
         public Button button;
         public MineralClass mineralClass;
-        [HideInInspector] public TextMeshProUGUI tmp; // Ссылка на текст кнопки
+        [HideInInspector] public TextMeshProUGUI tmp;
     }
 
     private MineralData currentSample;
@@ -40,7 +40,6 @@ public class MineralReportUI : MonoBehaviour, ILocalizable
         {
             if (link.button == null || link.mineralClass == null) continue;
 
-            // Находим TMP в кнопке
             link.tmp = link.button.GetComponentInChildren<TextMeshProUGUI>();
             if (link.tmp == null)
             {
@@ -48,35 +47,32 @@ public class MineralReportUI : MonoBehaviour, ILocalizable
                 continue;
             }
 
-            // Делаем текст многострочным и красивым
-            link.tmp.fontSize = 18; // Основной размер
-            link.tmp.fontSizeMax = 18;
+            link.tmp.fontSize = 19;
+            link.tmp.fontSizeMax = 19;
             link.tmp.enableWordWrapping = true;
             link.tmp.alignment = TextAlignmentOptions.TopLeft;
+            link.tmp.color = Color.black;
 
-            // Первичное обновление
-            UpdateButtonAppearance(link);
-
-            // Клик
             MineralClass mc = link.mineralClass;
             link.button.onClick.RemoveAllListeners();
             link.button.onClick.AddListener(() => SelectClass(mc));
 
-            // Подсказка при наведении (опционально — можно убрать)
             var trigger = link.button.gameObject.AddComponent<UnityEngine.EventSystems.EventTrigger>();
-            var entry = new UnityEngine.EventSystems.EventTrigger.Entry { eventID = UnityEngine.EventSystems.EventTriggerType.PointerEnter };
-            entry.callback.AddListener((data) => UpdateClassDetails(mc));
-            trigger.triggers.Add(entry);
+            var enter = new UnityEngine.EventSystems.EventTrigger.Entry { eventID = UnityEngine.EventSystems.EventTriggerType.PointerEnter };
+            enter.callback.AddListener((data) => UpdateClassDetails(mc));
+            trigger.triggers.Add(enter);
 
             var exit = new UnityEngine.EventSystems.EventTrigger.Entry { eventID = UnityEngine.EventSystems.EventTriggerType.PointerExit };
             exit.callback.AddListener((data) => { if (selectedClass == null) classDetailsText.text = LocalizationManager.Loc("REPORT_SELECT_CLASS"); });
             trigger.triggers.Add(exit);
         }
+    }
 
+    private void Start()
+    {
         Localize();
     }
 
-    // Обновляет и название, и параметры прямо в кнопке
     private void UpdateButtonAppearance(ClassButtonLink link)
     {
         if (link.tmp == null || link.mineralClass == null) return;
@@ -86,7 +82,7 @@ public class MineralReportUI : MonoBehaviour, ILocalizable
 
         if (link.mineralClass.isAnomalyClass)
         {
-            details = $"<color=#FF2222>«АНОМАЛИЯ»</color>";
+            details = LocalizationManager.Loc("REPORT_UNKNOWN");
         }
         else
         {
@@ -94,9 +90,9 @@ public class MineralReportUI : MonoBehaviour, ILocalizable
                 ? $"{link.mineralClass.ageMin:F0}"
                 : $"{link.mineralClass.ageMin:F0}–{link.mineralClass.ageMax:F0}";
 
-            string ageUnit = link.mineralClass.ageUnit == MineralClass.AgeUnit.Days
-                ? "дн."
-                : "млн лет";
+            string ageUnitKey = link.mineralClass.ageUnit == MineralClass.AgeUnit.Days
+                ? "REPORT_AGE_UNIT_DAYS"
+                : "REPORT_AGE_UNIT_MILLION";
 
             string radRange = link.mineralClass.radioactivityMin == link.mineralClass.radioactivityMax
                 ? $"{link.mineralClass.radioactivityMin:F3}"
@@ -104,15 +100,13 @@ public class MineralReportUI : MonoBehaviour, ILocalizable
 
             string crystal = LocalizationManager.Loc(GetCrystalKey(link.mineralClass.crystalSystem));
 
-            details = $"Возраст: {ageRange} {ageUnit}\nРад.: {radRange} µSv/h\nКристалл: {crystal}";
+            details =
+                $"{LocalizationManager.Loc("BUTTON_AGE")}: {ageRange} {LocalizationManager.Loc(ageUnitKey)}\n" +
+                $"{LocalizationManager.Loc("BUTTON_RAD")}: {radRange} µSv/h\n" +
+                $"{LocalizationManager.Loc("BUTTON_CRYSTAL")}: {crystal}";
         }
 
-        // ВСЁ ЧЁРНОЕ, один шрифт, только название чуть крупнее
-        link.tmp.text =
-            $"<size=25><b>{name}</b></size>\n" +
-            $"<size=25><color=black>{details}</color></size>";
-
-        // Принудительно чёрный цвет (на случай если где-то остался старый)
+        link.tmp.text = $"<size=28><b>{name}</b></size>\n<size=19>{details}</size>";
         link.tmp.color = Color.black;
     }
 
@@ -120,12 +114,25 @@ public class MineralReportUI : MonoBehaviour, ILocalizable
     {
         foreach (var link in classButtonLinks)
             UpdateButtonAppearance(link);
+
+        if (selectedClass != null)
+            UpdateClassDetails(selectedClass);
+        else
+            classDetailsText.text = LocalizationManager.Loc("REPORT_SELECT_CLASS");
+
+        if (currentSample != null)
+            UpdateMeasuredData();
+
+        statusText.text = selectedClass == null
+            ? LocalizationManager.Loc("REPORT_CHOOSE_CORRECT")
+            : string.Format(LocalizationManager.Loc("REPORT_SELECTED"), $"<color=yellow>{selectedClass.LocalizedName}</color>");
     }
 
     private void OnEnable()
     {
         LocalizationManager.Register(this);
         LocalizationManager.OnLanguageChanged += OnLanguageChanged;
+        Localize();
     }
 
     private void OnDisable()
@@ -145,9 +152,9 @@ public class MineralReportUI : MonoBehaviour, ILocalizable
         UpdateMeasuredData();
         classDetailsText.text = LocalizationManager.Loc("REPORT_SELECT_CLASS");
         statusText.text = LocalizationManager.Loc("REPORT_CHOOSE_CORRECT");
-
         ResetButtonHighlights();
         UpdateClassButtonsState();
+        Localize(); // Гарантированное обновление кнопок
     }
 
     private void UpdateClassButtonsState()
@@ -165,12 +172,14 @@ public class MineralReportUI : MonoBehaviour, ILocalizable
             if (lockNormal)
             {
                 link.button.interactable = isAnomalyClass;
-                if (link.tmp) link.tmp.color = isAnomalyClass ? Color.red : new Color(0.5f, 0.5f, 0.5f, 0.7f);
+                if (link.tmp)
+                    link.tmp.color = isAnomalyClass ? Color.black : new Color(0.3f, 0.3f, 0.3f, 0.6f);
             }
             else
             {
                 link.button.interactable = true;
-                if (link.tmp) link.tmp.color = Color.white;
+                if (link.tmp)
+                    link.tmp.color = Color.black;
             }
         }
     }
@@ -181,7 +190,6 @@ public class MineralReportUI : MonoBehaviour, ILocalizable
         UpdateClassDetails(mc);
         statusText.text = string.Format(LocalizationManager.Loc("REPORT_SELECTED"), $"<color=yellow>{mc.LocalizedName}</color>");
 
-        // Подсветка выбранной кнопки
         foreach (var link in classButtonLinks)
         {
             bool selected = link.mineralClass == mc;
@@ -192,34 +200,32 @@ public class MineralReportUI : MonoBehaviour, ILocalizable
         }
     }
 
-    // Это теперь дублирует то, что в кнопке — но можно оставить для детального отображения
     private void UpdateClassDetails(MineralClass mc)
     {
         if (mc.isAnomalyClass)
         {
             classDetailsText.text = string.Format(LocalizationManager.Loc("REPORT_CLASS_DETAILS_ANOMALY"), mc.LocalizedName);
-            return;
         }
+        else
+        {
+            string ageRange = mc.ageMin == mc.ageMax ? $"{mc.ageMin:F0}" : $"{mc.ageMin:F0}–{mc.ageMax:F0}";
+            string radRange = mc.radioactivityMin == mc.radioactivityMax
+                ? $"{mc.radioactivityMin:F3}"
+                : $"{mc.radioactivityMin:F3}–{mc.radioactivityMax:F3}";
 
-        string ageRange = mc.ageMin == mc.ageMax ? $"{mc.ageMin:F0}" : $"{mc.ageMin:F0}–{mc.ageMax:F0}";
-        string radRange = mc.radioactivityMin == mc.radioactivityMax
-            ? $"{mc.radioactivityMin:F3}"
-            : $"{mc.radioactivityMin:F3}–{mc.radioactivityMax:F3}";
+            string unitKey = mc.ageUnit == MineralClass.AgeUnit.Days ? "REPORT_AGE_UNIT_DAYS" : "REPORT_AGE_UNIT_MILLION";
+            string crystal = LocalizationManager.Loc(GetCrystalKey(mc.crystalSystem));
 
-        string unitKey = mc.ageUnit == MineralClass.AgeUnit.Days ? "REPORT_AGE_UNIT_DAYS" : "REPORT_AGE_UNIT_MILLION";
-        string crystal = LocalizationManager.Loc(GetCrystalKey(mc.crystalSystem));
-
-        classDetailsText.text = string.Format(
-            LocalizationManager.Loc("REPORT_CLASS_DETAILS"),
-            mc.LocalizedName,
-            ageRange,
-            LocalizationManager.Loc(unitKey),
-            radRange,
-            crystal
-        );
+            classDetailsText.text = string.Format(
+                LocalizationManager.Loc("REPORT_CLASS_DETAILS"),
+                mc.LocalizedName,
+                ageRange,
+                LocalizationManager.Loc(unitKey),
+                radRange,
+                crystal
+            );
+        }
     }
-
-    // Остальное без изменений (Submit, ClosePanel, UpdateMeasuredData, GetCrystalKey...)
 
     private void Submit()
     {
@@ -266,13 +272,14 @@ public class MineralReportUI : MonoBehaviour, ILocalizable
         string radValue = currentSample.RadioactivityUsv.ToString("F3");
         string crystal = LocalizationManager.Loc(GetCrystalKey(currentSample.CrystalSystem_));
 
-        measuredDataText.text = string.Format(
-            LocalizationManager.Loc("REPORT_MEASURED_DATA"),
-            ageValue,
-            currentSample.AgeUnitText,
-            radValue,
-            crystal
-        );
+        // Полностью чёрный текст, без цветных вставок
+        measuredDataText.text =
+            $"<b>MEASURED DATA:</b>\n\n" +
+            $"Age: {ageValue} {currentSample.AgeUnitText}\n" +
+            $"Radiation: {radValue} Bq\n" +
+            $"Crystal system: {crystal}";
+
+        measuredDataText.color = Color.black;
     }
 
     private string GetCrystalKey(MineralData.CrystalSystem system) => system switch

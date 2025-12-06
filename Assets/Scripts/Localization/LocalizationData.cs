@@ -63,7 +63,9 @@ public static class LocalizationData
         ["CLASS_OXIDE"] = "Оксиды",
         ["CLASS_SULFIDE"] = "Сульфиды",
         ["CLASS_CARBONATE"] = "Карбонаты",
-
+        ["BUTTON_AGE"] = "Возраст",
+        ["BUTTON_RAD"] = "Радиоактивность",
+        ["BUTTON_CRYSTAL"] = "Кристаллическая решётка",
         // === Туториал ===
         ["TUT_LOOK"] = "Осмотритесь вокруг — двигайте мышью",
         ["TUT_MOVE"] = "Двигайтесь с помощью <color=#ffff00>W A S D</color>",
@@ -141,6 +143,7 @@ public static class LocalizationData
         ["AUDIO_MASTER"] = "Громкость общая",
         ["AUDIO_SFX"] = "Громкость эффектов",
         ["AUDIO_AMBIENCE"] = "Громкость окружения",
+      
 
     };
 
@@ -162,6 +165,11 @@ public static class LocalizationData
         ["AUDIO_SFX"] = "Sound Effects",
         ["AUDIO_AMBIENCE"] = "Ambience",
         // === UI ===
+
+        ["BUTTON_AGE"] = "Age",
+        ["BUTTON_RAD"] = "Radioactivity",
+        ["BUTTON_CRYSTAL"] = "Crystal system",
+
         ["UI_SUBMIT"] = "Submit Report",
         ["UI_CANCEL"] = "Cancel",
         ["UI_CLOSE"] = "Close",
@@ -236,7 +244,7 @@ public static class LocalizationData
         ["NAME_MINERAL_CLASS_3"] = "Petrified Flora",
         ["NAME_MINERAL_CLASS_4"] = "Dinosaur Remains",
         ["NAME_MINERAL_CLASS_5"] = "Anomaly",
-
+       
         // === Crystal systems ===
         ["CRYSTAL_CUBIC"] = "cubic",
         ["CRYSTAL_MOLECULAR"] = "molecular",
