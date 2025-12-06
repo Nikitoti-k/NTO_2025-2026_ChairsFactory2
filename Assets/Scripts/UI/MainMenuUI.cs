@@ -129,8 +129,7 @@ public class MainMenuUI : MonoBehaviour, ILocalizable
 
     private void OpenSettings()
     {
-        Debug.Log("Настройки (скоро будет!)");
-        // Здесь можно открыть панель настроек
+        AudioSettingsUI.Instance?.Open();
     }
 
     public void BackToMainMenu()

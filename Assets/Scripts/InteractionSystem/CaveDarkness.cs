@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Collections;
 
 [RequireComponent(typeof(Collider))]
 public class CaveDarkness : MonoBehaviour
@@ -21,9 +21,16 @@ public class CaveDarkness : MonoBehaviour
     public float transitionTime = 1.2f;
     public bool useSmoothTransitions = true;
 
-    // ГЛОБАЛЬНОЕ СОСТОЯНИЕ
+    [Header("=== СТРАШНЫЕ ЗВУКИ В ПЕЩЕРЕ ===")]
+    [SerializeField] private AudioClip[] caveScaryClips;
+    [SerializeField] private float minScaryInterval = 18f;
+    [SerializeField] private float maxScaryInterval = 45f;
+    [SerializeField, Range(0.8f, 1.3f)] private float scaryPitchMin = 0.9f;
+    [SerializeField, Range(0.8f, 1.3f)] private float scaryPitchMax = 1.1f;
+
+    // Глобальное состояние
     private static int playersInCave = 0;
-    public static bool IsInsideAnyCave => playersInCave > 0; // ← ЭТО ЧИТАЕТ WeatherManager!
+    public static bool IsInsideAnyCave => playersInCave > 0;
 
     private static Color origAmbient;
     private static float origFogDensity;
@@ -33,6 +40,7 @@ public class CaveDarkness : MonoBehaviour
     private static bool settingsSaved = false;
 
     private Coroutine transition;
+    private Coroutine scarySoundRoutine;
 
     private void Awake()
     {
@@ -46,10 +54,7 @@ public class CaveDarkness : MonoBehaviour
 
         playersInCave++;
         if (playersInCave == 1)
-        {
-            Debug.Log("Вход в пещеру → тьма и яркие факелы");
             EnterCave();
-        }
     }
 
     private void OnTriggerExit(Collider other)
@@ -58,36 +63,45 @@ public class CaveDarkness : MonoBehaviour
 
         playersInCave = Mathf.Max(0, playersInCave - 1);
         if (playersInCave == 0)
-        {
-            Debug.Log("Выход из пещеры → нормальное освещение");
             ExitCave();
-        }
     }
 
     private void EnterCave()
     {
         SaveOriginalSettings();
 
-        // Усиливаем факелы сразу (это нормально — игроку сразу видеть дорогу)
+        // Факелы сразу яркие — чтобы игрок не ослеп
         foreach (var t in caveTorches)
             if (t) { t.intensity = caveTorchIntensity; t.enabled = true; }
 
         if (useSmoothTransitions && transitionTime > 0.1f)
         {
             if (transition != null) StopCoroutine(transition);
-            transition = StartCoroutine(SmoothEnterCave()); // ← ПЛАВНЫЙ ВХОД В ТЬМУ
+            transition = StartCoroutine(SmoothEnterCave());
         }
         else
         {
-            ApplyCaveMode(); // мгновенно, если выключены переходы
+            ApplyCaveMode();
+            StartScarySounds();
         }
-
-        Debug.Log("Вход в пещеру → начинается плавный переход в тьму");
     }
 
-    private System.Collections.IEnumerator SmoothEnterCave()
+    private void ExitCave()
     {
-        // Мы начинаем с текущих (светлых) настроек, сохранённых в origAmbient и т.д.
+        if (useSmoothTransitions && transitionTime > 0.1f)
+        {
+            if (transition != null) StopCoroutine(transition);
+            transition = StartCoroutine(SmoothExitToLight());
+        }
+        else
+        {
+            RestoreNormalMode();
+            StopScarySounds();
+        }
+    }
+
+    private IEnumerator SmoothEnterCave()
+    {
         float t = 0f;
         while (t < transitionTime)
         {
@@ -104,37 +118,34 @@ public class CaveDarkness : MonoBehaviour
                 RenderSettings.fogColor = Color.Lerp(origFogColor, caveFogColor, p);
             }
 
-            // Факелы можно оставить яркими сразу, либо тоже плавно усиливать:
-            // foreach (var torch in caveTorches)
-            //     if (torch) torch.intensity = Mathf.Lerp(normalTorchIntensity, caveTorchIntensity, p);
+            yield return null;
+        }
+
+        ApplyCaveMode();
+        StartScarySounds();
+    }
+
+    private IEnumerator SmoothExitToLight()
+    {
+        float t = 0f;
+        while (t < transitionTime)
+        {
+            t += Time.deltaTime;
+            float p = t / transitionTime;
+
+            RenderSettings.ambientLight = Color.Lerp(caveAmbientLight, origAmbient, p);
+            RenderSettings.fogDensity = Mathf.Lerp(caveFogDensity, origFogDensity, p);
+            RenderSettings.fogColor = Color.Lerp(caveFogColor, origFogColor, p);
+
+            foreach (var torch in caveTorches)
+                if (torch) torch.intensity = Mathf.Lerp(caveTorchIntensity, normalTorchIntensity, p);
 
             yield return null;
         }
-        StartCoroutine(PlayCaveScarySoundsRoutine());
-        // Финальное состояние
-        ApplyCaveMode();
-    }
 
-    private void ExitCave()
-    {
-        // Если плавный переход — запускаем от текущего (тёмного) к светлому
-        if (useSmoothTransitions && transitionTime > 0.1f)
-        {
-            if (transition != null) StopCoroutine(transition);
-            transition = StartCoroutine(SmoothExitToLight());
-        }
-        else
-        {
-            RestoreNormalMode();
-        }
+        RestoreNormalMode();
+        StopScarySounds();
     }
-    private System.Collections.IEnumerator SmoothEnterFromDark()
-    {
-        // Ничего не делаем — тьма уже применена мгновенно
-        // Можно добавить лёгкое "затухание" факелов или эффекты
-        yield return null;
-    }
-
 
     private void ApplyCaveMode()
     {
@@ -146,9 +157,6 @@ public class CaveDarkness : MonoBehaviour
             RenderSettings.fogDensity = caveFogDensity;
             RenderSettings.fogColor = caveFogColor;
         }
-
-        foreach (var t in caveTorches)
-            if (t) { t.intensity = caveTorchIntensity; t.enabled = true; }
     }
 
     private void RestoreNormalMode()
@@ -159,115 +167,68 @@ public class CaveDarkness : MonoBehaviour
         RenderSettings.fogDensity = origFogDensity;
         RenderSettings.fogColor = origFogColor;
 
-        FindObjectsOfType<CaveDarkness>().ToList().ForEach(c =>
-            c.caveTorches.ForEach(t => { if (t) t.intensity = c.normalTorchIntensity; }));
+        // Все факелы во всех пещерах возвращаем к нормальной яркости
+        foreach (var cave in FindObjectsOfType<CaveDarkness>())
+            foreach (var torch in cave.caveTorches)
+                if (torch) torch.intensity = cave.normalTorchIntensity;
     }
-    [Header("=== СТРАШНЫЕ ЗВУКИ В ПЕЩЕРЕ ===")]
-    [SerializeField] private AudioClip[] caveScaryClips; // кинь сюда 2–4 страшных звука в инспекторе
-    [SerializeField] private float minScaryInterval = 18f;   // минимум секунд между звуками
-    [SerializeField] private float maxScaryInterval = 45f;   // максимум
-    [SerializeField, Range(0f, 1f)] private float scaryVolume = 0.7f;
-    [SerializeField, Range(0.8f, 1.2f)] private float scaryPitchMin = 0.9f;
-    [SerializeField, Range(0.8f, 1.2f)] private float scaryPitchMax = 1.1f;
+
+    private void StartScarySounds()
+    {
+        if (scarySoundRoutine != null) StopCoroutine(scarySoundRoutine);
+        if (caveScaryClips.Length > 0)
+            scarySoundRoutine = StartCoroutine(PlayCaveScarySoundsRoutine());
+    }
+
+    private void StopScarySounds()
+    {
+        if (scarySoundRoutine != null)
+        {
+            StopCoroutine(scarySoundRoutine);
+            scarySoundRoutine = null;
+        }
+    }
+
     private IEnumerator PlayCaveScarySoundsRoutine()
     {
-        // Пауза перед первым звуком
         yield return new WaitForSeconds(Random.Range(8f, 15f));
 
-        // Кэшируем ссылку на игрока (предполагаем, что игрок имеет тег "Player")
         GameObject player = GameObject.FindGameObjectWithTag("Player");
         if (player == null)
         {
-            Debug.LogWarning("CaveDarkness: Игрок с тегом 'Player' не найден! Страшные звуки отключены.");
+            Debug.LogWarning("CaveDarkness: игрок с тегом 'Player' не найден — страшные звуки отключены");
             yield break;
         }
 
-        while (true)
+        while (playersInCave > 0)
         {
-            if (playersInCave <= 0)
-                yield break;
-
             if (caveScaryClips.Length > 0 && AudioManager.Instance != null)
             {
                 AudioClip clip = caveScaryClips[Random.Range(0, caveScaryClips.Length)];
 
-                // Играем ПРЯМО У ИГРОКА (3D, полный объём)
-                Vector3 playerPos = player.transform.position;
+                // ГРОМКОСТЬ = 1.0 → ПОЛНОСТЬЮ ОТ AUDIO MANAGER!
                 AudioManager.Instance.PlaySFX(
                     clip: clip,
-                    volumeMultiplier: scaryVolume,  // теперь это базовая громкость, подкрути в инспекторе до 1f
+                    volumeMultiplier: 1f,                                            // ← ЧИСТО! Никаких 0.7f!
                     pitch: Random.Range(scaryPitchMin, scaryPitchMax),
-                    position: playerPos  // ← ЗВУК РЯДОМ С ИГРОКОМ!
+                    position: player.transform.position
                 );
             }
 
             yield return new WaitForSeconds(Random.Range(minScaryInterval, maxScaryInterval));
         }
     }
+
     private void SaveOriginalSettings()
     {
         if (settingsSaved) return;
+
         origAmbient = RenderSettings.ambientLight;
         origFogDensity = RenderSettings.fogDensity;
         origFogColor = RenderSettings.fogColor;
         origFogEnabled = RenderSettings.fog;
         origFogMode = RenderSettings.fogMode;
         settingsSaved = true;
-    }
-
-    // Плавные переходы
-    private System.Collections.IEnumerator SmoothEnter()
-    {
-        SaveOriginalSettings();
-        float t = 0;
-        while (t < transitionTime)
-        {
-            t += Time.deltaTime;
-            float p = t / transitionTime;
-            RenderSettings.ambientLight = Color.Lerp(origAmbient, caveAmbientLight, p);
-            if (enableFogInCave)
-            {
-                RenderSettings.fogDensity = Mathf.Lerp(origFogDensity, caveFogDensity, p);
-                RenderSettings.fogColor = Color.Lerp(origFogColor, caveFogColor, p);
-            }
-            yield return null;
-        }
-        ApplyCaveMode();
-    }
-    private System.Collections.IEnumerator SmoothExitToLight()
-    {
-        float t = 0;
-        while (t < transitionTime)
-        {
-            t += Time.deltaTime;
-            float p = t / transitionTime;
-
-            RenderSettings.ambientLight = Color.Lerp(caveAmbientLight, origAmbient, p);
-            RenderSettings.fogDensity = Mathf.Lerp(caveFogDensity, origFogDensity, p);
-            RenderSettings.fogColor = Color.Lerp(caveFogColor, origFogColor, p);
-
-            // Факелы плавно тускнеют
-            foreach (var torch in caveTorches)
-                if (torch) torch.intensity = Mathf.Lerp(caveTorchIntensity, normalTorchIntensity, p);
-
-            yield return null;
-        }
-
-        RestoreNormalMode();
-    }
-    private System.Collections.IEnumerator SmoothExit()
-    {
-        float t = 0;
-        while (t < transitionTime)
-        {
-            t += Time.deltaTime;
-            float p = t / transitionTime;
-            RenderSettings.ambientLight = Color.Lerp(caveAmbientLight, origAmbient, p);
-            RenderSettings.fogDensity = Mathf.Lerp(caveFogDensity, origFogDensity, p);
-            RenderSettings.fogColor = Color.Lerp(caveFogColor, origFogColor, p);
-            yield return null;
-        }
-        RestoreNormalMode();
     }
 
     private void FindTorchesInChildren()
@@ -278,7 +239,6 @@ public class CaveDarkness : MonoBehaviour
                 caveTorches.Add(l);
     }
 
-    // Дебаг
     private void OnDrawGizmosSelected()
     {
         Gizmos.color = IsInsideAnyCave ? Color.red : Color.cyan;

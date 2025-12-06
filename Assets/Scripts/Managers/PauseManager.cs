@@ -21,7 +21,7 @@ public class PauseManager : MonoBehaviour
     [SerializeField] private string mainMenuScene = "MainMenu";
 
     private bool isSavePopupOpen = false;
-
+    [SerializeField] private Button settingsButton;
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -41,6 +41,7 @@ public class PauseManager : MonoBehaviour
         if (saveButton) saveButton.onClick.AddListener(OpenSavePopup);
         if (mainMenuButton) mainMenuButton.onClick.AddListener(ToMainMenu);
         if (quitButton) quitButton.onClick.AddListener(Quit);
+        if (settingsButton) settingsButton.onClick.AddListener(OpenSettings);
     }
 
     private void Update()
@@ -90,7 +91,10 @@ public class PauseManager : MonoBehaviour
             isSavePopupOpen = false;
         }
     }
-
+    private void OpenSettings()
+    {
+        AudioSettingsUI.Instance?.Open();
+    }
     public void ToMainMenu()
     {
         Time.timeScale = 1f;

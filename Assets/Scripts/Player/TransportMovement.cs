@@ -18,14 +18,13 @@ public class TransportMovement : SaveableObject, IControllable
     [Header("Проходимость")]
     [SerializeField] private float raycastDistance = 3f;
 
-    [Header("Звук мотора 🔊")]
-    [SerializeField] private string engineIdleKey = "engine_idle";    // холостой ход
-    [SerializeField] private string engineRevKey = "engine_rev";      // полный газ
-    [SerializeField] private string engineStartKey = "engine_start";  // запуск
-    [SerializeField, Range(0f, 1f)] private float engineVolume = 0.8f;
-    [SerializeField] private float maxEnginePitch = 1.8f;             // макс RPM pitch
-    [SerializeField] private float engineResponseSpeed = 2f;          // плавность
-    [SerializeField] private Transform engineSoundPosition;           // откуда звук (опционально)
+    [Header("Звук мотора")]
+    [SerializeField] private string engineIdleKey = "engine_idle";
+    [SerializeField] private string engineRevKey = "engine_rev";
+    [SerializeField] private string engineStartKey = "engine_start";
+    [SerializeField] private float maxEnginePitch = 1.8f;
+    [SerializeField] private float engineResponseSpeed = 2f;
+    [SerializeField] private Transform engineSoundPosition;
 
     [Header("Посадка")]
     public Transform seatTransform;
@@ -36,44 +35,70 @@ public class TransportMovement : SaveableObject, IControllable
     private float _currentTurn;
     private float _targetForwardSpeed;
 
-    // Мотор
+    // Звук двигателя
     private AudioSource _engineSource;
-    private float _currentEnginePitch = 0.8f; // старт с холостого
+    private float _currentEnginePitch = 0.8f;
+    private float _normalizedVolume = 0f; // 0–1 — только относительная громкость
     private bool _isEngineRunning;
 
     protected override void Awake()
     {
-        base.Awake(); // ← это вызовет генерацию uniqueID, если его нет
-
+        base.Awake();
         _rb = GetComponent<Rigidbody>();
         _rb.interpolation = RigidbodyInterpolation.Interpolate;
         _rb.freezeRotation = true;
+       
         _rb.centerOfMass = new Vector3(0f, -1.1f, 0.3f);
         _rb.solverVelocityIterations = 16;
         _rb.solverIterations = 10;
 
-        SetupEngineAudio();
+        CreateEngineAudioSource();
+    }
+    private void StopEngine()
+    {
+        if (_engineSource != null)
+        {
+            _engineSource.Stop();
+            _engineSource.clip = null;  // ← важно! очищаем клип
+        }
+        _isEngineRunning = false;
+        _normalizedVolume = 0f;
+        _currentEnginePitch = 0.8f;
     }
 
-    private void SetupEngineAudio()
+    private void StartEngineIfNeeded()
     {
-        GameObject engineGO = new GameObject("EngineAudio");
-        engineGO.transform.SetParent(engineSoundPosition ? engineSoundPosition : transform);
-        engineGO.transform.localPosition = Vector3.zero;
-        _engineSource = engineGO.AddComponent<AudioSource>();
+        if (_isEngineRunning || _engineSource == null) return;
+
+        // Сразу запускаем холостой ход
+        _isEngineRunning = true;
+        _normalizedVolume = 0.6f;
+        _currentEnginePitch = 0.8f;
+
+        // Проигрываем звук запуска
+        AudioManager.Instance?.PlaySFX(engineStartKey, 1f, 1f, transform.position);
+
+        // И сразу переключаемся на idle
+        SwitchEngineClip(engineIdleKey);
+        _engineSource.Play();
+    }
+    private void CreateEngineAudioSource()
+    {
+        GameObject go = new GameObject("EngineAudio");
+        go.transform.SetParent(engineSoundPosition ? engineSoundPosition : transform);
+        go.transform.localPosition = Vector3.zero;
+
+        _engineSource = go.AddComponent<AudioSource>();
         _engineSource.loop = true;
-        _engineSource.spatialBlend = 0.7f; // лёгкий 3D эффект
+        _engineSource.playOnAwake = false;
+        _engineSource.spatialBlend = 0.7f;
         _engineSource.rolloffMode = AudioRolloffMode.Linear;
         _engineSource.maxDistance = 30f;
+        _engineSource.volume = 0f;
     }
 
     public void HandleMovement(Vector2 input) => _input = input;
-
-    public void HandleInteract(bool pressed)
-    {
-        if (pressed) Dismount();
-    }
-
+    public void HandleInteract(bool pressed) { if (pressed) Dismount(); }
     public void HandlePhysicalInteract(bool pressed, bool held) { }
     public void HandleFlare(bool pressed) { }
 
@@ -85,134 +110,152 @@ public class TransportMovement : SaveableObject, IControllable
             return;
         }
 
+        // ←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←
+        // ВАЖНО: при посадке — мотор должен завестись!
+        // ←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←
+        if (!_isEngineRunning && _input.sqrMagnitude < 0.01f)
+        {
+            StartEngineIfNeeded();
+        }
+        // ←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←
+
         Drive();
         UpdateEngineSound();
     }
 
     private void Drive()
     {
+        // ← Весь твой код движения остаётся без изменений (оставил как есть)
         float forwardInput = _input.y;
         float turnInput = _input.x;
         Vector3 flatVel = new Vector3(_rb.linearVelocity.x, 0f, _rb.linearVelocity.z);
         float currentForwardSpeed = Vector3.Dot(flatVel, transform.forward);
-        float desiredSpeed = 0f;
 
-        if (forwardInput > 0.01f) desiredSpeed = forwardSpeed;
-        else if (forwardInput < -0.01f) desiredSpeed = -reverseSpeed;
-
+        float desiredSpeed = forwardInput > 0.01f ? forwardSpeed : forwardInput < -0.01f ? -reverseSpeed : 0f;
         _targetForwardSpeed = Mathf.MoveTowards(_targetForwardSpeed, desiredSpeed, acceleration * Time.fixedDeltaTime);
 
-        bool isBraking = Mathf.Abs(currentForwardSpeed) > 1f &&
-                         Mathf.Sign(currentForwardSpeed) != Mathf.Sign(forwardInput) &&
-                         forwardInput != 0f;
+        bool isBraking = Mathf.Abs(currentForwardSpeed) > 1f && Mathf.Sign(currentForwardSpeed) != Mathf.Sign(forwardInput) && forwardInput != 0f;
         float effectiveAccel = isBraking ? brakeDeceleration : acceleration;
 
         Vector3 comWorld = transform.TransformPoint(_rb.centerOfMass);
-        Vector3 surfaceNormal = Vector3.up;
-        if (Physics.Raycast(comWorld, Vector3.down, out RaycastHit hit, raycastDistance))
-            surfaceNormal = hit.normal;
+        Vector3 surfaceNormal = Physics.Raycast(comWorld, Vector3.down, out RaycastHit hit, raycastDistance) ? hit.normal : Vector3.up;
 
         Vector3 currentVelOnPlane = Vector3.ProjectOnPlane(flatVel, surfaceNormal);
-        Vector3 desiredDirOnPlane = Vector3.ProjectOnPlane(transform.forward, surfaceNormal).normalized;
-        Vector3 desiredVelOnPlane = desiredDirOnPlane * _targetForwardSpeed;
+        Vector3 desiredVelOnPlane = Vector3.ProjectOnPlane(transform.forward, surfaceNormal).normalized * _targetForwardSpeed;
         Vector3 velDelta = desiredVelOnPlane - currentVelOnPlane;
-        Vector3 force = velDelta / Time.fixedDeltaTime;
-        force = Vector3.ClampMagnitude(force, effectiveAccel);
+        Vector3 force = Vector3.ClampMagnitude(velDelta / Time.fixedDeltaTime, effectiveAccel);
+
         _rb.AddForce(force, ForceMode.Acceleration);
 
         _currentTurn = Mathf.MoveTowards(_currentTurn, turnInput, Time.fixedDeltaTime / turnSmoothTime);
-        float absForwardSpeed = Mathf.Abs(currentForwardSpeed);
-        float rotationThisFrame = 0f;
 
-        if (absForwardSpeed >= minTurnSpeed)
+        float absSpeed = Mathf.Abs(currentForwardSpeed);
+        if (absSpeed >= minTurnSpeed)
         {
-            float speedFactor = Mathf.InverseLerp(minTurnSpeed, forwardSpeed * 0.6f, absForwardSpeed);
+            float speedFactor = Mathf.InverseLerp(minTurnSpeed, forwardSpeed * 0.6f, absSpeed);
             float turnBonus = Mathf.Lerp(lowSpeedTurnBonus, 1f, speedFactor);
-            rotationThisFrame = _currentTurn * turnSpeed * turnBonus * Time.fixedDeltaTime;
+            float rotation = _currentTurn * turnSpeed * turnBonus * Time.fixedDeltaTime;
+            if (Mathf.Abs(rotation) > 0.001f)
+                _rb.MoveRotation(_rb.rotation * Quaternion.Euler(0f, rotation, 0f));
         }
-
-        if (Mathf.Abs(rotationThisFrame) > 0.001f)
-            _rb.MoveRotation(_rb.rotation * Quaternion.Euler(0f, rotationThisFrame, 0f));
     }
 
     private void UpdateEngineSound()
     {
+        // Если мы в транспорте, но мотор не запущен — запускаем!
+        if (!_isEngineRunning)
+        {
+            StartEngineIfNeeded();
+            return; // на этом кадре больше ничего не делаем
+        }
+
         if (_input.sqrMagnitude < 0.01f)
         {
-            // Холостой ход
             _currentEnginePitch = Mathf.Lerp(_currentEnginePitch, 0.8f, Time.fixedDeltaTime * engineResponseSpeed);
-            PlayEngineClip(engineIdleKey);
+            _normalizedVolume = Mathf.Lerp(_normalizedVolume, 0.6f, Time.fixedDeltaTime * engineResponseSpeed);
+            SwitchEngineClip(engineIdleKey);
         }
         else
         {
-            // Газуем! RPM от газа + скорости
             float throttle = Mathf.Abs(_input.y);
             float speedFactor = Mathf.Abs(_targetForwardSpeed) / forwardSpeed;
-            float rpm = Mathf.Lerp(0.8f, maxEnginePitch, (throttle + speedFactor) * 0.5f);
+            float targetPitch = Mathf.Lerp(0.8f, maxEnginePitch, (throttle + speedFactor) * 0.5f);
 
-            _currentEnginePitch = Mathf.Lerp(_currentEnginePitch, rpm, Time.fixedDeltaTime * engineResponseSpeed);
-            PlayEngineClip(engineRevKey);
+            _currentEnginePitch = Mathf.Lerp(_currentEnginePitch, targetPitch, Time.fixedDeltaTime * engineResponseSpeed);
+            _normalizedVolume = Mathf.Lerp(_normalizedVolume, 1f, Time.fixedDeltaTime * engineResponseSpeed);
+
+            SwitchEngineClip(engineRevKey);
         }
 
-        // Обновляем pitch/volume
+        UpdateVolumeFromManager();
         _engineSource.pitch = _currentEnginePitch;
-        _engineSource.volume = engineVolume * (0.4f + Mathf.Abs(_input.y) * 0.6f);
     }
 
-    private void PlayEngineClip(string key)
+    private void UpdateVolumeFromManager()
     {
-        if (AudioManager.Instance.audioDatabase == null) return; // AudioManager.Instance.audioDatabase
+        if (AudioManager.Instance != null && _engineSource != null)
+        {
+            _engineSource.volume = _normalizedVolume * AudioManager.Instance.sfxVolume * AudioManager.Instance.masterVolume;
+        }
+    }
+
+    private void SwitchEngineClip(string key)
+    {
+        if (AudioManager.Instance?.audioDatabase == null) return;
 
         if (!_isEngineRunning)
         {
-            // Первый запуск — старт мотора
-            AudioManager.Instance?.PlaySFX(engineStartKey, 1.2f, 1f, transform.position);
+            AudioManager.Instance.PlaySFX(engineStartKey, 1f, 1f, transform.position);
             _isEngineRunning = true;
         }
 
-        if (!AudioManager.Instance.audioDatabase.TryGetSound(key, out var se)) return;
-
-        if (_engineSource.clip != se.clip)
+        if (AudioManager.Instance.audioDatabase.TryGetSound(key, out var soundEvent) && _engineSource.clip != soundEvent.clip)
         {
-            _engineSource.clip = se.clip;
+            _engineSource.clip = soundEvent.clip;
             _engineSource.Play();
         }
     }
 
-    private void StopEngine()
-    {
-        if (_isEngineRunning && _engineSource.isPlaying)
-        {
-            _engineSource.Stop();
-            _isEngineRunning = false;
-        }
-    }
+  
 
     private void Dismount()
     {
-        StopEngine(); // ✅ Останавливаем мотор при выходе
+        StopEngine();
 
         var player = FindFirstObjectByType<PlayerMovement>();
         if (!player) return;
+
         var router = InputRouter.Instance;
         player.transform.SetParent(null);
+
         var prb = player.GetComponent<Rigidbody>();
         prb.isKinematic = false;
         prb.useGravity = true;
         prb.interpolation = RigidbodyInterpolation.Interpolate;
+
         var col = player.GetComponent<Collider>();
         col.enabled = true;
         col.isTrigger = false;
+
         Vector3 exitPos = transform.position + transform.forward * 2.8f + Vector3.up * 1.5f;
         player.transform.position = exitPos;
         prb.linearVelocity = _rb.linearVelocity + Vector3.up * 5f;
+
         router?.SetController(player);
     }
 
     private void OnDrawGizmosSelected()
     {
-        // Визуализация позиции звука
         if (engineSoundPosition)
             Gizmos.DrawWireSphere(engineSoundPosition.position, 0.3f);
+    }
+    private void LateUpdate()
+    {
+        // Это гарантирует, что громкость двигателя всегда актуальна,
+        // даже если FixedUpdate не вызывается (меню, пауза, другой контроллер и т.д.)
+        if (_engineSource != null && _engineSource.isPlaying)
+        {
+            UpdateVolumeFromManager();
+        }
     }
 }
