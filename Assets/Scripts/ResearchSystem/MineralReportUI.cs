@@ -239,8 +239,14 @@ public class MineralReportUI : MonoBehaviour, ILocalizable
         if (selectedClass.isAnomalyClass)
             currentSample.isAnomaly = true;
 
-        if (selectedClass.isAnomalyClass && TutorialManager.Instance != null)
-            TutorialManager.Instance.OnAnomalyReportSubmitted();
+        // ВАЖНО: Как только игрок отправил ОТЧЁТ (любой!) — подсказка "Сделайте вывод" больше НИКОГДА не появится
+        if (TutorialManager.Instance != null)
+        {
+            TutorialManager.Instance.OnReportEverSubmitted(); // ← Новый метод!
+
+            if (selectedClass.isAnomalyClass)
+                TutorialManager.Instance.OnAnomalyReportSubmitted();
+        }
 
         OnReportSubmitted?.Invoke(correct);
         gameObject.SetActive(false);

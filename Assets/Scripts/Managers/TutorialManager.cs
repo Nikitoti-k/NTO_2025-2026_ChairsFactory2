@@ -66,7 +66,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
     private bool playerSlept = false;
     private bool finalMonologuePlayed = false;
     private bool conclusionHintShown = false; // ← ВАЖНО: "Сделайте вывод" — только один раз!
-
+    [SerializeField] private bool conclusionHintPermanentlyDisabled = false; // ← новое поле
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -370,7 +370,24 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
             }
         }
     }
+    // Вызывается, когда игрок впервые в жизни отправил отчёт (любой)
+    public void OnReportEverSubmitted()
+    {
+        
 
+        conclusionHintShown = true;
+
+        // Сразу убираем подсказку "Сделайте вывод", если она сейчас на экране
+        if (hintPanel != null && hintPanel.activeSelf)
+        {
+            string currentHint = hintText.text;
+            string conclusionText = LocalizationManager.Loc("TUT_CONCLUSION");
+            if (currentHint.Contains(conclusionText))
+            {
+                hintPanel.SetActive(false);
+            }
+        }
+    }
     public void OnRecordButtonPressed()
     {
         if (currentScannedMineral == null) return;
