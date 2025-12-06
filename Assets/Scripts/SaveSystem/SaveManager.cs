@@ -465,45 +465,80 @@ public class SaveManager : MonoBehaviour
             CameraController.Instance.LoadCameraDirectionAndSyncPlayer(save.cameraLookDirection);
         }
 
-        // Туториал — теперь только через tutorialData!
+        // Туториал
         var tutorial = FindObjectOfType<TutorialManager>();
         if (tutorial != null && save.tutorialData != null)
         {
             tutorial.LoadTutorialSaveData(save.tutorialData);
-
-            // Очень важно: если это загрузка сохранения — не проигрываем вступительный монолог!
             if (!isNewGame && save.tutorialData.hasPlayedIntroMonologue && tutorial.radioMonologue != null)
                 tutorial.radioMonologue.HasPlayedIntroMonologue = true;
         }
 
-        // === ОБЪЕКТЫ НА СЦЕНЕ ===
+        // === ВОССТАНОВЛЕНИЕ ГРОМКОСТИ ===
+        if (AudioManager.Instance != null)
+        {
+            var am = AudioManager.Instance;
+            am.masterVolume = Mathf.Clamp01(save.masterVolume);
+            am.sfxVolume = Mathf.Clamp01(save.sfxVolume);
+            am.ambienceVolume = Mathf.Clamp01(save.ambienceVolume);
+
+            // Применяем к уже запущенным источникам
+            float master = am.masterVolume;
+            if (am.ambienceSource != null)
+                am.ambienceSource.volume = am.ambienceVolume * master;
+
+            // Если будут музыка — раскомментируй:
+            // if (am.musicSourceA) am.musicSourceA.volume = am.musicVolume * master;
+            // if (am.musicSourceB) am.musicSourceB.volume = am.musicVolume * master;
+        }
+        if (AudioManager.Instance != null)
+        {
+            var am = AudioManager.Instance;
+            am.masterVolume = Mathf.Clamp01(save.masterVolume);
+            am.sfxVolume = Mathf.Clamp01(save.sfxVolume);
+            am.ambienceVolume = Mathf.Clamp01(save.ambienceVolume);
+            am.ApplyVolumesFromSave();
+        }
+
+        // ЯЗЫК — САМОЕ ВАЖНОЕ
+        if (!string.IsNullOrEmpty(save.language) &&
+            Enum.TryParse<LocalizationManager.Language>(save.language, out var lang))
+        {
+            LocalizationManager.ApplyLanguageFromSave(lang);
+        }
+        else
+        {
+            LocalizationManager.ApplyLanguageFromSave(LocalizationManager.Language.RU);
+        }
+
+        // Обновляем настройки UI
+        var settingsUI = FindObjectOfType<AudioSettingsUI>();
+        if (settingsUI != null)
+        {
+            settingsUI.RefreshSliders();
+            settingsUI.Localize();
+        }
+
+        // Объекты на сцене
         var mineralDict = save.minerals.ToDictionary(m => m.uniqueID, m => m);
         var depositDict = save.deposits.ToDictionary(d => d.uniqueID, d => d);
-
         var existingSaveables = FindObjectsOfType<MonoBehaviour>(true)
             .OfType<ISaveableV2>()
             .ToList();
-
         var toInstantiate = new List<ObjectSaveData>(save.objects);
 
-        // Сначала восстанавливаем уже существующие объекты
         foreach (var saveable in existingSaveables)
         {
             var data = toInstantiate.Find(d => d.uniqueID == saveable.GetUniqueID());
             if (data == null) continue;
-
             saveable.LoadCommonData(data);
-
             if (saveable is IHasMineralData min && mineralDict.TryGetValue(data.uniqueID, out var minData))
                 min.LoadMineralData(minData);
-
             if (saveable is IHasDepositData dep && depositDict.TryGetValue(data.uniqueID, out var depData))
                 dep.LoadDepositData(depData);
-
             toInstantiate.Remove(data);
         }
 
-        // Инстантим новые объекты
         foreach (var data in toInstantiate)
         {
             var prefab = prefabRegistry?.GetPrefab(data.prefabIdentifier);
@@ -512,21 +547,17 @@ public class SaveManager : MonoBehaviour
                 Debug.LogWarning($"Префаб не найден: {data.prefabIdentifier}");
                 continue;
             }
-
             var obj = Instantiate(prefab, data.position, data.rotation);
             if (obj.TryGetComponent<ISaveableV2>(out var saveable))
             {
                 saveable.LoadCommonData(data);
-
                 if (saveable is IHasMineralData min && mineralDict.TryGetValue(data.uniqueID, out var minData))
                     min.LoadMineralData(minData);
-
                 if (saveable is IHasDepositData dep && depositDict.TryGetValue(data.uniqueID, out var depData))
                     dep.LoadDepositData(depData);
             }
         }
 
-        // === ФИНАЛЬНАЯ СИНХРОНИЗАЦИЯ ===
         StartCoroutine(FinalizeLoading());
     }
 
@@ -577,7 +608,7 @@ public class SaveManager : MonoBehaviour
             save.cameraLookDirection = new Vector2(cam.eulerAngles.y, cam.eulerAngles.x);
         }
 
-        // Туториал — только через новый объект!
+        // Туториал
         var tutorial = FindObjectOfType<TutorialManager>();
         if (tutorial != null)
             save.tutorialData = tutorial.GetTutorialSaveData();
@@ -587,10 +618,26 @@ public class SaveManager : MonoBehaviour
         foreach (var s in saveables)
         {
             save.objects.Add(s.GetCommonSaveData());
-
             if (s is IHasMineralData m) save.minerals.Add(m.GetMineralSaveData());
             if (s is IHasDepositData d) save.deposits.Add(d.GetDepositSaveData());
         }
+
+        // === СОХРАНЕНИЕ ГРОМКОСТИ ===
+        if (AudioManager.Instance != null)
+        {
+            save.masterVolume = AudioManager.Instance.masterVolume;
+            save.sfxVolume = AudioManager.Instance.sfxVolume;
+            save.ambienceVolume = AudioManager.Instance.ambienceVolume;
+        }
+        else
+        {
+            save.masterVolume = 1f;
+            save.sfxVolume = 1f;
+            save.ambienceVolume = 1f;
+        }
+
+        // === СОХРАНЕНИЕ ЯЗЫКА ===
+        save.language = LocalizationManager.CurrentLanguage.ToString(); // "RU" или "EN"
     }
 
     private string ComputeHash(string input)

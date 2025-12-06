@@ -8,23 +8,24 @@ using System.Collections.Generic;
 public class SaveFile
 {
     public const string CURRENT_VERSION = "2.0";
-
     public string version = CURRENT_VERSION;
-    public string checksum;                  // заполняется автоматически перед сохранением
+    public string checksum;
 
     public GameStateBlock gameState = new GameStateBlock();
     public string globalReports = "";
-
     public Vector2 cameraLookDirection;
-
-    // ← ТОЛЬКО ОДИН источник правды про туториал!
     public TutorialSaveData tutorialData = new TutorialSaveData();
+
+    // ← НОВЫЕ ПОЛЯ ДЛЯ НАСТРОЕК
+    public float masterVolume = 1f;
+    public float sfxVolume = 1f;
+    public float ambienceVolume = 1f;
+    public string language = "RU"; // "RU" или "EN"
 
     public List<ObjectSaveData> objects = new List<ObjectSaveData>();
     public List<MineralSaveData> minerals = new List<MineralSaveData>();
     public List<DepositSaveData> deposits = new List<DepositSaveData>();
 
-    // КРИТИЧЕСКИ ВАЖНЫЙ МЕТОД — возвращает копию без checksum и version (чтобы хеш был стабильным)
     public SaveFile GetCleanCopy()
     {
         return new SaveFile
@@ -33,6 +34,10 @@ public class SaveFile
             globalReports = this.globalReports,
             cameraLookDirection = this.cameraLookDirection,
             tutorialData = this.tutorialData,
+            masterVolume = this.masterVolume,
+            sfxVolume = this.sfxVolume,
+            ambienceVolume = this.ambienceVolume,
+            language = this.language,
             objects = this.objects,
             minerals = this.minerals,
             deposits = this.deposits

@@ -14,11 +14,13 @@ public static class LocalizationData
         ["UI_MainMenu_ContinueGame"] = "Продолжить игру",
         ["UI_SetingButton"] = "Настройки",
         ["UI_MainMenu_ExitGame"] = "Выйти из игры",
-
+        ["UI_MainMenu_SaveSlot_EmptyText"] = "Пустой слот",
+        ["UI_MainMenu_SaveSlot_Load"] = "Загрузить сохранение",
+        ["UI_MainMenu_SaveSlot_Delete"] = "Удалить сохранение",
         // === Радио / Монологи ===
         ["RADIO_PROMPT"] = "Нажмите Enter, чтобы продолжить",
         ["RADIO_SPEAKER_COMMAND"] = "Радио",
-
+        ["UI_PauseMenu_SaveFeedBack"] = "Игра сохранена",
         ["UI_PauseMenu_Continue"] = "Продолжить",
         ["UI_PauseMenu_SaveGame"] = "Сохраниться",
         ["UI_PauseMenu_ExitToMenu"] = "Выйти в меню",
@@ -48,8 +50,13 @@ public static class LocalizationData
         ["REPORT_MILLION_YEARS"] = "млн лет",
         ["REPORT_SELECT_FIRST"] = "Сначала выберите класс!",
         // === Метки данных ===
+        ["REPORT_VIEWER_EmptyText"] = "Вчера не было исследований образцов",
+        ["REPORT_VIEWER_Verdict"] = "Вердикт руководства",
+        ["REPORT_VIEWER_ResultResearch"] = "Результаты исследований",
 
 
+        ["REPORT_VIEWER_PreviousDay"] = "Предыдущий день",
+        ["REPORT_VIEWER_NextDay"] = "Следующий день",
         // === Классы минералов ===
         ["CLASS_ANOMALY"] = "Аномалия",
         ["CLASS_NATIVE"] = "Самородные",
@@ -121,14 +128,39 @@ public static class LocalizationData
         ["REPORT_Open_Panel"] = "Составить отчёт",
         ["SCANNER_RECORD_DATA"] = "Зафиксировать колебания",
 
+        // В LocalizationData.RU добавь:
+        ["REPORT_VIEWER_TITLE"] = "Результаты исследований",
+        ["REPORT_VIEWER_NO_REPORTS"] = "Нет завершённых отчётов.\nИсследуй минералы и заверши день!",
+        ["REPORT_VIEWER_DAY_TITLE"] = "День {0}: Результаты",
+        ["REPORT_VIEWER_DAY_COUNTER"] = "{0} / {1}",
+        ["REPORT_VIEWER_SAMPLE"] = "Образец №{0}",
+        ["REPORT_VIEWER_CLASS_FORMAT"] = "<size=70%>{0}</size>",  // только класс под номером образца
 
         ["ENDING_TEXT"] = "Вы видели то, что должно было остаться погребённым.\n\nРадиация и одиночество сожгли ваш разум. Вы уже не отличаете явь от бреда.\n\nКорпорация получила всё: данные, патенты, миллиарды. Вас в отчётах нет даже в сноске.\n\nВы остались здесь навсегда. Под снегом. Один.\n\nНикто не придёт.\nНикто не вспомнит.",
 
+        ["AUDIO_MASTER"] = "Громкость общая",
+        ["AUDIO_SFX"] = "Громкость эффектов",
+        ["AUDIO_AMBIENCE"] = "Громкость окружения",
 
     };
 
     public static readonly Dictionary<string, string> EN = new()
     {
+       
+
+        // В LocalizationData.EN добавь:
+        ["REPORT_VIEWER_TITLE"] = "Research Results",
+        ["REPORT_VIEWER_NO_REPORTS"] = "No completed reports yet.\nResearch minerals and complete the day!",
+        ["REPORT_VIEWER_DAY_TITLE"] = "Day {0}: Results",
+        ["REPORT_VIEWER_DAY_COUNTER"] = "{0} / {1}",
+        ["REPORT_VIEWER_SAMPLE"] = "Sample #{0}",
+        ["REPORT_VIEWER_CLASS_FORMAT"] = "<size=70%>{0}</size>",
+
+        ["UI_MainMenu_SaveSlot_Load"] = "Load save",
+        ["UI_MainMenu_SaveSlot_Delete"] = "Delete save",
+        ["AUDIO_MASTER"] = "Master Volume",
+        ["AUDIO_SFX"] = "Sound Effects",
+        ["AUDIO_AMBIENCE"] = "Ambience",
         // === UI ===
         ["UI_SUBMIT"] = "Submit Report",
         ["UI_CANCEL"] = "Cancel",
@@ -149,14 +181,20 @@ public static class LocalizationData
         // === Radio / Monologues ===
         ["RADIO_PROMPT"] = "Press Enter to continue",
         ["RADIO_SPEAKER_COMMAND"] = "Radio",
-
+        ["UI_MainMenu_SaveSlot_EmptyText"] = "Empty slot",
         ["MONOLOGUE_MORNING_DAY2_01"] = "Reception, this is command. New cave coordinates uploaded, same protocol as yesterday.",
         ["MONOLOGUE_MORNING_DAY2_02"] = "Today's quota: four minerals. Any samples that cannot be classified — mark as anomalies and place in the quarantine container.",
         ["MONOLOGUE_MORNING_DAY2_03"] = "Storm incoming, stay sharp. ::*;*%*?() good luck (*:.",
-
+        ["UI_PauseMenu_SaveFeedBack"] = "Game is saved",
         ["MONOLOGUE_MORNING_DAY3_01"] = "*%^$%#*^%^#%#^* coordinates *(?%:*%? hurry ?%?:;**",
         ["MONOLOGUE_MORNING_DAY3_02"] = "It :%%:**?:( *(?*( is close",
+        
+        ["REPORT_VIEWER_Verdict"] = "The verdict of the authorities",
+        ["REPORT_VIEWER_ResultResearch"] = "Research results",
+        ["REPORT_VIEWER_EmptyText"] = "There were no sample studies yesterday",
 
+        ["REPORT_VIEWER_PreviousDay"] = "Previous day",
+        ["REPORT_VIEWER_NextDay"] = "Next day",
         // === Scanner ===
         ["SCANNER_DEFAULT"] = "Crystal system: {0}\nAge: {1}\nRadioactivity: {2}",
         ["CRYSTAL_LABEL"] = "{0}",
