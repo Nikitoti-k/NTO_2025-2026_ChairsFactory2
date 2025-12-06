@@ -4468,8 +4468,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8427d4e4fa2b9864cb32d25862c1f7ca, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  uniqueID: 
-  prefabIdentifier: 
   forwardSpeed: 50
   reverseSpeed: 30
   acceleration: 25
@@ -4485,7 +4483,7 @@ MonoBehaviour:
   engineVolume: 0.8
   maxEnginePitch: 1.8
   engineResponseSpeed: 2
-  engineSoundPosition: {fileID: 238681556}
+  engineSoundPosition: {fileID: 0}
   seatTransform: {fileID: 1955568569}
   fallbackMountOffset: {x: 0, y: 1.2, z: 0.6}
 --- !u!54 &238681552
@@ -8253,7 +8251,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   uniqueID: 
-  prefabIdentifier: 
+  prefabIdentifier: IceDeposit
   hitsRequired: 3
   mineralPrefab: {fileID: 3836979047366133623, guid: 47f3b9d3ac0fd3e459d83c5aacd47797, type: 3}
   spawnPoint: {fileID: 342020125}
@@ -12873,7 +12871,7 @@ GameObject:
   - component: {fileID: 558472290}
   - component: {fileID: 558472289}
   - component: {fileID: 558472288}
-  m_Layer: 0
+  m_Layer: 11
   m_Name: Wall
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -12923,7 +12921,7 @@ MeshRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 558472286}
-  m_Enabled: 1
+  m_Enabled: 0
   m_CastShadows: 1
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
@@ -13195,7 +13193,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   uniqueID: 
-  prefabIdentifier: 
+  prefabIdentifier: IceDeposit
   hitsRequired: 3
   mineralPrefab: {fileID: 3836979047366133623, guid: 9ae6765dfb76da048a579afe50c48d24, type: 3}
   spawnPoint: {fileID: 561327515}
@@ -14978,7 +14976,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   uniqueID: 
-  prefabIdentifier: 
+  prefabIdentifier: IceDeposit
   hitsRequired: 3
   mineralPrefab: {fileID: 3836979047366133623, guid: ea3e2bc19dc995541ad3d4daf3f51c4f, type: 3}
   spawnPoint: {fileID: 640873027}
@@ -17705,7 +17703,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   uniqueID: 
-  prefabIdentifier: 
+  prefabIdentifier: IceDeposit
   hitsRequired: 3
   mineralPrefab: {fileID: 3836979047366133623, guid: 237ecba0a6b766b41bd94e0e537c1510, type: 3}
   spawnPoint: {fileID: 722236704}
@@ -24791,13 +24789,13 @@ GameObject:
   - component: {fileID: 1192938581}
   - component: {fileID: 1192938580}
   - component: {fileID: 1192938579}
-  m_Layer: 0
+  m_Layer: 11
   m_Name: Wall
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 2147483647
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1192938578
 Transform:
   m_ObjectHideFlags: 0
@@ -24807,7 +24805,7 @@ Transform:
   m_GameObject: {fileID: 1192938577}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: 0.42435694, w: 0.90549505}
-  m_LocalPosition: {x: 3.08, y: -3.85, z: -34.4}
+  m_LocalPosition: {x: 3.08, y: -3.85, z: -32.09}
   m_LocalScale: {x: 8.6022, y: 6.5496, z: 5.2359357}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -26226,6 +26224,63 @@ MonoBehaviour:
   isStatic: 1
   terrain: {fileID: 97718442}
   digger: {fileID: 309211427}
+--- !u!1001 &1277329632
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 3836979047366133623, guid: c395a4469781d4c40b5b1f12d347b704, type: 3}
+      propertyPath: m_Name
+      value: Min_3_anomaly
+      objectReference: {fileID: 0}
+    - target: {fileID: 8569012870414844013, guid: c395a4469781d4c40b5b1f12d347b704, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -2.791979
+      objectReference: {fileID: 0}
+    - target: {fileID: 8569012870414844013, guid: c395a4469781d4c40b5b1f12d347b704, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 4.16
+      objectReference: {fileID: 0}
+    - target: {fileID: 8569012870414844013, guid: c395a4469781d4c40b5b1f12d347b704, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -156.37888
+      objectReference: {fileID: 0}
+    - target: {fileID: 8569012870414844013, guid: c395a4469781d4c40b5b1f12d347b704, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8569012870414844013, guid: c395a4469781d4c40b5b1f12d347b704, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8569012870414844013, guid: c395a4469781d4c40b5b1f12d347b704, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8569012870414844013, guid: c395a4469781d4c40b5b1f12d347b704, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8569012870414844013, guid: c395a4469781d4c40b5b1f12d347b704, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8569012870414844013, guid: c395a4469781d4c40b5b1f12d347b704, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8569012870414844013, guid: c395a4469781d4c40b5b1f12d347b704, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: c395a4469781d4c40b5b1f12d347b704, type: 3}
 --- !u!1 &1282271157
 GameObject:
   m_ObjectHideFlags: 0
@@ -32248,7 +32303,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   uniqueID: 
-  prefabIdentifier: 
+  prefabIdentifier: IceDeposit
   hitsRequired: 3
   mineralPrefab: {fileID: 3836979047366133623, guid: c395a4469781d4c40b5b1f12d347b704, type: 3}
   spawnPoint: {fileID: 1562623541}
@@ -37195,7 +37250,7 @@ Transform:
   m_GameObject: {fileID: 1832999329}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.8, y: 3.3, z: -1.1}
+  m_LocalPosition: {x: 779.1, y: 20.8, z: 46.6}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -37262,7 +37317,7 @@ Rigidbody:
   m_UseGravity: 1
   m_IsKinematic: 0
   m_Interpolate: 1
-  m_Constraints: 0
+  m_Constraints: 112
   m_CollisionDetection: 0
 --- !u!114 &1832999338
 MonoBehaviour:
@@ -38694,7 +38749,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   uniqueID: 
-  prefabIdentifier: 
+  prefabIdentifier: IceDeposit
   hitsRequired: 3
   mineralPrefab: {fileID: 3836979047366133623, guid: bb8ed4be9fb35434ca42f738afed6fb8, type: 3}
   spawnPoint: {fileID: 1901387681}
@@ -41678,9 +41733,7 @@ MonoBehaviour:
   tasksDatabase: {fileID: 11400000, guid: 62a74baa6c1eca942b8131da5ff12254, type: 2}
   dayConfigurations:
   - dayName: 1
-    activateObjects:
-    - {fileID: 558472286}
-    - {fileID: 1192938577}
+    activateObjects: []
     deactivateObjects: []
     waypointTarget: {fileID: 1110612076}
   - dayName: 2
@@ -43778,7 +43831,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   uniqueID: 
-  prefabIdentifier: 
+  prefabIdentifier: IceDeposit
   hitsRequired: 3
   mineralPrefab: {fileID: 3836979047366133623, guid: 237ecba0a6b766b41bd94e0e537c1510, type: 3}
   spawnPoint: {fileID: 4834058186964161387}
@@ -43797,7 +43850,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   uniqueID: 
-  prefabIdentifier: 
+  prefabIdentifier: IceDeposit
   hitsRequired: 3
   mineralPrefab: {fileID: 3836979047366133623, guid: bb8ed4be9fb35434ca42f738afed6fb8, type: 3}
   spawnPoint: {fileID: 4834058187758171102}
@@ -43816,7 +43869,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   uniqueID: 
-  prefabIdentifier: 
+  prefabIdentifier: IceDeposit
   hitsRequired: 3
   mineralPrefab: {fileID: 3836979047366133623, guid: 47f3b9d3ac0fd3e459d83c5aacd47797, type: 3}
   spawnPoint: {fileID: 4834058187534453315}
@@ -43835,7 +43888,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   uniqueID: 
-  prefabIdentifier: 
+  prefabIdentifier: IceDeposit
   hitsRequired: 3
   mineralPrefab: {fileID: 3836979047366133623, guid: ea3e2bc19dc995541ad3d4daf3f51c4f, type: 3}
   spawnPoint: {fileID: 4834058188050234374}
@@ -43995,7 +44048,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   uniqueID: 
-  prefabIdentifier: 
+  prefabIdentifier: IceDeposit
   hitsRequired: 3
   mineralPrefab: {fileID: 3836979047366133623, guid: 8d5726580eec5f04e808a63fb618b3d0, type: 3}
   spawnPoint: {fileID: 8873814805207103178}
@@ -45749,3 +45802,4 @@ SceneRoots:
   - {fileID: 1545968348}
   - {fileID: 1825401720}
   - {fileID: 408213409}
+  - {fileID: 1277329632}

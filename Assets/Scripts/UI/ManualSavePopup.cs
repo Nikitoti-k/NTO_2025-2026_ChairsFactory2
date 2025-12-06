@@ -10,7 +10,7 @@ public class ManualSavePopup : MonoBehaviour
 
     private void OnEnable()
     {
-        inputField.text = SaveManager.Instance.GenerateDefaultName();
+        inputField.text = SaveManager.Instance.GenerateDefaultSaveName();
         inputField.Select();
         inputField.ActivateInputField();
     }

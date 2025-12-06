@@ -1,46 +1,60 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
+using System; // ← ЭТО ОБЯЗАТЕЛЬНО!
 
-using System;
+using System.Collections.Generic;
+
 [System.Serializable]
 public class SaveFile
 {
     public const string CURRENT_VERSION = "2.0";
+
     public string version = CURRENT_VERSION;
-    public string checksum;
+    public string checksum;                  // заполняется автоматически перед сохранением
 
     public GameStateBlock gameState = new GameStateBlock();
     public string globalReports = "";
 
     public Vector2 cameraLookDirection;
 
+    // ← ТОЛЬКО ОДИН источник правды про туториал!
     public TutorialSaveData tutorialData = new TutorialSaveData();
-
-    public int tutorialStep = 0;                    // текущий step
-    public int researchedCount = 0;                 // сколько уже исследовано в туториале
-    public bool hasPlayedReturnMonologue = false;
-    public bool hasPlayedFinalMonologue = false;
-    public bool anomalyPlaced = false;
-    public bool playerSlept = false;
 
     public List<ObjectSaveData> objects = new List<ObjectSaveData>();
     public List<MineralSaveData> minerals = new List<MineralSaveData>();
     public List<DepositSaveData> deposits = new List<DepositSaveData>();
+
+    // КРИТИЧЕСКИ ВАЖНЫЙ МЕТОД — возвращает копию без checksum и version (чтобы хеш был стабильным)
+    public SaveFile GetCleanCopy()
+    {
+        return new SaveFile
+        {
+            gameState = this.gameState,
+            globalReports = this.globalReports,
+            cameraLookDirection = this.cameraLookDirection,
+            tutorialData = this.tutorialData,
+            objects = this.objects,
+            minerals = this.minerals,
+            deposits = this.deposits
+        };
+    }
 }
 [System.Serializable]
 public class TutorialSaveData
 {
     public int step = 0;
     public int researchedCount = 0;
-    public bool hasPlayedIntroMonologue = false;  // Новый флаг для 0-го
+
+    public bool hasPlayedIntroMonologue = false;     // ← обязательно true после первого монолога
     public bool hasPlayedReturnMonologue = false;
     public bool hasPlayedFinalMonologue = false;
+
     public bool anomalyPlaced = false;
     public bool playerSlept = false;
-    public bool flareHintWasShown = false;  // Используем существующий из SaveFile
-    // Добавь другие флаги, если нужно (looked, moved и т.д.), но для минимума хватит
-}
+    public bool flareHintWasShown = false;
 
+    // Добавляй сюда новые флаги по мере развития туториала — всё будет сохраняться автоматически
+}
 public interface IHasTutorialData
 {
     TutorialSaveData GetTutorialSaveData();
@@ -110,4 +124,33 @@ public class DepositSaveData
 {
     public string uniqueID;
     public int currentHits;
+}
+
+
+
+[System.Serializable]
+public class SaveSlotMeta
+{
+    public string slotName = "Сохранение";
+    public DateTime saveTime = DateTime.Now;
+
+    // Для удобного отображения в UI
+    public string GetFormattedTime() => saveTime.ToString("dd MMMM yyyy, HH:mm");
+}
+
+
+[System.Serializable]
+public class SaveSlotInfo
+{
+    public int slotIndex;
+    public string slotName;
+    public string saveTime;         // уже отформатированная строка
+    public Texture2D previewTexture;
+    public bool hasData;
+
+    public void DestroyTexture()
+    {
+        if (previewTexture != null && previewTexture != null)
+            UnityEngine.Object.Destroy(previewTexture);
+    }
 }

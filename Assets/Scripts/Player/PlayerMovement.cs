@@ -190,7 +190,31 @@ public class PlayerMovement : MonoBehaviour, IControllable
             Mount(nearest);
         }
     }
+    // Вызывается ТОЛЬКО из системы сохранений — сажает игрока, но НЕ меняет контроллер
+    public void ForceMountWithoutControllerChange(TransportMovement transport)
+    {
+        _rb.isKinematic = true;
+        _rb.useGravity = false;
+        _rb.linearVelocity = Vector3.zero;
+        _rb.interpolation = RigidbodyInterpolation.None;
 
+        var col = GetComponent<Collider>();
+        col.enabled = false;
+
+        Transform seat = transport.seatTransform;
+        if (seat == null)
+        {
+            seat = new GameObject("PlayerSeat").transform;
+            seat.SetParent(transport.transform, false);
+            seat.localPosition = transport.fallbackMountOffset;
+        }
+
+        transform.SetParent(seat);
+        transform.localPosition = Vector3.zero;
+        transform.localRotation = Quaternion.identity;
+
+        _isMounting = false;
+    }
     private void Mount(TransportMovement transport)
     {
         _rb.isKinematic = true;

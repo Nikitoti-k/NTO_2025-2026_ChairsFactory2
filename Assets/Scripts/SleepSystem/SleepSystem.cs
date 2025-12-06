@@ -66,7 +66,7 @@ public class SleepSystem : MonoBehaviour
                   $"NearBed: {nearBed} (dist: {Vector3.Distance(player.transform.position, bedTransform.position):F2}/{maxSleepDistance}) | " +
                   $"TasksDone: {tasksDone} (Reports: {GameDayManager.Instance?.MineralsResearchedToday}/{GameDayManager.Instance?.MineralsToResearch})");
 
-        return true;//weatherAllows && nearBed && tasksDone;
+        return   nearBed && tasksDone;
     }
 
     public void StartSleep()
@@ -97,22 +97,9 @@ public class SleepSystem : MonoBehaviour
     {
         // Затемнение
         yield return FadeTo(1f);
-        yield return new WaitForSeconds(sleepScreenDuration);
-
-        // Телепорт к точке после сна
-        if (spawnPointAfterSleep)
-        {
-            player.transform.position = spawnPointAfterSleep.position;
-            player.transform.rotation = spawnPointAfterSleep.rotation;
-            Debug.Log("[SleepSystem] Телепорт после сна: " + spawnPointAfterSleep.position);
-        }
-
-        // █████████████████████████████████████████████████████████████████
-        // ЗВУК ВЫЛУПЛЕНИЯ ЯЙЦА — ТОЛЬКО НА ПЕРВУЮ НОЧЬ (переход на 2-й день)
-        // █████████████████████████████████████████████████████████████████
         if (!hasPlayedEggHatch &&
-            GameDayManager.Instance != null &&
-            GameDayManager.Instance.CurrentDay == 2)
+           GameDayManager.Instance != null &&
+           GameDayManager.Instance.CurrentDay == 2)
         {
             hasPlayedEggHatch = true;
 
@@ -130,6 +117,17 @@ public class SleepSystem : MonoBehaviour
             {
                 Debug.LogWarning("<color=red>【EGG HATCH】 Не удалось проиграть: клип или AudioManager отсутствует!</color>");
             }
+            yield return new WaitForSeconds(sleepScreenDuration);
+
+        // Телепорт к точке после сна
+        if (spawnPointAfterSleep)
+        {
+            player.transform.position = spawnPointAfterSleep.position;
+            player.transform.rotation = spawnPointAfterSleep.rotation;
+            Debug.Log("[SleepSystem] Телепорт после сна: " + spawnPointAfterSleep.position);
+        }
+
+       
         }
 
         // Рассвет — убираем затемнение

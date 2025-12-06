@@ -1,7 +1,7 @@
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody))]
-public class TransportMovement : MonoBehaviour, IControllable
+public class TransportMovement : SaveableObject, IControllable
 {
     [Header("Скорость")]
     [SerializeField] private float forwardSpeed = 16f;
@@ -41,8 +41,10 @@ public class TransportMovement : MonoBehaviour, IControllable
     private float _currentEnginePitch = 0.8f; // старт с холостого
     private bool _isEngineRunning;
 
-    private void Awake()
+    protected override void Awake()
     {
+        base.Awake(); // ← это вызовет генерацию uniqueID, если его нет
+
         _rb = GetComponent<Rigidbody>();
         _rb.interpolation = RigidbodyInterpolation.Interpolate;
         _rb.freezeRotation = true;
@@ -50,7 +52,6 @@ public class TransportMovement : MonoBehaviour, IControllable
         _rb.solverVelocityIterations = 16;
         _rb.solverIterations = 10;
 
-        // Создаём AudioSource для мотора
         SetupEngineAudio();
     }
 
