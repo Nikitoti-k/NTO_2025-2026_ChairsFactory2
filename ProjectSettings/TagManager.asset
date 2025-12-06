@@ -7,7 +7,6 @@ TagManager:
   - DoorHandle
   - ScannerJoystick
   - Door
-  - triger
   layers:
   - Default
   - TransparentFX
