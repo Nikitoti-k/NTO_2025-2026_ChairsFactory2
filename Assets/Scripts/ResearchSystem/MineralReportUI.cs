@@ -101,9 +101,9 @@ public class MineralReportUI : MonoBehaviour, ILocalizable
             string crystal = LocalizationManager.Loc(GetCrystalKey(link.mineralClass.crystalSystem));
 
             details =
-                $"{LocalizationManager.Loc("BUTTON_AGE")}: {ageRange} {LocalizationManager.Loc(ageUnitKey)}\n" +
-                $"{LocalizationManager.Loc("BUTTON_RAD")}: {radRange} µSv/h\n" +
-                $"{LocalizationManager.Loc("BUTTON_CRYSTAL")}: {crystal}";
+                $"{LocalizationManager.Loc("REPORT_AGE")}: {ageRange} {LocalizationManager.Loc(ageUnitKey)}\n" +
+                $"{LocalizationManager.Loc("REPORT_RAD")}: {radRange} \n" +
+                $"{LocalizationManager.Loc("REPORT_CRYSTAL")}: {crystal}";
         }
 
         link.tmp.text = $"<size=28><b>{name}</b></size>\n<size=19>{details}</size>";
