@@ -787,6 +787,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   editorLanguage: 0
+  csvLoader: {fileID: 11400000, guid: 29889dd77788850499d124310add50a5, type: 2}
 --- !u!4 &303798494
 Transform:
   m_ObjectHideFlags: 0
