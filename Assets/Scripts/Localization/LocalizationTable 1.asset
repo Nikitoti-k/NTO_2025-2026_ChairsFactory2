@@ -10,6 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6da40d79dedfeb946acd2100c9d9748d, type: 3}
-  m_Name: LocalizationTable
+  m_Name: LocalizationTable 1
   m_EditorClassIdentifier: 
-  csvFile: {fileID: 4900000, guid: f2fc07c67cf018840bdae39dc7af3d09, type: 3}
+  editorCsvFile: {fileID: 4900000, guid: 9478b5a0ecce39942946dccf8d57dbb5, type: 3}
+  streamingFileName: localization.csv

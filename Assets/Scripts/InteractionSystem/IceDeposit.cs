@@ -30,17 +30,7 @@ public class IceDeposit : SaveableObject, IHasDepositData
             gameObject.SetActive(false);
         }
     }
-    private void LateUpdate()
-    {
-        Debug.Log($"[IceDeposit:{name}] Awake | currentHits = {currentHits} | active = {gameObject.activeSelf}");
-
-        // Если уже сломано — отключаем сразу
-        if (currentHits >= hitsRequired)
-        {
-            Debug.Log($"[IceDeposit:{name}] ПРИ СТАРТЕ УЖЕ СЛОМАН — ОТКЛЮЧАЕМ!");
-            gameObject.SetActive(false);
-        }
-    }
+  
     public void Hit()
     {
         if (_isBreaking || currentHits >= hitsRequired) return;

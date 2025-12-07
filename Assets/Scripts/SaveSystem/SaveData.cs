@@ -44,28 +44,42 @@ public class SaveFile
         };
     }
 }
-
 [System.Serializable]
 public class TutorialSaveData
 {
     public int step = 0;
     public int researchedCount = 0;
 
-    public bool hasPlayedMorningDay2 = false;
-    public bool hasPlayedMorningDay3 = false;
+    // Монологи
     public bool hasPlayedIntroMonologue = false;
     public bool hasPlayedReturnMonologue = false;
     public bool hasPlayedFinalMonologue = false;
+    public bool hasPlayedMorningDay2 = false;
+    public bool hasPlayedMorningDay3 = false;
 
-    public bool flareHintActive;
-    public bool flareThrown;
-
+    // Ключевые флаги прогресса
+    public bool flareHintActive = false;
+    public bool flareThrown = false;
     public bool anomalyPlaced = false;
     public bool playerSlept = false;
 
-    public bool flareHintWasShown = false;
-
-    public bool returnedHintShown = false;   // ← НОВОЕ ПОЛЕ
+    // === ОДНОРАЗОВЫЕ ПОДСКАЗКИ (НИКОГДА БОЛЬШЕ НЕ ПОКАЗЫВАТЬ) ===
+    public bool hintShown_Look = false;           // 0
+    public bool hintShown_Move = false;           // 1
+    public bool hintShown_Door = false;           // 2
+    public bool hintShown_Vehicle = false;        // 3
+    public bool hintShown_Flare = false;          // 4
+    public bool hintShown_Break = false;          // 5
+    public bool hintShown_Carry = false;          // 6
+    public bool hintShown_Return = false;         // 7
+    public bool hintShown_Table = false;          // 8
+    public bool hintShown_ScanMove = false;       // 9
+    public bool hintShown_ScanClick = false;      // 10
+    public bool hintShown_Accuracy = false;       // 11
+    public bool hintShown_FindMore = false;       // 12
+    public bool hintShown_Conclusion = false;     // 13 — ВАЖНО: только один раз!
+    public bool hintShown_AnomalyPlace = false;   // 14
+    public bool hintShown_GoToBed = false;        // 15
 }
 
 public interface IHasTutorialData
@@ -141,15 +155,6 @@ public class DepositSaveData
 
 
 
-[System.Serializable]
-public class SaveSlotMeta
-{
-    public string slotName = "Сохранение";
-    public DateTime saveTime = DateTime.Now;
-
-    // Для удобного отображения в UI
-    public string GetFormattedTime() => saveTime.ToString("dd MMMM yyyy, HH:mm");
-}
 
 
 [System.Serializable]

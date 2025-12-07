@@ -294,14 +294,12 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
     private void OnMineralPlacedInVehicle(GrabbableItem item)
     {
         if (item.ItemType != GrabbableType.Mineral) return;
-
         if (step == 6 && !firstMineralPlaced)
         {
             firstMineralPlaced = true;
             Success();
             return;
         }
-
         if (step == 7 && vehicleMineralSnapZone.AttachedItemsCount >= GameDayManager.Instance.MineralsToResearch && !returnedHintShown)
         {
             ShowHintByStep(7);
@@ -352,8 +350,8 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
             // === ПОДСКАЗКА "СДЕЛАЙТЕ ВЫВОД" — ТОЛЬКО ОДИН РАЗ ЗА ВЕСЬ ТУТОРИАЛ ===
             if (!conclusionHintShown)
             {
-                ShowHintByStep(13); // "Сделайте вывод, к какому классу относится образец..."
-                conclusionHintShown = true;
+                ShowHintByStep(13);
+                conclusionHintShown = true; // ← теперь сохранится навсегда
             }
 
             // === ФИНАЛЬНЫЙ МОНОЛОГ — ТОЛЬКО ДЛЯ АНОМАЛЬНОГО (ПОСЛЕДНЕГО) МИНЕРАЛА ===
@@ -430,7 +428,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
             }
         }
     }
-
+    
     private void OnAllReportsSubmitted()
     {
         if (!bedHintShown && !playerSlept && anomalyPlaced)
@@ -550,14 +548,28 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
 
             flareHintActive = flareHintActive,
             flareThrown = flareThrown,
-
             anomalyPlaced = anomalyPlaced,
             playerSlept = playerSlept,
 
-            returnedHintShown = this.returnedHintShown   // ← обязательно!
+            // === СОХРАНЯЕМ ВСЕ ПОДСКАЗКИ ===
+            hintShown_Look = looked,
+            hintShown_Move = moved,
+            hintShown_Door = doorOpened,
+            hintShown_Vehicle = vehicleEntered,
+            hintShown_Flare = flareHintActive && flareThrown,
+            hintShown_Break = depositBroken,
+            hintShown_Carry = firstMineralPlaced,
+            hintShown_Return = returnedHintShown,
+            hintShown_Table = researchTableHintShown,
+            hintShown_ScanMove = scanMoveHintShown,
+            hintShown_ScanClick = scanClickHintShown,
+            hintShown_Accuracy = accuracyHintShown,
+            hintShown_FindMore = showedFindTwoMore,
+            hintShown_Conclusion = conclusionHintShown,
+            hintShown_AnomalyPlace = anomalyHintShown,
+            hintShown_GoToBed = bedHintShown
         };
     }
-
 
     public void LoadTutorialSaveData(TutorialSaveData data)
     {
@@ -567,20 +579,36 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
 
         step = data.step;
         researchedCount = data.researchedCount;
-        anomalyPlaced = data.anomalyPlaced;
-        playerSlept = data.playerSlept;
 
-        flareHintActive = data.flareHintActive;
-        flareThrown = data.flareThrown;
-        returnedHintShown = data.returnedHintShown;  // ← ВОССТАНОВЛЕНИЕ!
-        // ←←←←← ВОССТАНАВЛИВАЕМ ВСЕ ФЛАГИ МОНОЛОГОВ
         HasPlayedIntroMonologue = data.hasPlayedIntroMonologue;
         HasPlayedReturnMonologue = data.hasPlayedReturnMonologue;
         HasPlayedFinalMonologue = data.hasPlayedFinalMonologue;
         HasPlayedMorningDay2 = data.hasPlayedMorningDay2;
         HasPlayedMorningDay3 = data.hasPlayedMorningDay3;
-       
 
+        flareHintActive = data.flareHintActive;
+        flareThrown = data.flareThrown;
+        anomalyPlaced = data.anomalyPlaced;
+        playerSlept = data.playerSlept;
+
+        // === ВОССТАНАВЛИВАЕМ ФЛАГИ ПОДСКАЗОК ===
+        looked = data.hintShown_Look;
+        moved = data.hintShown_Move;
+        doorOpened = data.hintShown_Door;
+        vehicleEntered = data.hintShown_Vehicle;
+        depositBroken = data.hintShown_Break;
+        firstMineralPlaced = data.hintShown_Carry;
+        returnedHintShown = data.hintShown_Return;
+        researchTableHintShown = data.hintShown_Table;
+        scanMoveHintShown = data.hintShown_ScanMove;
+        scanClickHintShown = data.hintShown_ScanClick;
+        accuracyHintShown = data.hintShown_Accuracy;
+        showedFindTwoMore = data.hintShown_FindMore;
+        conclusionHintShown = data.hintShown_Conclusion;
+        anomalyHintShown = data.hintShown_AnomalyPlace;
+        bedHintShown = data.hintShown_GoToBed;
+
+        // Восстанавливаем монологи в радио
         if (radioMonologue != null)
         {
             radioMonologue.HasPlayedIntroMonologue = data.hasPlayedIntroMonologue;
@@ -588,28 +616,44 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
             radioMonologue.HasPlayedFinalMonologue = data.hasPlayedFinalMonologue;
         }
 
-        if (playerSlept)
+        if (playerSlept || conclusionHintShown)
         {
-            if (hintPanel) hintPanel.SetActive(false);
             gameObject.SetActive(false);
+            hintPanel?.SetActive(false);
             return;
         }
 
         gameObject.SetActive(true);
         enabled = true;
 
-        // ВАЖНО: НЕ показываем подсказку автоматически, если это шаг 4!
-        if (step == 4)
+        // Важно: НЕ показываем подсказку, если она уже была показана!
+        if (step < hintKeys.Length)
         {
-            if (flareHintActive)
-                ShowHintByStep(4); // только если уже активировали извне
-            else
-                hintPanel.SetActive(false); // на всякий случай
-        }
+            bool shouldShow = step switch
+            {
+                0 => !looked,
+                1 => !moved,
+                2 => !doorOpened,
+                3 => !vehicleEntered,
+                4 => flareHintActive && !data.hintShown_Flare,
+                5 => !depositBroken,
+                6 => !firstMineralPlaced,
+                7 => !returnedHintShown,
+                8 => !researchTableHintShown,
+                9 => !scanMoveHintShown,
+                10 => !scanClickHintShown,
+                11 => !accuracyHintShown,
+                12 => !showedFindTwoMore,
+                13 => !conclusionHintShown,
+                14 => !anomalyHintShown,
+                15 => !bedHintShown,
+                _ => true
+            };
 
-        else if (step < hintKeys.Length)
-        {
-            ShowHintByStep(step);
+            if (shouldShow)
+                ShowHintByStep(step);
+            else
+                hintPanel?.SetActive(false);
         }
     }
 

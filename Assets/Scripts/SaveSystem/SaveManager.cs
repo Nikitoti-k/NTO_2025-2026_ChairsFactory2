@@ -60,15 +60,11 @@ public class SaveManager : MonoBehaviour
             : customName.Trim();
 
         int targetSlot = ChooseSlotForSave();
-
         var save = new SaveFile { version = SaveFile.CURRENT_VERSION };
         CollectAllSaveData(ref save);
 
-        var meta = new SaveSlotMeta
-        {
-            slotName = slotName,
-            saveTime = DateTime.Now
-        };
+        // Используем наш новый Create()
+        var meta = SaveSlotMeta.Create(slotName);
 
         string slotFolder = GetSlotFolder(targetSlot);
         Directory.CreateDirectory(slotFolder);
@@ -79,33 +75,6 @@ public class SaveManager : MonoBehaviour
 
         StartCoroutine(SaveWithCleanPreviewCoroutine(targetSlot, save, meta, dataPath, metaPath, previewPath));
     }
-
-    public void AutoSave() => SaveGame("Автосохранение");
-
-    public void LoadFromSlot(int slotIndex)
-    {
-        string folder = GetSlotFolder(slotIndex);
-        if (!File.Exists(Path.Combine(folder, "data.json")))
-        {
-            Debug.LogWarning($"Слот {slotIndex} пустой");
-            return;
-        }
-
-        pendingLoadSlot = slotIndex;
-        forceNewGame = false; // на всякий случай
-        SceneManager.LoadScene("GameScene");
-    }
-
-    public void DeleteSlot(int slotIndex)
-    {
-        string folder = GetSlotFolder(slotIndex);
-        if (Directory.Exists(folder))
-        {
-            try { Directory.Delete(folder, true); }
-            catch (System.Exception e) { Debug.LogError("Не удалось удалить слот: " + e); }
-        }
-    }
-
     public List<SaveSlotInfo> GetAllSaveSlots()
     {
         var list = new List<SaveSlotInfo>();
@@ -129,6 +98,8 @@ public class SaveManager : MonoBehaviour
                 {
                     string metaJson = File.ReadAllText(metaPath);
                     SaveSlotMeta meta = JsonUtility.FromJson<SaveSlotMeta>(metaJson);
+                    meta.ResolveDateTime(); // ← Восстанавливаем правильную дату!
+
                     info.slotName = meta.slotName;
                     info.saveTime = meta.saveTime.ToString("dd MMMM yyyy, HH:mm");
 
@@ -140,8 +111,9 @@ public class SaveManager : MonoBehaviour
                         info.previewTexture = tex;
                     }
                 }
-                catch
+                catch (System.Exception e)
                 {
+                    Debug.LogError("Ошибка чтения meta.json: " + e);
                     info.slotName = "Повреждено";
                     info.saveTime = "??";
                 }
@@ -155,27 +127,195 @@ public class SaveManager : MonoBehaviour
             list.Add(info);
         }
 
-        // Сортировка: сначала новые, потом старые, пустые — в конец
+        // Сортировка по реальной дате (теперь надёжно!)
         return list
-            .OrderByDescending(x => x.hasData ? DateTime.TryParse(x.saveTime, out var dt) ? dt : DateTime.MinValue : DateTime.MinValue)
+            .OrderByDescending(x =>
+            {
+                if (!x.hasData) return DateTime.MinValue;
+                if (DateTime.TryParse(x.saveTime, out var dt)) return dt;
+                return DateTime.MinValue;
+            })
             .ThenBy(x => x.slotIndex)
             .ToList();
     }
+    public void AutoSave() => SaveGame("Автосохранение");
+
+    public void LoadFromSlot(int slotIndex)
+    {
+        string folder = GetSlotFolder(slotIndex);
+        string dataPath = Path.Combine(folder, "data.json");
+
+        if (!File.Exists(dataPath))
+        {
+            Debug.LogWarning($"Слот {slotIndex} пустой");
+            ShowLoadError("SAVE_ERROR_CORRUPTED"); // или можно отдельный ключ, если хочешь
+            return;
+        }
+
+        if (!IsSaveFileValid(dataPath, out string errorKey))
+        {
+            ShowLoadError(errorKey);
+            return;
+        }
+
+        // Всё ок — грузим игру
+        pendingLoadSlot = slotIndex;
+        forceNewGame = false;
+        SceneManager.LoadScene("GameScene");
+    }
+    private bool IsSaveFileValid(string dataPath, out string errorKey)
+    {
+        errorKey = "SAVE_ERROR_CORRUPTED"; // дефолтная ошибка
+
+        try
+        {
+            string json = File.ReadAllText(dataPath);
+            SaveFile save = JsonUtility.FromJson<SaveFile>(json);
+
+            // Проверка версии
+            if (save.version != SaveFile.CURRENT_VERSION)
+            {
+                if (save.version == "1.0" || string.IsNullOrEmpty(save.version))
+                {
+                    // миграция возможна — считаем валидным
+                    return true;
+                }
+                else
+                {
+                    errorKey = "SAVE_ERROR_VERSION";
+                    return false;
+                }
+            }
+
+            // Проверка checksum
+            var cleanCopy = save.GetCleanCopy();
+            string cleanJson = JsonUtility.ToJson(cleanCopy, true);
+            if (save.checksum != ComputeHash(cleanJson))
+            {
+                errorKey = "SAVE_ERROR_CHECKSUM";
+                return false;
+            }
+
+            return true;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError("Ошибка чтения/валидации сохранения: " + e);
+            errorKey = "SAVE_ERROR_READ";
+            return false;
+        }
+    }
+
+    private void ShowLoadError(string localizationKey)
+    {
+        var menu = FindObjectOfType<SaveLoadMenu>();
+        menu?.ShowErrorMessage(LocalizationManager.Loc(localizationKey));
+    }
+
+   
+    public void DeleteSlot(int slotIndex)
+    {
+        string folder = GetSlotFolder(slotIndex);
+        if (Directory.Exists(folder))
+        {
+            try { Directory.Delete(folder, true); }
+            catch (System.Exception e) { Debug.LogError("Не удалось удалить слот: " + e); }
+        }
+    }
+
+    /*  public List<SaveSlotInfo> GetAllSaveSlots()
+      {
+          var list = new List<SaveSlotInfo>();
+
+          for (int i = 0; i < MAX_SLOTS; i++)
+          {
+              string folder = GetSlotFolder(i);
+              string dataPath = Path.Combine(folder, "data.json");
+              string metaPath = Path.Combine(folder, "meta.json");
+              string previewPath = Path.Combine(folder, "preview.png");
+
+              SaveSlotInfo info = new SaveSlotInfo
+              {
+                  slotIndex = i,
+                  hasData = File.Exists(dataPath)
+              };
+
+              if (info.hasData)
+              {
+                  try
+                  {
+                      string metaJson = File.ReadAllText(metaPath);
+                      SaveSlotMeta meta = JsonUtility.FromJson<SaveSlotMeta>(metaJson);
+                      info.slotName = meta.slotName;
+                      info.saveTime = meta.saveTime.ToString("dd MMMM yyyy, HH:mm");
+
+                      if (File.Exists(previewPath))
+                      {
+                          byte[] bytes = File.ReadAllBytes(previewPath);
+                          Texture2D tex = new Texture2D(2, 2, TextureFormat.RGB24, false);
+                          tex.LoadImage(bytes);
+                          info.previewTexture = tex;
+                      }
+                  }
+                  catch
+                  {
+                      info.slotName = "Повреждено";
+                      info.saveTime = "??";
+                  }
+              }
+              else
+              {
+                  info.slotName = "Пустой слот";
+                  info.saveTime = "";
+              }
+
+              list.Add(info);
+          }
+
+          // Сортировка: сначала новые, потом старые, пустые — в конец
+          return list
+              .OrderByDescending(x => x.hasData ? DateTime.TryParse(x.saveTime, out var dt) ? dt : DateTime.MinValue : DateTime.MinValue)
+              .ThenBy(x => x.slotIndex)
+              .ToList();
+      }*/
 
     #endregion
 
     #region === ВНУТРЕННЯЯ ЛОГИКА СОХРАНЕНИЯ ===
+    private int GetNewestExistingSlot()
+    {
+        DateTime newest = DateTime.MinValue;
+        int newestIndex = -1;
 
+        for (int i = 0; i < MAX_SLOTS; i++)
+        {
+            string metaPath = Path.Combine(GetSlotFolder(i), "meta.json");
+            if (!File.Exists(metaPath)) continue;
+
+            try
+            {
+                var meta = JsonUtility.FromJson<SaveSlotMeta>(File.ReadAllText(metaPath));
+                meta.ResolveDateTime();
+                if (meta.saveTime > newest)
+                {
+                    newest = meta.saveTime;
+                    newestIndex = i;
+                }
+            }
+            catch { }
+        }
+        return newestIndex;
+    }
     private int ChooseSlotForSave()
     {
-        // 1. Ищем полностью пустой слот
+        // 1. Ищем пустой слот
         for (int i = 0; i < MAX_SLOTS; i++)
         {
             if (!File.Exists(Path.Combine(GetSlotFolder(i), "data.json")))
                 return i;
         }
 
-        // 2. Все заняты — ищем самый старый по дате в meta.json
+        // 2. Все заняты — ищем самый старый
         DateTime oldest = DateTime.MaxValue;
         int oldestIndex = 0;
 
@@ -187,6 +327,7 @@ public class SaveManager : MonoBehaviour
             try
             {
                 var meta = JsonUtility.FromJson<SaveSlotMeta>(File.ReadAllText(metaPath));
+                meta.ResolveDateTime();
                 if (meta.saveTime < oldest)
                 {
                     oldest = meta.saveTime;
@@ -194,11 +335,10 @@ public class SaveManager : MonoBehaviour
                 }
             }
             catch
-            { /* повреждённый meta — можно смело перезаписать */
-                return i;
+            {
+                return i; // повреждённый meta — можно перезаписать
             }
         }
-
         return oldestIndex;
     }
 
@@ -275,7 +415,7 @@ public class SaveManager : MonoBehaviour
         else
             File.Move(tmpPath, dataPath);
 
-        SaveFeedbackUI.ShowSave();
+        //SaveFeedbackUI.ShowSave();
         Debug.Log($"Игра сохранена в слот {slot} — {meta.slotName}");
     }
     private Texture2D CreateCleanPreview(Texture2D source)
@@ -369,7 +509,7 @@ public class SaveManager : MonoBehaviour
     /// <summary>
     /// Возвращает индекс самого нового слота или -1
     /// </summary>
-    private int GetNewestExistingSlot()
+  /*  private int GetNewestExistingSlot()
     {
         DateTime newestTime = DateTime.MinValue;
         int newestIndex = -1;
@@ -388,11 +528,11 @@ public class SaveManager : MonoBehaviour
                     newestIndex = i;
                 }
             }
-            catch { /* повреждённый meta — пропускаем */ }
+            catch { /* повреждённый meta — пропускаем  }
         }
 
         return newestIndex;
-    }
+    }*/
 
     private IEnumerator LoadGameCoroutine(string dataPath, bool isNewGame)
     {
@@ -431,15 +571,21 @@ public class SaveManager : MonoBehaviour
         string cleanJson = JsonUtility.ToJson(cleanCopy, true);
         if (save.checksum != ComputeHash(cleanJson))
         {
-            Debug.LogError("Контрольная сумма не совпала! Файл повреждён.");
-            // Можно добавить диалог "Сохранение повреждено, начать новую игру?"
+            Debug.LogError("Контрольная сумма не совпала! Файл повреждён или изменён вручную.");
+
+            // ←←← ВЫВОДИМ СООБЩЕНИЕ В МЕНЮ
+            var menu = FindObjectOfType<SaveLoadMenu>();
+            if (menu != null)
+                menu.ShowErrorMessage("Сохранение повреждено или было изменено вручную.\nЗагрузка невозможна.");
+            else
+                Debug.LogWarning("SaveLoadMenu не найден — не удалось показать ошибку игроку");
+
             yield break;
         }
-
         // === ЗАГРУЗКА ДАННЫХ ===
         ApplySaveData(save, isNewGame);
 
-        SaveFeedbackUI.ShowLoad();
+        //SaveFeedbackUI.ShowLoad();
         Debug.Log($"Сохранение успешно загружено ({dataPath})");
     }
 
@@ -455,7 +601,7 @@ public class SaveManager : MonoBehaviour
             hasPlayedFinalMonologue = save.GetType().GetField("hasPlayedFinalMonologue")?.GetValue(save) is bool b2 && b2,
             anomalyPlaced = save.GetType().GetField("anomalyPlaced")?.GetValue(save) is bool a && a,
             playerSlept = save.GetType().GetField("playerSlept")?.GetValue(save) is bool p && p,
-            flareHintWasShown = false
+            //flareHintWasShown = false
         };
 
         // Очищаем старые поля через рефлексию (чтобы не падало при сохранении)
@@ -728,4 +874,35 @@ public class SaveManager : MonoBehaviour
     }
 
     #endregion
+}
+[Serializable]
+public class SaveSlotMeta
+{
+    public string slotName;
+
+    // Сохраняем как Unix timestamp в секундах — это надёжно везде
+    public long saveTimeUnix;
+
+    // Это поле НЕ сериализуется, только для удобства в коде
+    [NonSerialized]
+    public DateTime saveTime;
+
+    // Статический метод для создания при сохранении
+    public static SaveSlotMeta Create(string name)
+    {
+        var meta = new SaveSlotMeta
+        {
+            slotName = name,
+            saveTimeUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds(), // UTC → Unix
+            saveTime = DateTime.Now // локальное время для отображения
+        };
+        return meta;
+    }
+
+    // Вызывать сразу после JsonUtility.FromJson
+    public void ResolveDateTime()
+    {
+        // Преобразуем Unix → UTC → локальное время устройства
+        saveTime = DateTimeOffset.FromUnixTimeSeconds(saveTimeUnix).LocalDateTime;
+    }
 }

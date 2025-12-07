@@ -32,15 +32,14 @@ public class LocalizationManager : MonoBehaviour
             Destroy(gameObject);
             return;
         }
-        editorLanguage = Language.RU;
-        currentLanguage = Language.RU;
+
         Instance = this;
         DontDestroyOnLoad(gameObject);
 
         LoadAllLanguagesFromCSV();
 
-        Language savedLang = PlayerPrefs.GetString("Language", "RU") == "EN" ? Language.EN : Language.RU;
-        ApplyLanguageFromSave(savedLang);
+        // Дефолтный язык — русский, пока не подгрузим из сохранения
+        ApplyLanguageFromSave(Language.RU);
 
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.update += EditorUpdate;
@@ -82,30 +81,30 @@ private void LoadLanguage(Language lang)
     }
 }
 
-public static void ApplyLanguageFromSave(Language lang)
-{
-    if (Instance == null) return;
-   // if (Instance.currentLanguage == lang) return;
-
-    Instance.currentLanguage = lang;
-    Instance.editorLanguage = lang;
-    PlayerPrefs.SetString("Language", lang.ToString());
-    PlayerPrefs.Save();
-
-    Instance.LoadLanguage(lang);
-    OnLanguageChanged?.Invoke(lang);
-
-    // Обновляем все подписанные объекты
-    for (int i = Instance.localizables.Count - 1; i >= 0; i--)
+    public static void ApplyLanguageFromSave(Language lang)
     {
-        if (Instance.localizables[i].TryGetTarget(out var target) && target != null)
-            target.Localize();
-        else
-            Instance.localizables.RemoveAt(i);
-    }
-}
+        if (Instance == null) return;
 
-public static void SetLanguage(Language lang) => ApplyLanguageFromSave(lang);
+        Instance.currentLanguage = lang;
+        Instance.editorLanguage = lang;
+
+        // Больше НЕ сохраняем в PlayerPrefs!
+        // PlayerPrefs.SetString("Language", lang.ToString());
+        // PlayerPrefs.Save();
+
+        Instance.LoadLanguage(lang);
+        OnLanguageChanged?.Invoke(lang);
+
+        for (int i = Instance.localizables.Count - 1; i >= 0; i--)
+        {
+            if (Instance.localizables[i].TryGetTarget(out var target) && target != null)
+                target.Localize();
+            else
+                Instance.localizables.RemoveAt(i);
+        }
+    }
+
+    public static void SetLanguage(Language lang) => ApplyLanguageFromSave(lang);
 
 public static string Loc(string key)
 {

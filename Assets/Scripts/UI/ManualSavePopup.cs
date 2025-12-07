@@ -22,7 +22,7 @@ public class ManualSavePopup : MonoBehaviour
         {
             string name = string.IsNullOrWhiteSpace(inputField.text) ? null : inputField.text.Trim();
             SaveManager.Instance.SaveGame(name);
-            SaveFeedbackUI.ShowSave();
+           // SaveFeedbackUI.ShowSave();
             PauseManager.Instance.CloseSavePopup();
         });
 
