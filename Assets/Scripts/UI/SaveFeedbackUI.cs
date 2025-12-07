@@ -23,7 +23,7 @@ public class SaveFeedbackUI : MonoBehaviour
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
-        DontDestroyOnLoad(gameObject);
+      //  DontDestroyOnLoad(gameObject);
 
         // Скрываем сразу
         if (icon) icon.enabled = false;

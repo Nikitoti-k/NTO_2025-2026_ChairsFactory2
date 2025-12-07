@@ -32,6 +32,8 @@ public class LocalizationManager : MonoBehaviour
             Destroy(gameObject);
             return;
         }
+        editorLanguage = Language.RU;
+        currentLanguage = Language.RU;
         Instance = this;
         DontDestroyOnLoad(gameObject);
 
@@ -83,7 +85,7 @@ private void LoadLanguage(Language lang)
 public static void ApplyLanguageFromSave(Language lang)
 {
     if (Instance == null) return;
-    if (Instance.currentLanguage == lang) return;
+   // if (Instance.currentLanguage == lang) return;
 
     Instance.currentLanguage = lang;
     Instance.editorLanguage = lang;
