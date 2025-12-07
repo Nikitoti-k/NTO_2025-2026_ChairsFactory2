@@ -24,13 +24,14 @@ public class PauseManager : MonoBehaviour
     [SerializeField] private Button settingsButton;
     private void Awake()
     {
+        Instance = this;
         if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
             return;
         }
         Instance = this;
-        DontDestroyOnLoad(gameObject);
+       // DontDestroyOnLoad(gameObject);
         pauseMenuUI.SetActive(false);
         if (manualSavePopup) manualSavePopup.SetActive(false);
     }

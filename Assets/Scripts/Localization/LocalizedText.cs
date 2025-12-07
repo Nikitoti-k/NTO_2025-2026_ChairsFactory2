@@ -13,7 +13,7 @@ public class LocalizedText : MonoBehaviour, ILocalizable
     private TextMeshProUGUI tmpText;
     private Text legacyText;
 
-    private void Awake()
+    private void Start()
     {
         tmpText = GetComponent<TextMeshProUGUI>();
         legacyText = GetComponent<Text>();

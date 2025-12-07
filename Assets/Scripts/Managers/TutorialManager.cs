@@ -34,10 +34,14 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
         "TUT_ANOMALY_PLACE",  // 14
         "TUT_GO_TO_BED"       // 15
     };
-
+    public bool HasPlayedIntroMonologue { get; set; } = false;
+    public bool HasPlayedReturnMonologue { get; set; } = false;
+    public bool HasPlayedFinalMonologue { get; set; } = false;
+    public bool HasPlayedMorningDay2 { get; set; } = false;
+    public bool HasPlayedMorningDay3 { get; set; } = false;
     [SerializeField] private Transform baseReturnPoint;
     [SerializeField] private float baseReturnDistance = 30f;
-
+   
     [Space]
     [SerializeField] public RadioMonologue radioMonologue;
     [SerializeField] public SnapZone vehicleMineralSnapZone;
@@ -141,7 +145,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
         if (step < hintKeys.Length)
         {
             string baseText = LocalizationManager.Loc(hintKeys[step]);
-            hintText.text = waitingHold ? baseText + " Готово" : baseText;
+            hintText.text = waitingHold ? baseText + " "+ LocalizationManager.Loc("TUT_Done") : baseText;
         }
     }
 
@@ -531,30 +535,51 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
 
     // ==================== Сохранение ====================
     public string GetUniqueID() => "TutorialSystem";
-
     public TutorialSaveData GetTutorialSaveData()
     {
         return new TutorialSaveData
         {
             step = step,
             researchedCount = researchedCount,
-            hasPlayedIntroMonologue = radioMonologue != null && radioMonologue.HasPlayedIntroMonologue,
-            hasPlayedReturnMonologue = radioMonologue != null && radioMonologue.HasPlayedReturnMonologue,
-            hasPlayedFinalMonologue = radioMonologue != null && radioMonologue.HasPlayedFinalMonologue,
+
+            hasPlayedIntroMonologue = HasPlayedIntroMonologue,
+            hasPlayedReturnMonologue = HasPlayedReturnMonologue,
+            hasPlayedFinalMonologue = HasPlayedFinalMonologue,
+            hasPlayedMorningDay2 = HasPlayedMorningDay2,
+            hasPlayedMorningDay3 = HasPlayedMorningDay3,
+
+            flareHintActive = flareHintActive,
+            flareThrown = flareThrown,
+
             anomalyPlaced = anomalyPlaced,
-            playerSlept = playerSlept
+            playerSlept = playerSlept,
+
+            returnedHintShown = this.returnedHintShown   // ← обязательно!
         };
     }
+
 
     public void LoadTutorialSaveData(TutorialSaveData data)
     {
         if (data == null) return;
 
         ResetAllFlags();
+
         step = data.step;
         researchedCount = data.researchedCount;
         anomalyPlaced = data.anomalyPlaced;
         playerSlept = data.playerSlept;
+
+        flareHintActive = data.flareHintActive;
+        flareThrown = data.flareThrown;
+        returnedHintShown = data.returnedHintShown;  // ← ВОССТАНОВЛЕНИЕ!
+        // ←←←←← ВОССТАНАВЛИВАЕМ ВСЕ ФЛАГИ МОНОЛОГОВ
+        HasPlayedIntroMonologue = data.hasPlayedIntroMonologue;
+        HasPlayedReturnMonologue = data.hasPlayedReturnMonologue;
+        HasPlayedFinalMonologue = data.hasPlayedFinalMonologue;
+        HasPlayedMorningDay2 = data.hasPlayedMorningDay2;
+        HasPlayedMorningDay3 = data.hasPlayedMorningDay3;
+       
 
         if (radioMonologue != null)
         {
@@ -573,8 +598,19 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
         gameObject.SetActive(true);
         enabled = true;
 
-        if (step < hintKeys.Length)
+        // ВАЖНО: НЕ показываем подсказку автоматически, если это шаг 4!
+        if (step == 4)
+        {
+            if (flareHintActive)
+                ShowHintByStep(4); // только если уже активировали извне
+            else
+                hintPanel.SetActive(false); // на всякий случай
+        }
+
+        else if (step < hintKeys.Length)
+        {
             ShowHintByStep(step);
+        }
     }
 
     public bool CanGrabAnyMineralFromVehicle()

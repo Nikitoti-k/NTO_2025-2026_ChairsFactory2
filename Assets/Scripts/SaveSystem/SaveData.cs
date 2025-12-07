@@ -44,22 +44,30 @@ public class SaveFile
         };
     }
 }
+
 [System.Serializable]
 public class TutorialSaveData
 {
     public int step = 0;
     public int researchedCount = 0;
 
-    public bool hasPlayedIntroMonologue = false;     // ← обязательно true после первого монолога
+    public bool hasPlayedMorningDay2 = false;
+    public bool hasPlayedMorningDay3 = false;
+    public bool hasPlayedIntroMonologue = false;
     public bool hasPlayedReturnMonologue = false;
     public bool hasPlayedFinalMonologue = false;
 
+    public bool flareHintActive;
+    public bool flareThrown;
+
     public bool anomalyPlaced = false;
     public bool playerSlept = false;
+
     public bool flareHintWasShown = false;
 
-    // Добавляй сюда новые флаги по мере развития туториала — всё будет сохраняться автоматически
+    public bool returnedHintShown = false;   // ← НОВОЕ ПОЛЕ
 }
+
 public interface IHasTutorialData
 {
     TutorialSaveData GetTutorialSaveData();

@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -25,8 +25,8 @@ public class LocalizationManager : MonoBehaviour
         Instance = this;
         DontDestroyOnLoad(gameObject);
 
-        // Ïî óìîë÷àíèþ — ðóññêèé, ÿçûê áóäåò ïåðåçàïèñàí èç ñîõðàíåíèÿ
-        currentLanguage = Language.RU;
+        // ÐŸÐ¾ ÑƒÐ¼Ð¾Ð»Ñ‡Ð°Ð½Ð¸ÑŽ â€” Ñ€ÑƒÑÑÐºÐ¸Ð¹, ÑÐ·Ñ‹Ðº Ð±ÑƒÐ´ÐµÑ‚ Ð¿ÐµÑ€ÐµÐ·Ð°Ð¿Ð¸ÑÐ°Ð½ Ð¸Ð· ÑÐ¾Ñ…Ñ€Ð°Ð½ÐµÐ½Ð¸Ñ
+       // currentLanguage = Language.RU;
         LoadLanguage(currentLanguage);
 
 #if UNITY_EDITOR
@@ -42,7 +42,7 @@ public class LocalizationManager : MonoBehaviour
     }
 #endif
 
-    // Âûçûâàåòñÿ èç SaveManager — åäèíñòâåííûé ñïîñîá ñìåíèòü ÿçûê
+    // Ð’Ñ‹Ð·Ñ‹Ð²Ð°ÐµÑ‚ÑÑ Ð¸Ð· SaveManager â€” ÐµÐ´Ð¸Ð½ÑÑ‚Ð²ÐµÐ½Ð½Ñ‹Ð¹ ÑÐ¿Ð¾ÑÐ¾Ð± ÑÐ¼ÐµÐ½Ð¸Ñ‚ÑŒ ÑÐ·Ñ‹Ðº
    
 
     private void LoadLanguage(Language lang)
@@ -71,7 +71,7 @@ public class LocalizationManager : MonoBehaviour
         }
     }
 
-    // Îñòàâëÿåì ñîâìåñòèìîñòü ñî ñòàðûì êîäîì
+    // ÐžÑÑ‚Ð°Ð²Ð»ÑÐµÐ¼ ÑÐ¾Ð²Ð¼ÐµÑÑ‚Ð¸Ð¼Ð¾ÑÑ‚ÑŒ ÑÐ¾ ÑÑ‚Ð°Ñ€Ñ‹Ð¼ ÐºÐ¾Ð´Ð¾Ð¼
     public static void SetLanguage(Language lang) => ApplyLanguageFromSave(lang);
     public static string Loc(string key)
     {

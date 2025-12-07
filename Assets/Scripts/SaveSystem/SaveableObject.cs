@@ -5,7 +5,7 @@ using System.Linq;
 public class SaveableObject : MonoBehaviour, ISaveableV2
 {
     [Header("Save System")]
-    [SerializeField] protected string uniqueID = "";
+    [SerializeField] public string uniqueID = "";
     [SerializeField] protected string prefabIdentifier = "";
 
     protected Rigidbody rb;

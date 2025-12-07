@@ -23,7 +23,7 @@ public class InputManager : MonoBehaviour
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
-        DontDestroyOnLoad(gameObject);
+       // DontDestroyOnLoad(gameObject);
 
         _actions = new PlayerControls();
         _actions.Player.Enable();

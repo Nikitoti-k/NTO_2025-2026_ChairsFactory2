@@ -227,15 +227,13 @@ public class SaveManager : MonoBehaviour
     }
 
     private IEnumerator SaveWithCleanPreviewCoroutine(int slot, SaveFile saveFile, SaveSlotMeta meta,
-        string dataPath, string metaPath, string previewPath)
+     string dataPath, string metaPath, string previewPath)
     {
-        // Ждём конца кадра, чтобы UI точно отрисовался
         yield return new WaitForEndOfFrame();
 
-        // === СКРЫВАЕМ ВЕСЬ UI ===
+        
         Canvas[] allCanvases = FindObjectsOfType<Canvas>(true);
         var originalStates = new List<(Canvas canvas, bool active)>();
-
         foreach (var canvas in allCanvases)
         {
             if (canvas.isRootCanvas && canvas.gameObject.activeInHierarchy)
@@ -245,29 +243,29 @@ public class SaveManager : MonoBehaviour
             }
         }
 
-        // Ещё один кадр — чтобы скрытие применилось
         yield return new WaitForEndOfFrame();
 
-        // Делаем скриншот
         Texture2D screenshot = ScreenCapture.CaptureScreenshotAsTexture();
-        Texture2D preview = CreateCleanPreview(screenshot);
+
+
+    Texture2D preview = CreateCleanPreview(screenshot);      
+
+
         Destroy(screenshot);
 
-        // Возвращаем UI
+      
         foreach (var (canvas, wasActive) in originalStates)
             canvas.gameObject.SetActive(wasActive);
 
-        // Сохраняем превью
+      
         File.WriteAllBytes(previewPath, preview.EncodeToPNG());
         Destroy(preview);
 
-        // === НАДЁЖНОЕ СОХРАНЕНИЕ ФАЙЛА ===
+       
         string cleanJson = JsonUtility.ToJson(saveFile.GetCleanCopy(), true);
         saveFile.checksum = ComputeHash(cleanJson);
-
         string finalJson = JsonUtility.ToJson(saveFile, true);
 
-        // Пишем через .tmp → заменяем атомарно
         string tmpPath = dataPath + ".tmp";
         File.WriteAllText(tmpPath, finalJson);
         File.WriteAllText(metaPath, JsonUtility.ToJson(meta, true));
@@ -280,25 +278,46 @@ public class SaveManager : MonoBehaviour
         SaveFeedbackUI.ShowSave();
         Debug.Log($"Игра сохранена в слот {slot} — {meta.slotName}");
     }
-
     private Texture2D CreateCleanPreview(Texture2D source)
     {
-        int targetWidth = 256;
-        int targetHeight = 144;
+        int width = 256;
+        int height = 144;
 
-        RenderTexture rt = RenderTexture.GetTemporary(targetWidth, targetHeight, 0, RenderTextureFormat.ARGB32);
-        Graphics.Blit(source, rt, new Vector2(1, -1), new Vector2(0, 1)); // переворачиваем по Y (Unity делает upside-down)
+        RenderTexture rt = RenderTexture.GetTemporary(width, height, 0, RenderTextureFormat.ARGB32);
+        Graphics.Blit(source, rt, new Vector2(1, -1), new Vector2(1, 0));
 
+        RenderTexture previous = RenderTexture.active;
         RenderTexture.active = rt;
-        Texture2D result = new Texture2D(targetWidth, targetHeight, TextureFormat.RGB24, false);
-        result.ReadPixels(new Rect(0, 0, targetWidth, targetHeight), 0, 0);
-        result.Apply();
 
-        RenderTexture.active = null;
+        Texture2D preview = new Texture2D(width, height, TextureFormat.RGB24, false);
+        preview.ReadPixels(new Rect(0, 0, width, height), 0, 0);
+        preview.Apply();  
+
+        RenderTexture.active = previous;
         RenderTexture.ReleaseTemporary(rt);
-        return result;
+
+        return preview;  
     }
 
+    // Вспомогательная функция — делает текстуру читаемой (если Read/Write Disabled)
+    private Texture2D MakeTextureReadable(Texture2D original)
+    {
+        RenderTexture tmp = RenderTexture.GetTemporary(
+            original.width, original.height, 0,
+            RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+
+        Graphics.Blit(original, tmp);
+        RenderTexture.active = tmp;
+
+        Texture2D readable = new Texture2D(original.width, original.height, TextureFormat.RGBA32, false);
+        readable.ReadPixels(new Rect(0, 0, tmp.width, tmp.height), 0, 0);
+        readable.Apply();
+
+        RenderTexture.active = null;
+        RenderTexture.ReleaseTemporary(tmp);
+
+        return readable;
+    }
     #endregion
 
     // Продолжение в следующем сообщении → Часть 2/3 (загрузка и OnSceneLoaded)
@@ -306,6 +325,8 @@ public class SaveManager : MonoBehaviour
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
+       
+
         if (!scene.name.Equals("GameScene"))
             return;
 
@@ -519,47 +540,104 @@ public class SaveManager : MonoBehaviour
             settingsUI.Localize();
         }
 
-        // Объекты на сцене
-        var mineralDict = save.minerals.ToDictionary(m => m.uniqueID, m => m);
-        var depositDict = save.deposits.ToDictionary(d => d.uniqueID, d => d);
-        var existingSaveables = FindObjectsOfType<MonoBehaviour>(true)
-            .OfType<ISaveableV2>()
-            .ToList();
-        var toInstantiate = new List<ObjectSaveData>(save.objects);
+        
+      
+            var allSaveableObjects = FindObjectsOfType<SaveableObject>(true); // ← true = including inactive!!!
+            Debug.Log($"[SaveManager] Найдено SaveableObject (включая отключённые): {allSaveableObjects.Length}");
 
-        foreach (var saveable in existingSaveables)
+            var mineralDict = save.minerals.ToDictionary(m => m.uniqueID, m => m);
+            var depositDict = save.deposits.ToDictionary(d => d.uniqueID, d => d);
+
+            var toInstantiate = new List<ObjectSaveData>(save.objects);
+
+            // 1. Сначала обрабатываем ВСЕ объекты, которые УЖЕ есть на сцене (включая отключённые)
+            foreach (var saveableObj in allSaveableObjects)
+            {
+                string uid = saveableObj.GetUniqueID();
+                var commonData = toInstantiate.Find(d => d.uniqueID == uid);
+
+                if (commonData == null)
+                {
+                    Debug.Log($"[SaveManager] Нет данных для объекта на сцене: {saveableObj.name} (ID: {uid}) — пропускаем");
+                    continue;
+                }
+
+                Debug.Log($"[SaveManager] Загружаем данные для существующего объекта: {saveableObj.name} (ID: {uid})");
+
+                // Загружаем общие данные (позиция, вращение и т.д.)
+                saveableObj.LoadCommonData(commonData);
+
+                // Загружаем Deposit-данные, если есть
+                if (saveableObj.TryGetComponent<IHasDepositData>(out var deposit))
+                {
+                    if (depositDict.TryGetValue(uid, out var depData))
+                    {
+                        Debug.Log($"[SaveManager] → Загружаем DepositData для {saveableObj.name}: hits = {depData.currentHits}");
+                        deposit.LoadDepositData(depData);
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"[SaveManager] → Нет DepositData для {saveableObj.name}, хотя есть IHasDepositData");
+                    }
+                }
+
+                // Загружаем Mineral-данные, если есть
+                if (saveableObj.TryGetComponent<IHasMineralData>(out var mineral))
+                {
+                    if (mineralDict.TryGetValue(uid, out var minData))
+                    {
+                        Debug.Log($"[SaveManager] → Загружаем MineralData для {saveableObj.name}");
+                        mineral.LoadMineralData(minData);
+                    }
+                }
+
+                toInstantiate.Remove(commonData);
+            }
+
+            // 2. Создаём объекты, которых не было на сцене
+            foreach (var data in toInstantiate)
+            {
+                var prefab = prefabRegistry?.GetPrefab(data.prefabIdentifier);
+                if (prefab == null)
+                {
+                    Debug.LogWarning($"[SaveManager] Префаб не найден: {data.prefabIdentifier}");
+                    continue;
+                }
+
+                Debug.Log($"[SaveManager] Создаём новый объект из сохранения: {data.prefabIdentifier}");
+                var obj = Instantiate(prefab, data.position, data.rotation);
+
+                if (obj.TryGetComponent<ISaveableV2>(out var saveable))
+                {
+                    saveable.LoadCommonData(data);
+
+                    if (saveable is IHasDepositData dep && depositDict.TryGetValue(data.uniqueID, out var depData))
+                    {
+                        Debug.Log($"[SaveManager] → Новый объект — загружаем DepositData: hits = {depData.currentHits}");
+                        dep.LoadDepositData(depData);
+                    }
+
+                    if (saveable is IHasMineralData min && mineralDict.TryGetValue(data.uniqueID, out var minData))
+                        min.LoadMineralData(minData);
+                }
+            }
+        foreach (var m in save.minerals)
         {
-            var data = toInstantiate.Find(d => d.uniqueID == saveable.GetUniqueID());
-            if (data == null) continue;
-            saveable.LoadCommonData(data);
-            if (saveable is IHasMineralData min && mineralDict.TryGetValue(data.uniqueID, out var minData))
-                min.LoadMineralData(minData);
-            if (saveable is IHasDepositData dep && depositDict.TryGetValue(data.uniqueID, out var depData))
-                dep.LoadDepositData(depData);
-            toInstantiate.Remove(data);
+            if (!mineralDict.ContainsKey(m.uniqueID))
+                mineralDict[m.uniqueID] = m;
+            else
+                Debug.LogWarning($"[SaveManager] Дубликат MineralSaveData ID: {m.uniqueID}");
         }
 
-        foreach (var data in toInstantiate)
+        foreach (var d in save.deposits)
         {
-            var prefab = prefabRegistry?.GetPrefab(data.prefabIdentifier);
-            if (prefab == null)
-            {
-                Debug.LogWarning($"Префаб не найден: {data.prefabIdentifier}");
-                continue;
-            }
-            var obj = Instantiate(prefab, data.position, data.rotation);
-            if (obj.TryGetComponent<ISaveableV2>(out var saveable))
-            {
-                saveable.LoadCommonData(data);
-                if (saveable is IHasMineralData min && mineralDict.TryGetValue(data.uniqueID, out var minData))
-                    min.LoadMineralData(minData);
-                if (saveable is IHasDepositData dep && depositDict.TryGetValue(data.uniqueID, out var depData))
-                    dep.LoadDepositData(depData);
-            }
+            if (!depositDict.ContainsKey(d.uniqueID))
+                depositDict[d.uniqueID] = d;
+            else
+                Debug.LogWarning($"[SaveManager] Дубликат DepositSaveData ID: {d.uniqueID}");
         }
-
         StartCoroutine(FinalizeLoading());
-    }
+        }
 
     private IEnumerator FinalizeLoading()
     {

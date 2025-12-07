@@ -18,7 +18,7 @@ public class FlarePool : MonoBehaviour
             return;
         }
         Instance = this;
-        DontDestroyOnLoad(gameObject);
+     //   DontDestroyOnLoad(gameObject);
         InitializePool();
     }
 
