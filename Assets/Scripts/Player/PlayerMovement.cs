@@ -86,13 +86,13 @@ public class PlayerMovement : MonoBehaviour, IControllable
     {
         bool grounded = IsGrounded();
 
-        // Переход на землю — первый шаг
+       
         if (!_lastGroundedState && grounded)
         {
             PlayFootstep();
         }
 
-        // Шаги при движении
+      
         if (grounded && _smoothedInput.sqrMagnitude > 0.1f && Time.time >= _lastFootstepTime + footstepInterval)
         {
             PlayFootstep();
@@ -190,7 +190,7 @@ public class PlayerMovement : MonoBehaviour, IControllable
             Mount(nearest);
         }
     }
-    // Вызывается ТОЛЬКО из системы сохранений — сажает игрока, но НЕ меняет контроллер
+   
     public void ForceMountWithoutControllerChange(TransportMovement transport)
     {
         _rb.isKinematic = true;

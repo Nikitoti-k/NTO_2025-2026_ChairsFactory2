@@ -23,10 +23,9 @@ public class IceDeposit : SaveableObject, IHasDepositData
 
         Debug.Log($"[IceDeposit:{name}] Awake | currentHits = {currentHits} | active = {gameObject.activeSelf}");
 
-        // Если уже сломано — отключаем сразу
+       
         if (currentHits >= hitsRequired && _hasBeenLoaded == false)
         {
-            Debug.Log($"[IceDeposit:{name}] ПРИ СТАРТЕ УЖЕ СЛОМАН — ОТКЛЮЧАЕМ!");
             gameObject.SetActive(false);
         }
     }
@@ -66,7 +65,7 @@ public class IceDeposit : SaveableObject, IHasDepositData
 
     private void PlayBreakSoundAndDisable()
     {
-        // звук...
+       
         if (AudioManager.Instance?.audioDatabase != null &&
             AudioManager.Instance.audioDatabase.TryGetSound(breakSoundKey, out var soundEvent))
         {
@@ -101,10 +100,6 @@ public class IceDeposit : SaveableObject, IHasDepositData
         return p.name.Replace("(Clone)", "").Trim();
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // КЛЮЧЕВЫЕ МЕТОДЫ СОХРАНЕНИЯ
-    // ─────────────────────────────────────────────────────────────
-
     public DepositSaveData GetDepositSaveData()
     {
         var data = new DepositSaveData { uniqueID = uniqueID, currentHits = currentHits };
@@ -131,12 +126,12 @@ public class IceDeposit : SaveableObject, IHasDepositData
         }
     }
 
-    // ЭТО САМОЕ ВАЖНОЕ — ПЕРЕОПРЕДЕЛЯЕМ, ЧТОБЫ НЕ ВКЛЮЧАЛ НАС ОБРАТНО!
+   
     public override void LoadCommonData(ObjectSaveData data)
     {
         base.LoadCommonData(data);
 
-        // Даже если SaveableObject включил нас — мы снова выключаем, если сломаны
+        
         if (currentHits >= hitsRequired)
         {
             Debug.Log($"[IceDeposit:{name}] ПРИНУДИТЕЛЬНО ВЫКЛЮЧАЕМ после LoadCommonData (был сломан)");

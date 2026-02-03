@@ -31,7 +31,7 @@ public class AudioManager : MonoBehaviour
     [SerializeField] private float minMusicInterval = 60f;
     [SerializeField] private float maxMusicInterval = 120f;
 
-    [Header("=== ТЕСТОВЫЙ АВТОЗАПУСК ===")]
+    [Header("ТЕСТОВЫЙ АВТОЗАПУСК")]
     [SerializeField] private bool playTestAudioOnStart = true;
     [SerializeField] private AudioClip testMusicClip;
     [SerializeField] private AudioClip testAmbienceClip;
@@ -69,24 +69,24 @@ public class AudioManager : MonoBehaviour
         StartCoroutine(PlayPeriodicMusic());
     }
 
-    // ВЫЗЫВАЕТСЯ ИЗ SaveManager ПОСЛЕ ЗАГРУЗКИ СОХРАНЕНИЯ
+   
     public void ApplyVolumesFromSave()
     {
         float master = masterVolume;
 
-        // Музыка
+        
         if (musicSourceA != null) musicSourceA.volume = musicVolume * master;
         if (musicSourceB != null) musicSourceB.volume = musicVolume * master;
 
-        // Ambience
+        
         if (ambienceSource != null && ambienceSource.isPlaying)
             ambienceSource.volume = ambienceVolume * master;
 
-        // Persistent SFX
+        
         if (persistentSfxSource != null && persistentSfxSource.isPlaying)
             persistentSfxSource.volume = sfxVolume * master;
 
-        // Активные SFX из пула — обновляем через Update() (уже есть ниже)
+      
     }
 
     private AudioSource CreateMusicSource(string name)
@@ -100,7 +100,7 @@ public class AudioManager : MonoBehaviour
         return src;
     }
 
-    // ====================== SFX ======================
+  
     public void PlaySFX(string key, float volumeMultiplier = 1f, float pitch = 1f, Vector3? position = null)
     {
         if (audioDatabase == null || sfxPool == null || !audioDatabase.TryGetSound(key, out var se)) return;
@@ -134,7 +134,7 @@ public class AudioManager : MonoBehaviour
         source.Play();
     }
 
-    // ====================== PERSISTENT SFX ======================
+    
     public void PlayPersistentSFX(string key, float volumeMultiplier = 1f, float pitch = 1f)
     {
         if (audioDatabase == null || sfxPool == null || !audioDatabase.TryGetSound(key, out var se)) return;
@@ -172,7 +172,7 @@ public class AudioManager : MonoBehaviour
 
     private void Update()
     {
-        // Обновляем persistent SFX каждый кадр
+       
         if (persistentSfxSource != null && persistentSfxSource.isPlaying)
         {
             persistentSfxSource.volume = sfxVolume * masterVolume;
@@ -194,7 +194,7 @@ public class AudioManager : MonoBehaviour
         persistentSfxSource = null;
     }
 
-    // ====================== MUSIC ======================
+   
     public void PlayMusic(AudioClip clip, float fadeTime = 1f)
     {
         if (clip == null) return;
@@ -252,7 +252,7 @@ public class AudioManager : MonoBehaviour
         source.volume = musicVolume * masterVolume;
     }
 
-    // ====================== AMBIENCE ======================
+    
     public void PlayDefaultAmbience()
     {
         if (audioDatabase != null && audioDatabase.TryGetSound(defaultAmbienceKey, out var ambienceEvent))

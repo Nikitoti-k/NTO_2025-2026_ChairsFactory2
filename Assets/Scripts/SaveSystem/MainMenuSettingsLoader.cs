@@ -32,18 +32,18 @@ public class MainMenuSettingsLoader : MonoBehaviour
             string json = File.ReadAllText(latestFile);
             SaveFile save = JsonUtility.FromJson<SaveFile>(json);
 
-            // === ГРОМКОСТЬ ===
+          
             if (AudioManager.Instance != null)
             {
                 var am = AudioManager.Instance;
                 am.masterVolume = Mathf.Clamp01(save.masterVolume);
                 am.sfxVolume = Mathf.Clamp01(save.sfxVolume);
                 am.ambienceVolume = Mathf.Clamp01(save.ambienceVolume);
-               // am.musicVolume = Mathf.Clamp01(save.musicVolume); // если сохранял
+              
                 am.ApplyVolumesFromSave();
             }
 
-            // === ЯЗЫК ===
+            
             if (!string.IsNullOrEmpty(save.language) &&
                 Enum.TryParse<LocalizationManager.Language>(save.language, out var lang))
             {
@@ -54,7 +54,7 @@ public class MainMenuSettingsLoader : MonoBehaviour
                 LocalizationManager.ApplyLanguageFromSave(LocalizationManager.Language.RU);
             }
 
-            // Обновляем UI настроек, если оно уже открыто
+            
             var settingsUI = FindObjectOfType<AudioSettingsUI>();
             if (settingsUI != null)
             {
@@ -94,7 +94,7 @@ public class MainMenuSettingsLoader : MonoBehaviour
 
     private void ApplyDefaultSettings()
     {
-        // Дефолтные значения
+        
         if (AudioManager.Instance != null)
         {
             var am = AudioManager.Instance;
@@ -112,7 +112,7 @@ public class MainMenuSettingsLoader : MonoBehaviour
         }
     }
 
-    // Можно вызвать вручную (например, по кнопке "Применить настройки из игры")
+   
     [ContextMenu("Загрузить настройки из последнего сохранения")]
     private void LoadFromContextMenu()
     {

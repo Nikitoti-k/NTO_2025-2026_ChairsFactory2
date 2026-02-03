@@ -1,7 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
-using System; // ← ЭТО ОБЯЗАТЕЛЬНО!
-
+using System;
 using System.Collections.Generic;
 
 [System.Serializable]
@@ -16,11 +15,11 @@ public class SaveFile
     public Vector2 cameraLookDirection;
     public TutorialSaveData tutorialData = new TutorialSaveData();
 
-    // ← НОВЫЕ ПОЛЯ ДЛЯ НАСТРОЕК
+    
     public float masterVolume = 1f;
     public float sfxVolume = 1f;
     public float ambienceVolume = 1f;
-    public string language = "RU"; // "RU" или "EN"
+    public string language = "RU"; 
 
     public List<ObjectSaveData> objects = new List<ObjectSaveData>();
     public List<MineralSaveData> minerals = new List<MineralSaveData>();
@@ -50,36 +49,36 @@ public class TutorialSaveData
     public int step = 0;
     public int researchedCount = 0;
 
-    // Монологи
+   
     public bool hasPlayedIntroMonologue = false;
     public bool hasPlayedReturnMonologue = false;
     public bool hasPlayedFinalMonologue = false;
     public bool hasPlayedMorningDay2 = false;
     public bool hasPlayedMorningDay3 = false;
 
-    // Ключевые флаги прогресса
+    
     public bool flareHintActive = false;
     public bool flareThrown = false;
     public bool anomalyPlaced = false;
     public bool playerSlept = false;
 
-    // === ОДНОРАЗОВЫЕ ПОДСКАЗКИ (НИКОГДА БОЛЬШЕ НЕ ПОКАЗЫВАТЬ) ===
-    public bool hintShown_Look = false;           // 0
-    public bool hintShown_Move = false;           // 1
-    public bool hintShown_Door = false;           // 2
-    public bool hintShown_Vehicle = false;        // 3
-    public bool hintShown_Flare = false;          // 4
-    public bool hintShown_Break = false;          // 5
-    public bool hintShown_Carry = false;          // 6
-    public bool hintShown_Return = false;         // 7
-    public bool hintShown_Table = false;          // 8
-    public bool hintShown_ScanMove = false;       // 9
-    public bool hintShown_ScanClick = false;      // 10
-    public bool hintShown_Accuracy = false;       // 11
-    public bool hintShown_FindMore = false;       // 12
-    public bool hintShown_Conclusion = false;     // 13 — ВАЖНО: только один раз!
-    public bool hintShown_AnomalyPlace = false;   // 14
-    public bool hintShown_GoToBed = false;        // 15
+   
+    public bool hintShown_Look = false;           
+    public bool hintShown_Move = false;          
+    public bool hintShown_Door = false;           
+    public bool hintShown_Vehicle = false;        
+    public bool hintShown_Flare = false;          
+    public bool hintShown_Break = false;          
+    public bool hintShown_Carry = false;          
+    public bool hintShown_Return = false;        
+    public bool hintShown_Table = false;          
+    public bool hintShown_ScanMove = false;       
+    public bool hintShown_ScanClick = false;     
+    public bool hintShown_Accuracy = false;       
+    public bool hintShown_FindMore = false;       
+    public bool hintShown_Conclusion = false;     
+    public bool hintShown_AnomalyPlace = false;  
+    public bool hintShown_GoToBed = false;       
 }
 
 public interface IHasTutorialData
@@ -124,7 +123,7 @@ public class GameStateBlock
     public float currentTimeInMinutes;
     public int depositsBrokenToday;
     public int mineralsResearchedToday;
-    // ← Единственное, что сохраняем от DayActivation
+    
   
 }
 
@@ -162,7 +161,7 @@ public class SaveSlotInfo
 {
     public int slotIndex;
     public string slotName;
-    public string saveTime;         // уже отформатированная строка
+    public string saveTime;         
     public Texture2D previewTexture;
     public bool hasData;
 

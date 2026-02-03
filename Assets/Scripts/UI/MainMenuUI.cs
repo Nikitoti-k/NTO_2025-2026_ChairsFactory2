@@ -13,8 +13,8 @@ public class MainMenuUI : MonoBehaviour, ILocalizable
     [SerializeField] private Button quitButton;
 
     [Header("Переключение языка")]
-    [SerializeField] private Button languageButton;           // ← НОВАЯ КНОПКА
-    [SerializeField] private TextMeshProUGUI languageButtonText; // Текст на кнопке (RU / EN)
+    [SerializeField] private Button languageButton;         
+    [SerializeField] private TextMeshProUGUI languageButtonText;
 
     [Header("Меню слотов")]
     [SerializeField] private GameObject saveLoadMenu;
@@ -27,7 +27,7 @@ public class MainMenuUI : MonoBehaviour, ILocalizable
 
     private void Awake()
     {
-        // Авто-нахождение кнопки языка, если не назначена
+       
         if (languageButton == null)
         {
             var btn = transform.Find("LanguageButton")?.GetComponent<Button>();
@@ -50,13 +50,13 @@ public class MainMenuUI : MonoBehaviour, ILocalizable
         {
             languageButton.onClick.RemoveAllListeners();
             languageButton.onClick.AddListener(ToggleLanguage);
-            UpdateLanguageButtonText(); // Установим правильный текст сразу
+            UpdateLanguageButtonText();
         }
 
         if (errorText) errorText.gameObject.SetActive(false);
         saveLoadMenu.SetActive(false);
 
-        // Регистрируемся для обновления при смене языка извне
+      
         LocalizationManager.OnLanguageChanged += OnLanguageChanged;
     }
 
@@ -78,7 +78,7 @@ public class MainMenuUI : MonoBehaviour, ILocalizable
     public void Localize()
     {
         UpdateLanguageButtonText();
-        // Если используешь LocalizedText на кнопках — они сами обновятся
+      
     }
 
     private void OnLanguageChanged(LocalizationManager.Language lang)
@@ -102,13 +102,13 @@ public class MainMenuUI : MonoBehaviour, ILocalizable
 
         LocalizationManager.SetLanguage(newLang);
 
-        // ────── БЕЗОПАСНЫЙ ВАРИАНТ анимации ──────
+      
         var anim = languageButton?.GetComponent<Animator>();
         if (anim != null && anim.isActiveAndEnabled)
         {
-            anim.Play("Click", -1, 0f); // или просто "Click"
+            anim.Play("Click", -1, 0f);
         }
-        // Если анимации нет — ничего не делаем, никаких ошибок!
+      
 
         Debug.Log($"[MainMenu] Язык переключён на: {newLang}");
     }

@@ -70,7 +70,7 @@ public class ResearchReportViewer : MonoBehaviour, ILocalizable
 
     public void Localize()
     {
-        UpdatePanelVisuals(); // перерисовываем при смене языка
+        UpdatePanelVisuals(); 
     }
 
     private void OnDayCompleted()
@@ -146,7 +146,7 @@ public class ResearchReportViewer : MonoBehaviour, ILocalizable
 
     private void UpdatePanelVisuals()
     {
-        // Очистка
+        
         foreach (Transform child in contentParent)
             Destroy(child.gameObject);
 
@@ -187,8 +187,8 @@ public class ResearchReportViewer : MonoBehaviour, ILocalizable
             if (img)
             {
                 img.color = result.wasCorrect
-                    ? new Color(0.1f, 0.8f, 0.1f, 0.95f) // зелёный
-                    : new Color(0.8f, 0.2f, 0.2f, 0.95f); // красный
+                    ? new Color(0.1f, 0.8f, 0.1f, 0.95f) 
+                    : new Color(0.8f, 0.2f, 0.2f, 0.95f);
             }
         }
     }

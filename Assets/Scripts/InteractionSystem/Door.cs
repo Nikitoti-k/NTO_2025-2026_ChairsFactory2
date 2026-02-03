@@ -9,8 +9,8 @@ public class Door : GrabbableItem
     [SerializeField] private float closeDamper = 0f;
 
     [Header("Скрип двери")]
-    [SerializeField] private AudioClip doorCreak;           // один клип со скрипом (1–4 сек)
-    [SerializeField] [Range(1f, 100f)] private float minVelocity = 20f;  // порог скорости
+    [SerializeField] private AudioClip doorCreak;          
+    [SerializeField] [Range(1f, 100f)] private float minVelocity = 20f;  
     [SerializeField] [Range(0.3f, 1.5f)] private float basePitch = 1f;
     [SerializeField] [Range(0f, 0.3f)] private float randomPitch = 0.15f;
 
@@ -23,7 +23,7 @@ public class Door : GrabbableItem
         hinge = GetComponent<HingeJoint>();
         var rb = GetComponent<Rigidbody>();
 
-        // Настройка пружины закрытия
+        
         var limits = hinge.limits;
         limits.min = -maxAngle;
         limits.max = maxAngle;
@@ -37,12 +37,12 @@ public class Door : GrabbableItem
             targetPosition = 0
         };
 
-        // Один AudioSource прямо на двери — самый простой и надёжный способ
+    
         creakSource = gameObject.AddComponent<AudioSource>();
         creakSource.clip = doorCreak;
         creakSource.loop = true;
         creakSource.playOnAwake = false;
-        creakSource.spatialBlend = 1f;     // 3D-звук
+        creakSource.spatialBlend = 1f;     
         creakSource.volume = 0.7f;
         creakSource.dopplerLevel = 0f;
 

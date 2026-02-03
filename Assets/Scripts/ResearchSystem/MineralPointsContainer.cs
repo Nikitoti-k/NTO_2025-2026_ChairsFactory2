@@ -44,9 +44,7 @@ public class MineralData : MonoBehaviour
     [Header("════ TUTORIAL ════")]
     [SerializeField] private Outline tutorialOutline;
 
-    // ────────────────────────
-    // УМНЫЕ СВОЙСТВА — что видит игрок
-    // ────────────────────────
+   
 
     public float AgeMya => isAnomalyOverride
         ? overrideAge
@@ -60,7 +58,7 @@ public class MineralData : MonoBehaviour
         ? overrideCrystalSystem
         : mineralClass.crystalSystem;
 
-    // ← КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: теперь единицы полностью локализованы!
+    
     public string AgeUnitText
     {
         get
@@ -75,7 +73,7 @@ public class MineralData : MonoBehaviour
     public string ClassName => mineralClass != null ? mineralClass.localizationKey : "Неизвестно";
     public MineralClass MineralClassSO => mineralClass;
 
-    // Базовые значения (генерируются для обычных минералов)
+  
     public float realAge;
     public float realRadioactivity;
     public string UniqueInstanceID;
@@ -83,9 +81,9 @@ public class MineralData : MonoBehaviour
     public bool isTutorialHighlighted = false;
     public bool isLastInTutorialQueue = false;
 
-    [HideInInspector] public bool isAnomaly = false; // ставится при выборе класса «Аномалия»
+    [HideInInspector] public bool isAnomaly = false;
 
-    // Сохранённые строки сканирования (уже с префиксами и локализацией)
+    
     [HideInInspector] public string savedAgeLine = "";
     [HideInInspector] public string savedCrystalLine = "";
     [HideInInspector] public string savedRadioactivityLine = "";
@@ -115,7 +113,7 @@ public class MineralData : MonoBehaviour
         realRadioactivity = UnityEngine.Random.Range(mineralClass.radioactivityMin, mineralClass.radioactivityMax);
     }
 
-    // Save / Load
+  
     public MineralSaveData GetMineralSaveData() => new MineralSaveData
     {
         realAge = realAge,

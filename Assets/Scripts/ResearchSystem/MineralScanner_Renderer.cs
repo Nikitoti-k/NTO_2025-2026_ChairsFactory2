@@ -8,7 +8,7 @@ public class MineralScanner_Renderer : MonoBehaviour, ILocalizable
 {
     public static MineralScanner_Renderer Instance { get; private set; }
 
-    // === СОБЫТИЯ ===
+   
     private event System.Action<float> OnProximityChanged;
     public void SubscribeToProximity(System.Action<float> c) => OnProximityChanged += c;
     public void UnsubscribeFromProximity(System.Action<float> c) => OnProximityChanged -= c;
@@ -44,7 +44,7 @@ public class MineralScanner_Renderer : MonoBehaviour, ILocalizable
     private struct LastScan { public ScanPoint Point; public Vector2 ScannerPos; public string ResultLine; }
     private LastScan? lastSuccessfulScan;
 
-    // Для рандомизации букв в кристаллической решётке
+  
     private readonly Dictionary<MineralData, List<int>> crystalLetterOrder = new();
 
     private void Awake()
@@ -58,7 +58,7 @@ public class MineralScanner_Renderer : MonoBehaviour, ILocalizable
 
         myRect = GetComponent<RectTransform>();
 
-        Localize(); // Инициализация текстов
+        Localize(); 
         noConnectionOverlay.SetActive(true);
 
         recordButtonUI.onClick.RemoveAllListeners();
@@ -289,7 +289,7 @@ public class MineralScanner_Renderer : MonoBehaviour, ILocalizable
         UpdateReportButtonAndNotify();
     }
 
-    // === ЛОКАЛИЗАЦИЯ ===
+    
     public void Localize()
     {
         if (noConnectionOverlay.activeSelf)
@@ -321,7 +321,7 @@ public class MineralScanner_Renderer : MonoBehaviour, ILocalizable
 
     private void OnLanguageChanged(LocalizationManager.Language lang) => Localize();
 
-    // === ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ===
+    
     private bool HasSavedData() => currentMineral != null &&
         (!string.IsNullOrEmpty(currentMineral.savedAgeLine) ||
          !string.IsNullOrEmpty(currentMineral.savedRadioactivityLine) ||
@@ -418,12 +418,12 @@ public class MineralScanner_Renderer : MonoBehaviour, ILocalizable
 
     private void UpdateResultTextWithFixed(ScanPoint point, string fullLineWithPrefix)
     {
-        // Сохраняем полную строку (уже с префиксом!)
+        
         if (point == currentMineral.AgePoint) currentMineral.savedAgeLine = fullLineWithPrefix;
         else if (point == currentMineral.RadioactivityPoint) currentMineral.savedRadioactivityLine = fullLineWithPrefix;
         else if (point == currentMineral.CrystalPoint) currentMineral.savedCrystalLine = fullLineWithPrefix;
 
-        // Формируем общий текст — только один раз, через локализованный шаблон
+        
         resultText.text = string.Format(
             LocalizationManager.Loc("SCANNER_DEFAULT"),
             currentMineral.savedCrystalLine ?? "???",

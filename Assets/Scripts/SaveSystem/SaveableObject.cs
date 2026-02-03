@@ -112,26 +112,26 @@ public class SaveableObject : MonoBehaviour, ISaveableV2
 
     protected virtual IEnumerator RestoreRelations(ObjectSaveData data)
     {
-        // Ждём, пока ВСЕ SaveableObject + InputRouter точно проснутся
+       
         yield return new WaitUntil(() =>
             InputRouter.Instance != null &&
             FindObjectsOfType<SaveableObject>().Length >= SaveManager.Instance.GetCurrentObjectCountEstimate());
 
         var all = FindObjectsOfType<SaveableObject>(true);
 
-        // 1. Сначала восстанавливаем УПРАВЛЕНИЕ (самое важное!)
+       
         if (IsPlayer && !string.IsNullOrEmpty(data.controllingTransportID))
         {
             var transportObj = all.FirstOrDefault(x => x.GetUniqueID() == data.controllingTransportID);
             if (transportObj != null && transportObj.TryGetComponent<IControllable>(out var ctrl))
             {
-                // Прямой вызов — без рефлексии и без ожидания
+                
                 InputRouter.Instance.SetController(ctrl);
                 Debug.Log($"[Save] Управление транспортом восстановлено: {transportObj.name}");
             }
         }
 
-        // 2. Потом — посадку в транспорт (визуальное положение)
+        
         if (IsPlayer && !string.IsNullOrEmpty(data.seatedInTransportID))
         {
             var transportObj = all.FirstOrDefault(x => x.GetUniqueID() == data.seatedInTransportID);
@@ -139,13 +139,13 @@ public class SaveableObject : MonoBehaviour, ISaveableV2
             {
                 if (TryGetComponent<PlayerMovement>(out var pm))
                 {
-                    // Используем ПУБЛИЧНЫЙ метод вместо рефлексии
+                  
                     pm.ForceMountWithoutControllerChange(transport);
                 }
             }
         }
 
-        // Snap-зоны и сканер — как было
+       
         if (!string.IsNullOrEmpty(data.snappedZoneID))
         {
             var zoneObj = all.FirstOrDefault(x => x.GetUniqueID() == data.snappedZoneID);

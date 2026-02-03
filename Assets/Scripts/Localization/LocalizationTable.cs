@@ -13,18 +13,16 @@ public class LocalizationTable : ScriptableObject
     [Header("Имя файла в StreamingAssets (например: localization.csv)")]
     public string streamingFileName = "localization.csv";
 
-    // Кэшируем текст, чтобы не читать файл каждый раз
+   
     private string cachedCsvText;
 
-    /// <summary>
-    /// Возвращает текст CSV — сначала из StreamingAssets, потом из editorCsvFile (fallback)
-    /// </summary>
+ 
     public string GetCsvText()
     {
         if (!string.IsNullOrEmpty(cachedCsvText))
             return cachedCsvText;
 
-        // 1. Пытаемся загрузить из StreamingAssets (работает и в редакторе, и в билде
+     
         string path = Path.Combine(Application.streamingAssetsPath, streamingFileName);
 
         if (File.Exists(path))
@@ -46,7 +44,7 @@ public class LocalizationTable : ScriptableObject
         }
 
 #if UNITY_EDITOR
-        // 2. В редакторе — fallback на перетащенный TextAsset
+       
         if (editorCsvFile != null)
         {
             cachedCsvText = editorCsvFile.text;
@@ -60,9 +58,6 @@ public class LocalizationTable : ScriptableObject
         return "";
     }
 
-    /// <summary>
-    /// Основной метод — возвращает готовые словари по языкам
-    /// </summary>
     public Dictionary<string, Dictionary<string, string>> Load()
     {
         string csvText = GetCsvText();
@@ -105,7 +100,7 @@ public class LocalizationTable : ScriptableObject
         return result;
     }
 
-    // Твой проверенный парсер CSV (оставляем как есть — он отличный!)
+   
     private static string[] ParseCsvLine(string line)
     {
         var result = new List<string>();

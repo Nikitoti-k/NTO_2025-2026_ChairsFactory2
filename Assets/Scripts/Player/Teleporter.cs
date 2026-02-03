@@ -1,23 +1,26 @@
-using System.Collections;
+п»їusing System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class Teleporter : MonoBehaviour
 {
     [Header("Teleport Settings")]
-    public Transform targetPoint;  // Точка телепорта
-    public float fadeDuration = 1f;  // Время fade (сек)
+    public Transform targetPoint; 
+    public float fadeDuration = 1f;  
 
     [Header("UI")]
-    public Image fadeImage;  // Чёрный Image для затемнения
+    public Image fadeImage;  
 
-    private bool canTeleport = true;  // Блокировка
+    private bool canTeleport = true; 
 
     private void OnTriggerEnter(Collider other)
     {
+        other.transform.position = targetPoint.position;
+        Debug.Log($"Trigger entered by: {other.name}, tag: {other.tag}");
         if (other.CompareTag("Player") && canTeleport)
         {
             StartCoroutine(TeleportSequence(other.transform));
+           
         }
     }
 
@@ -25,20 +28,23 @@ public class Teleporter : MonoBehaviour
     {
         canTeleport = false;
 
-        // Fade to black
+        
         yield return StartCoroutine(FadeToBlack(true));
 
-        // Телепорт
+        // РўРµР»РµРїРѕСЂС‚
         if (targetPoint != null && player != null)
         {
+            Debug.Log("С‚РµР»РµРїРѕСЂС‚!!!");
+            Debug.Log(player);
+            Debug.Log(targetPoint);
             player.position = targetPoint.position;
-            // player.rotation = targetPoint.rotation;  // Раскомментируй для поворота
+           
         }
 
-        // Fade back
+     
         yield return StartCoroutine(FadeToBlack(false));
 
-        canTeleport = true;  // Разблок (или false для one-shot)
+        canTeleport = true;  
     }
 
     private IEnumerator FadeToBlack(bool fadeIn)

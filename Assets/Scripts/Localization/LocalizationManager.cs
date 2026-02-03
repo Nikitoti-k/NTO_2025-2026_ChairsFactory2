@@ -1,4 +1,4 @@
-﻿// LocalizationManager.cs — НОВАЯ ВЕРСИЯ (замените старую полностью)
+﻿
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -38,7 +38,7 @@ public class LocalizationManager : MonoBehaviour
 
         LoadAllLanguagesFromCSV();
 
-        // Дефолтный язык — русский, пока не подгрузим из сохранения
+        
         ApplyLanguageFromSave(Language.RU);
 
 #if UNITY_EDITOR
@@ -63,7 +63,7 @@ private void LoadAllLanguagesFromCSV()
         return;
     }
 
-        allLanguages = csvLoader.Load(); // ← остаётся так же
+        allLanguages = csvLoader.Load();
 
         if (allLanguages.Count == 0)
         Debug.LogError("[Localization] Не удалось загрузить локализацию из CSV!");
@@ -88,9 +88,7 @@ private void LoadLanguage(Language lang)
         Instance.currentLanguage = lang;
         Instance.editorLanguage = lang;
 
-        // Больше НЕ сохраняем в PlayerPrefs!
-        // PlayerPrefs.SetString("Language", lang.ToString());
-        // PlayerPrefs.Save();
+        
 
         Instance.LoadLanguage(lang);
         OnLanguageChanged?.Invoke(lang);

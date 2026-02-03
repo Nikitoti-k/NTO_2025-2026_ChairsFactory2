@@ -23,6 +23,6 @@ public class MineralClass : ScriptableObject
 
     public MineralData.CrystalSystem crystalSystem = MineralData.CrystalSystem.Cubic;
 
-    // ← Геттер для локализованного имени
+  
     public string LocalizedName => LocalizationManager.Loc(localizationKey);
 }

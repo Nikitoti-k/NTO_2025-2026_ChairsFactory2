@@ -62,37 +62,37 @@ public class CanGrab : MonoBehaviour
     public void ForceRelease() => Release(true);
     private void TryGrab()
     {
-        // 1. Tool
+        
         if (TryGrabAt(toolGrabPoint, toolMaxGrabDistance, out var item) && item.ItemType == GrabbableType.Tool)
         {
             GrabOldStyle(item, toolGrabPoint);
             return;
         }
-        // 2. Door
+        
         if (TryGrabAt(doorGrabPoint, maxGrabDistance, out item) && item.CompareTag("Door"))
         {
             GrabOldStyle(item, doorGrabPoint);
             return;
         }
-        // 3. Всё остальное
+       
         if (TryGrabAt(grabPoint, maxGrabDistance, out item))
         {
-            // ← БЛОКИРОВКА ТУТОРИАЛА ТОЛЬКО ДЛЯ SnapZone снегохода
+            
             if (item.ItemType == GrabbableType.Mineral)
             {
                 var mineralData = item.GetComponentInChildren<MineralData>();
                 if (mineralData != null)
                 {
-                    // ← Проверяем, находится ли минерал в SnapZone снегохода
+                    
                     var vehicleSnapZone = TutorialManager.Instance?.vehicleMineralSnapZone;
                     if (vehicleSnapZone != null && item.GetComponentInParent<SnapZone>() == vehicleSnapZone)
                     {
-                        // Блокировка до второго монолога
+                        
                         if (TutorialManager.Instance != null && !TutorialManager.Instance.CanGrabAnyMineralFromVehicle())
                         {
                             return;
                         }
-                        // Блокировка последнего минерала
+                       
                         if (mineralData.isLastInTutorialQueue && TutorialManager.Instance != null && !TutorialManager.Instance.CanGrabLastTutorialMineral())
                         {
                             return;
@@ -189,7 +189,7 @@ public class CanGrab : MonoBehaviour
             var col = heldItem.GetComponent<Collider>();
             if (col && !isDoor)
             {
-                // ← ЖЁСТКО: минерал всегда НЕ триггер после отпускания
+                
                 if (heldItem.ItemType == GrabbableType.Mineral)
                     col.isTrigger = false;
                 else

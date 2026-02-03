@@ -39,8 +39,7 @@ public class WeatherManager : MonoBehaviour
     private bool dayTriggered = false;
     private bool depositsBroken = false;
     private bool eveningTriggered = false;
-    private bool ambienceTriggered = false; // ← ИЗМЕНЕНИЕ: новая переменная для запуска ambience при отходе от базы
-
+    private bool ambienceTriggered = false; 
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -89,7 +88,7 @@ public class WeatherManager : MonoBehaviour
             HandlePhaseTriggers();
 
         timeProgress = CurrentTimeInMinutes / 1440f;
-        UpdateLightingAndRotation(); // ← Здесь теперь проверка на пещеру!
+        UpdateLightingAndRotation(); 
 
         TimeOfDay newPeriod = GetCurrentPeriod();
         if (newPeriod != currentPeriodCache)
@@ -102,25 +101,25 @@ public class WeatherManager : MonoBehaviour
 
     private void UpdateLightingAndRotation()
     {
-        // === 1. Солнце (Directional Light) — обновляется всегда ===
+       
         if (mainDirectionalLight != null)
         {
             mainDirectionalLight.color = directionalLightGradient.Evaluate(timeProgress);
 
-            // Поворот солнца по кругу
+           
             mainDirectionalLight.transform.localEulerAngles = new Vector3(
                 360f * timeProgress - 90f,
                 sunDefaultAngles.y,
                 sunDefaultAngles.z
             );
 
-            // Интенсивность солнца (день — ярко, ночь — почти 0)
+          
             float sunValue = Mathf.Clamp01(Mathf.Sin(timeProgress * Mathf.PI));
-            sunValue = Mathf.Max(sunValue, 0.03f); // минимальный свет, чтобы не было полной тьмы снаружи ночью
+            sunValue = Mathf.Max(sunValue, 0.03f); 
             mainDirectionalLight.intensity = sunValue * 2f;
         }
 
-        // === 2. Луна — обновляется всегда ===
+        
         if (moonLight != null)
         {
             moonLight.transform.localEulerAngles = new Vector3(
@@ -129,20 +128,19 @@ public class WeatherManager : MonoBehaviour
                 moonDefaultAngles.z
             );
 
-            // Луна светит сильнее, когда солнце внизу
+           
             float moonValue = 1f - Mathf.Abs(Mathf.Sin(timeProgress * Mathf.PI));
             moonLight.intensity = moonValue * 0.8f;
         }
 
-        // === 3. Ambient Light — ТОЛЬКО если игрок НЕ в пещере! ===
-        // Это главное условие — защищает пещеры от перезаписи
+        
         if (CaveDarkness.IsInsideAnyCave)
         {
-            // НИЧЕГО НЕ ДЕЛАЕМ — пещерный скрипт сам управляет ambient и fog
+           
             return;
         }
 
-        // Только снаружи — применяем красивый градиент дня/ночи
+        
         RenderSettings.ambientLight = ambientLightGradient.Evaluate(timeProgress);
     }
 
@@ -150,7 +148,7 @@ public class WeatherManager : MonoBehaviour
     private void StartNewDay()
     {
         timeProgress = 0f;
-        CurrentTimeInMinutes = 480f; // 8:00 утра
+        CurrentTimeInMinutes = 480f; 
         CurrentDay++;
         OnDayChanged.Invoke(CurrentDay);
         ResetPhaseFlags();
@@ -159,9 +157,9 @@ public class WeatherManager : MonoBehaviour
 
     private bool CanTimeProgress()
     {
-        if (CurrentTimeInMinutes < 720f) return true;                   // 8:00–12:00 — утро всегда идёт
-        if (CurrentTimeInMinutes < 1080f) return depositsBroken;       // 12:00–18:00 — ждём сломанные залежи
-        return eveningTriggered;                                        // 18:00–00:00 — ждём возвращения на базу
+        if (CurrentTimeInMinutes < 720f) return true;                   
+        if (CurrentTimeInMinutes < 1080f) return depositsBroken;      
+        return eveningTriggered;                                     
     }
 
     private void HandlePhaseTriggers()
@@ -171,7 +169,7 @@ public class WeatherManager : MonoBehaviour
 
         float distFromBase = Vector3.Distance(player.position, baseCenterPoint.position);
 
-        // ← ИЗМЕНЕНИЕ: Запуск ambience при отходе от базы (новая переменная ambienceTriggered)
+      
         if (!ambienceTriggered && distFromBase >= distanceToStartDay)
         {
             ambienceTriggered = true;
@@ -179,14 +177,14 @@ public class WeatherManager : MonoBehaviour
             Debug.Log("[Audio] Ambience запущено — игрок отошел от базы!");
         }
 
-        // 1. Отъехал далеко → день (12:00) разрешён
+      
         if (!dayTriggered && distFromBase >= distanceToStartDay && CurrentTimeInMinutes >= 720f)
         {
             dayTriggered = true;
             Debug.Log("[Weather] День начался — игрок отъехал далеко от базы!");
         }
 
-        // 2. Сломаны все залежи → вечер (18:00) разрешён
+       
         if (dayTriggered && !depositsBroken && GameDayManager.Instance != null &&
             GameDayManager.Instance.DepositsBrokenToday >= GameDayManager.Instance.DepositsToBreak &&
             CurrentTimeInMinutes >= 1080f)
@@ -195,7 +193,7 @@ public class WeatherManager : MonoBehaviour
             Debug.Log("[Weather] Вечер разрешён — все залежи сломаны!");
         }
 
-        // 3. Вернулся на базу → ночь (00:00) разрешена
+       
         if (depositsBroken && !eveningTriggered && distFromBase <= distanceToTriggerEvening && CurrentTimeInMinutes >= 1080f)
         {
             eveningTriggered = true;
@@ -203,11 +201,11 @@ public class WeatherManager : MonoBehaviour
         }
     }
 
-    // === СОН — теперь работает в обоих режимах ===
+   
     public bool CanSleepNow()
     {
         if (isTimeFlow)
-            return CurrentTimeInMinutes >= 1439f; // можно спать только в 00:00 и позже
+            return CurrentTimeInMinutes >= 1439f; 
 
         return depositsBroken && eveningTriggered && GameDayManager.Instance != null && GameDayManager.Instance.CanSleep;
     }
@@ -215,7 +213,7 @@ public class WeatherManager : MonoBehaviour
     public void SleepAndNextDay()
     {
         CurrentDay++;
-        JumpTo(480f); // 8:00 утра следующего дня
+        JumpTo(480f); 
         timeProgress = 480f / 1440f;
 
         ResetPhaseFlags();
@@ -252,13 +250,13 @@ public class WeatherManager : MonoBehaviour
         dayTriggered = false;
         depositsBroken = false;
         eveningTriggered = false;
-        ambienceTriggered = false; // ← ИЗМЕНЕНИЕ: сброс новой переменной на новый день
+        ambienceTriggered = false;
     }
 
     public string GetFormattedTime()
     {
         if (isTimeFlow && CurrentTimeInMinutes >= 1439f)
-            return "00:00 — Спать!"; // Подсказка игроку
+            return "00:00 — Спать!";
 
         int h = Mathf.FloorToInt(CurrentTimeInMinutes / 60f);
         int m = Mathf.FloorToInt(CurrentTimeInMinutes % 60f);

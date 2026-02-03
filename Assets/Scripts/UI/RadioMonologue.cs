@@ -33,12 +33,12 @@ public class RadioMonologue : MonoBehaviour, ILocalizable
     private bool isTyping = false;
     private Coroutine typingCoroutine;
 
-    // Синглтон для безопасного доступа извне (SaveManager и т.д.)
+  
     public static RadioMonologue Instance { get; private set; }
 
     private void Awake()
     {
-        // Защищаем от дубликатов
+       
         if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
@@ -50,12 +50,12 @@ public class RadioMonologue : MonoBehaviour, ILocalizable
     private void OnDestroy()
     {
         if (Instance == this)
-            Instance = null; // Обязательно сбрасываем!
+            Instance = null;
 
         LocalizationManager.OnLanguageChanged -= OnLanguageChanged;
     }
 
-    // Ленивые безопасные геттеры для UI (если destroyed — null, ищем заново по иерархии)
+   
     private GameObject RadioPanel
     {
         get
@@ -104,7 +104,7 @@ public class RadioMonologue : MonoBehaviour, ILocalizable
         }
     }
 
-    // Публичные свойства (флаги в TutorialManager)
+   
     public bool HasPlayedIntroMonologue
     {
         get => tutorialManager != null && tutorialManager.HasPlayedIntroMonologue;
@@ -155,7 +155,7 @@ public class RadioMonologue : MonoBehaviour, ILocalizable
 
     private void OnLanguageChanged(LocalizationManager.Language lang) => Localize();
 
-    // Публичные методы для запуска
+  
     public void PlayIntroMonologue() => StartMonologue(0);
     public void PlayReturnToBaseMonologue() => StartMonologue(1);
     public void PlayFinalTutorialMonologue() => StartMonologue(2);
@@ -172,15 +172,15 @@ public class RadioMonologue : MonoBehaviour, ILocalizable
         if (monologueSets.Length > 4) StartMonologue(4);
     }
 
-    // ГЛАВНЫЙ МЕТОД — теперь 100% безопасен!
+    
     public void StartMonologue(int setIndex)
     {
-        // Защита от вызова на destroyed объекте
+        
         if (gameObject == null) return;
 
         if (monologueSets == null || setIndex < 0 || setIndex >= monologueSets.Length) return;
 
-        // Защита от повторного проигрывания
+       
         switch (setIndex)
         {
             case 0 when HasPlayedIntroMonologue: return;
@@ -239,7 +239,7 @@ public class RadioMonologue : MonoBehaviour, ILocalizable
 
     private void Update()
     {
-        // Защита Update
+        
         if (RadioPanel == null || !RadioPanel.activeSelf) return;
 
         if (InputManager.Instance != null && InputManager.Instance.RadioNext)
@@ -267,7 +267,7 @@ public class RadioMonologue : MonoBehaviour, ILocalizable
         BlockPlayerControls(false);
         StopRadioNoise();
 
-        // Устанавливаем флаги
+        
         switch (currentSet)
         {
             case 0: HasPlayedIntroMonologue = true; break;
@@ -277,7 +277,7 @@ public class RadioMonologue : MonoBehaviour, ILocalizable
             case 4: HasPlayedMorningDay3 = true; break;
         }
 
-        // Туториал после интро
+       
         if (currentSet == 0 && tutorialManager != null)
             tutorialManager.ForceStartTutorial();
     }

@@ -11,7 +11,7 @@ public class InputManager : MonoBehaviour
     public bool Physical => _physical;
     public bool PhysicalHeld => _physicalHeld;
     public bool Flare => _flare;
-    public bool RadioNext => _radioNext; // НОВАЯ КНОПКА
+    public bool RadioNext => _radioNext;
     public bool EscapePressed { get; private set; }
 
     private Vector2 _move, _look;
@@ -23,7 +23,7 @@ public class InputManager : MonoBehaviour
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
-       // DontDestroyOnLoad(gameObject);
+       
 
         _actions = new PlayerControls();
         _actions.Player.Enable();

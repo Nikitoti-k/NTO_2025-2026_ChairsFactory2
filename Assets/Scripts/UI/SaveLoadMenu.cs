@@ -1,7 +1,7 @@
 ﻿using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro; // если используешь TextMeshPro
+using TMPro; 
 using System.Collections.Generic;
 
 public class SaveLoadMenu : MonoBehaviour
@@ -10,11 +10,11 @@ public class SaveLoadMenu : MonoBehaviour
     [SerializeField] private GameObject slotPrefab;
     [SerializeField] private Button backButton;
 
-    // ←←← НОВОЕ ПОЛЕ ДЛЯ СООБЩЕНИЙ ОБ ОШИБКАХ
+   
     [Header("UI Feedback")]
-    [SerializeField] private Text legacyErrorText;                    // обычный Unity Text
-    [SerializeField] private TMP_Text tmpErrorText;                   // TextMeshPro
-    [SerializeField] private float errorDisplayTime = 6f;             // сколько показывать
+    [SerializeField] private Text legacyErrorText;                  
+    [SerializeField] private TMP_Text tmpErrorText;                   
+    [SerializeField] private float errorDisplayTime = 6f;             
 
     private List<GameObject> spawnedSlots = new List<GameObject>();
     private Coroutine errorCoroutine;
@@ -22,7 +22,7 @@ public class SaveLoadMenu : MonoBehaviour
     private void OnEnable()
     {
         RefreshSlots();
-        ClearErrorMessage(); // на всякий случай
+        ClearErrorMessage(); 
     }
 
     public void RefreshSlots()
@@ -52,11 +52,7 @@ public class SaveLoadMenu : MonoBehaviour
         gameObject.SetActive(false);
     }
 
-    // ========================= НОВЫЕ МЕТОДЫ =========================
-
-    /// <summary>
-    /// Показывает сообщение об ошибке загрузки сохранения
-    /// </summary>
+  
     public void ShowErrorMessage(string message = null)
     {
         string text = message ?? LocalizationManager.Loc("SAVE_ERROR_CORRUPTED");
@@ -65,9 +61,9 @@ public class SaveLoadMenu : MonoBehaviour
             tmpErrorText.text = text;
         else if (legacyErrorText != null)
             legacyErrorText.text = text;
-        return; // нет UI-элемента
+        return; 
 
-        // Перезапускаем таймер исчезновения
+       
         if (errorCoroutine != null)
             StopCoroutine(errorCoroutine);
 

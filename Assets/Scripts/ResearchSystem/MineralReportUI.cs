@@ -239,10 +239,10 @@ public class MineralReportUI : MonoBehaviour, ILocalizable
         if (selectedClass.isAnomalyClass)
             currentSample.isAnomaly = true;
 
-        // ВАЖНО: Как только игрок отправил ОТЧЁТ (любой!) — подсказка "Сделайте вывод" больше НИКОГДА не появится
+        
         if (TutorialManager.Instance != null)
         {
-            TutorialManager.Instance.OnReportEverSubmitted(); // ← Новый метод!
+            TutorialManager.Instance.OnReportEverSubmitted(); 
 
             if (selectedClass.isAnomalyClass)
                 TutorialManager.Instance.OnAnomalyReportSubmitted();
@@ -278,7 +278,7 @@ public class MineralReportUI : MonoBehaviour, ILocalizable
         string radValue = currentSample.RadioactivityUsv.ToString("F3");
         string crystal = LocalizationManager.Loc(GetCrystalKey(currentSample.CrystalSystem_));
 
-        // Полностью чёрный текст, без цветных вставок
+        
         measuredDataText.text =
             $"<b>MEASURED DATA:</b>\n\n" +
             $"Age: {ageValue} {currentSample.AgeUnitText}\n" +

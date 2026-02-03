@@ -11,7 +11,7 @@ public class MineralSaveableObject : SaveableObject, IHasMineralData
         if (string.IsNullOrEmpty(uniqueID))
             uniqueID = System.Guid.NewGuid().ToString();
 
-        // Кэшируем заранее — будет доступен даже если компонент выключен
+       
         pointSpawner = GetComponent<MineralPointSpawner>();
     }
 
@@ -48,15 +48,15 @@ public class MineralSaveableObject : SaveableObject, IHasMineralData
         mineral.savedRadioactivityLine = data.savedRadioactivityLine;
         mineral.savedCrystalLine = data.savedCrystalLine;
 
-        // Восстанавливаем позиции точек
+       
         if (mineral.AgePoint) mineral.AgePoint.transform.localPosition = data.agePointLocalPos;
         if (mineral.CrystalPoint) mineral.CrystalPoint.transform.localPosition = data.crystalPointLocalPos;
         if (mineral.RadioactivityPoint) mineral.RadioactivityPoint.transform.localPosition = data.radioactivityPointLocalPos;
 
-        // САМОЕ ВАЖНОЕ: восстанавливаем точки через отложенный вызов
+        
         if (pointSpawner != null)
         {
-            // Если компонент уже включён — сразу
+            
             if (pointSpawner.enabled)
                 pointSpawner.RestorePointsFromSaveData(data.agePointLocalPos, data.crystalPointLocalPos, data.radioactivityPointLocalPos);
             else

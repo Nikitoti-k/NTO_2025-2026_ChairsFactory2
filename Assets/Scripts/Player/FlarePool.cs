@@ -18,7 +18,7 @@ public class FlarePool : MonoBehaviour
             return;
         }
         Instance = this;
-     //   DontDestroyOnLoad(gameObject);
+   
         InitializePool();
     }
 
@@ -36,8 +36,6 @@ public class FlarePool : MonoBehaviour
                 continue;
             }
 
-            // НЕ добавляем PooledSaveableObject здесь!
-            // Он добавится автоматически при первом использовании
 
             flare.ReturnToPool();
             pool.Enqueue(flare);
@@ -62,7 +60,7 @@ public class FlarePool : MonoBehaviour
         flareFromPool.transform.rotation = Quaternion.identity;
         flareFromPool.gameObject.SetActive(true);
 
-        // Гарантируем, что у активного факела есть PooledSaveableObject
+      
         var saveableComponent = flareFromPool.GetComponent<PooledSaveableObject>();
         if (saveableComponent == null)
         {
@@ -77,7 +75,7 @@ public class FlarePool : MonoBehaviour
     {
         if (flare == null) return;
 
-        flare.ReturnToPool(); // Делает rb.isKinematic = true и т.д.
+        flare.ReturnToPool(); 
         flare.gameObject.SetActive(false);
         pool.Enqueue(flare);
     }

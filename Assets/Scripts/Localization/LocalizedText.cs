@@ -7,7 +7,7 @@ public class LocalizedText : MonoBehaviour, ILocalizable
 {
     [SerializeField] private string localizationKey = "YOUR_KEY_HERE";
 
-    // Если нужно подставлять параметры: {0}, {1} и т.д.
+    
     [SerializeField] private string[] formatArgs = new string[0];
 
     private TextMeshProUGUI tmpText;
@@ -25,7 +25,7 @@ public class LocalizedText : MonoBehaviour, ILocalizable
     {
         LocalizationManager.Register(this);
         LocalizationManager.OnLanguageChanged += OnLanguageChanged;
-        Localize(); // На всякий случай
+        Localize();
     }
 
     private void OnDisable()
@@ -72,7 +72,7 @@ public class LocalizedText : MonoBehaviour, ILocalizable
         Localize();
     }
 
-    // Проверка на существование ключа — теперь без SetObjectEnableState!
+ 
     private void OnValidate()
     {
         if (string.IsNullOrEmpty(localizationKey)) return;
@@ -82,12 +82,11 @@ public class LocalizedText : MonoBehaviour, ILocalizable
 
         if (!keyExists)
         {
-            // Просто логируем в консоль — ничего не ломаем
             Debug.LogWarning($"[LocalizedText] Ключ \"{localizationKey}\" не найден в LocalizationData! (на объекте: {gameObject.name})", this);
         }
     }
 
-    // Дополнительная кнопка в инспекторе — копирует текущий текст как ключ (удобно при миграции)
+   
     [ContextMenu("Скопировать текущий текст → как ключ")]
     private void CopyCurrentTextToKey()
     {

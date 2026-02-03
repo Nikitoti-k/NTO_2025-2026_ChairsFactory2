@@ -17,22 +17,21 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
 
     private readonly string[] hintKeys = new[]
     {
-        "TUT_LOOK",           // 0
-        "TUT_MOVE",           // 1
-        "TUT_DOOR",           // 2
-        "TUT_VEHICLE",        // 3
-        "TUT_FLARE",          // 4
-        "TUT_BREAK",          // 5
-        "TUT_CARRY",          // 6
-        "TUT_RETURN",         // 7
-        "TUT_TABLE",          // 8
-        "TUT_SCAN_MOVE",      // 9
-        "TUT_SCAN_CLICK",     // 10
-        "TUT_ACCURACY",       // 11
-        "TUT_FIND_MORE",      // 12
-        "TUT_CONCLUSION",     // 13  ← показывается ТОЛЬКО ОДИН РАЗ!
-        "TUT_ANOMALY_PLACE",  // 14
-        "TUT_GO_TO_BED"       // 15
+        "TUT_LOOK",          
+        "TUT_MOVE",        
+        "TUT_DOOR",         
+        "TUT_VEHICLE",       
+        "TUT_FLARE",       
+        "TUT_CARRY",        
+        "TUT_RETURN",        
+        "TUT_TABLE",          
+        "TUT_SCAN_MOVE",     
+        "TUT_SCAN_CLICK",    
+        "TUT_ACCURACY",       
+        "TUT_FIND_MORE",      
+        "TUT_CONCLUSION",     
+        "TUT_ANOMALY_PLACE",  
+        "TUT_GO_TO_BED"       
     };
     public bool HasPlayedIntroMonologue { get; set; } = false;
     public bool HasPlayedReturnMonologue { get; set; } = false;
@@ -48,7 +47,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
     [SerializeField] private SnapZone baseResearchSnapZone;
     [SerializeField] private QuarantineBox quarantineBox;
 
-    // ============ Состояние туториала ============
+    
     private int step = 0;
     private float timer = 0f;
     private bool waitingHold = false;
@@ -69,8 +68,8 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
     private bool bedHintShown = false;
     private bool playerSlept = false;
     private bool finalMonologuePlayed = false;
-    private bool conclusionHintShown = false; // ← ВАЖНО: "Сделайте вывод" — только один раз!
-    [SerializeField] private bool conclusionHintPermanentlyDisabled = false; // ← новое поле
+    private bool conclusionHintShown = false;
+    [SerializeField] private bool conclusionHintPermanentlyDisabled = false; 
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -137,7 +136,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
         LocalizationManager.OnLanguageChanged -= OnLanguageChanged;
     }
 
-    // ==================== ЛОКАЛИЗАЦИЯ ====================
+   
     public void Localize()
     {
         if (hintPanel == null || hintText == null || !hintPanel.activeSelf) return;
@@ -151,7 +150,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
 
     private void OnLanguageChanged(LocalizationManager.Language lang) => Localize();
 
-    // ==================== ОСНОВНЫЕ МЕТОДЫ ====================
+    
     public void ForceStartTutorial()
     {
         gameObject.SetActive(true);
@@ -181,7 +180,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
     {
         waitingHold = true;
         timer = 0f;
-        Localize(); // автоматически добавит " Готово"
+        Localize(); 
     }
 
     private void NextStep()
@@ -192,7 +191,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
         switch (step)
         {
             case 4:
-                // НИЧЕГО НЕ ДЕЛАЕМ! Факел показывается только по ActivateFlareHint()
+               
                 break;
             case 5: ShowHintByStep(5); break; // Ломай залежь
             case 6: ShowHintByStep(6); break; // Отнеси в снегоход
@@ -205,7 +204,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
         }
     }
 
-    // ==================== UPDATE ====================
+    
     private void Update()
     {
         if (waitingHold)
@@ -246,7 +245,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
             Success();
         }
 
-        // Возврат на базу
+       
         if (step == 8 && returnedHintShown && player != null && baseReturnPoint != null)
         {
             if (Vector3.Distance(player.position, baseReturnPoint.position) <= baseReturnDistance)
@@ -256,7 +255,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
             }
         }
 
-        // Подсказка принести минерал на стол
+        
         if (step == 9 && !researchTableHintShown && radioMonologue != null && !radioMonologue.IsPlaying)
         {
             ShowHintByStep(8);
@@ -264,7 +263,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
             HighlightFirstTwoMineralsInVehicle();
         }
 
-        // Подсказка лечь спать — только после карантина
+       
         if (!bedHintShown && !playerSlept && anomalyPlaced && GameDayManager.Instance != null && GameDayManager.Instance.CanSleep)
         {
             ShowHintByStep(15);
@@ -272,7 +271,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
         }
     }
 
-    // ==================== СОБЫТИЯ ====================
+  
     private IEnumerator SubscribeWhenReady()
     {
         yield return new WaitUntil(() => GameDayManager.Instance != null);
@@ -320,7 +319,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
         if (!firstMineralOnTable)
         {
             firstMineralOnTable = true;
-            ShowHintByStep(9); // Крутите джойстик...
+            ShowHintByStep(9); 
             scanMoveHintShown = true;
         }
     }
@@ -347,15 +346,15 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
 
         if (allScanned)
         {
-            // === ПОДСКАЗКА "СДЕЛАЙТЕ ВЫВОД" — ТОЛЬКО ОДИН РАЗ ЗА ВЕСЬ ТУТОРИАЛ ===
+            
             if (!conclusionHintShown)
             {
                 ShowHintByStep(13);
-                conclusionHintShown = true; // ← теперь сохранится навсегда
+                conclusionHintShown = true;
             }
 
-            // === ФИНАЛЬНЫЙ МОНОЛОГ — ТОЛЬКО ДЛЯ АНОМАЛЬНОГО (ПОСЛЕДНЕГО) МИНЕРАЛА ===
-            if (currentScannedMineral.isLastInTutorialQueue &&      // это последний в очереди
+           
+            if (currentScannedMineral.isLastInTutorialQueue &&      
                 !finalMonologuePlayed &&
                 radioMonologue != null)
             {
@@ -365,21 +364,21 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
         }
         else
         {
-            // Если игрок убрал сканер до завершения — убираем подсказку "отправьте отчёт"
+          
             if (hintPanel.activeSelf && hintText.text.Contains(LocalizationManager.Loc("TUT_CONCLUSION")))
             {
                 hintPanel.SetActive(false);
             }
         }
     }
-    // Вызывается, когда игрок впервые в жизни отправил отчёт (любой)
+    
     public void OnReportEverSubmitted()
     {
         
 
         conclusionHintShown = true;
 
-        // Сразу убираем подсказку "Сделайте вывод", если она сейчас на экране
+       
         if (hintPanel != null && hintPanel.activeSelf)
         {
             string currentHint = hintText.text;
@@ -468,7 +467,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
         Success();
     }
 
-    // Внешний вызов — например, из триггера в тёмной зоне
+    
     public void ActivateFlareHint()
     {
         if (flareHintActive || step != 4) return;
@@ -518,7 +517,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
         return canGrab != null && canGrab.IsHoldingObject() && canGrab.GetGrabbedItem()?.CompareTag("Door") == true;
     }
 
-    // ==================== СКИПЫ ====================
+   
     [ContextMenu("SKIP → Положите минерал на стол")]
     public void SkipToPutMineralOnTable()
     {
@@ -626,7 +625,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
         gameObject.SetActive(true);
         enabled = true;
 
-        // Важно: НЕ показываем подсказку, если она уже была показана!
+       
         if (step < hintKeys.Length)
         {
             bool shouldShow = step switch
@@ -659,7 +658,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
 
     public bool CanGrabAnyMineralFromVehicle()
     {
-        return radioMonologue != null && radioMonologue.HasPlayedReturnMonologue;
+        return radioMonologue != null;
     }
 
     public bool CanGrabLastTutorialMineral()

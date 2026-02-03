@@ -18,11 +18,11 @@ public class SleepSystem : MonoBehaviour
     [SerializeField] float maxSleepDistance = 3f;
 
     [Header("Первый сон — звук вылупления яйца")]
-    [SerializeField] private AudioClip eggHatchSound;           // Кинь сюда свой клип
-    [SerializeField] private float eggHatchVolume = 1f;         // Громкость (0–1)
-    [SerializeField] private float eggHatchPitch = 1f;          // Питч (можно чуть менять)
+    [SerializeField] private AudioClip eggHatchSound;           
+    [SerializeField] private float eggHatchVolume = 1f;         
+    [SerializeField] private float eggHatchPitch = 1f;          
 
-    private static bool hasPlayedEggHatch = false;              // Проигралось ли уже
+    private static bool hasPlayedEggHatch = false;            
 
     PlayerMovement player;
     Rigidbody playerRb;
@@ -57,7 +57,7 @@ public class SleepSystem : MonoBehaviour
             return false;
         }
 
-        bool weatherAllows = true; // WeatherManager.Instance.CanSleepNow();
+        bool weatherAllows = true; 
         bool nearBed = bedTransform == null || Vector3.Distance(player.transform.position, bedTransform.position) <= maxSleepDistance;
         bool tasksDone = GameDayManager.Instance != null && GameDayManager.Instance.CanSleep;
 
@@ -71,8 +71,7 @@ public class SleepSystem : MonoBehaviour
 
     public void StartSleep()
     {
-       // WeatherManager.Instance.SleepAndNextDay();
-       // StartCoroutine(SleepSequence());
+      
         if (!CanSleepNow())
         {
             Debug.LogWarning("[SleepSystem] StartSleep() заблокирован — CanSleepNow() == false");
@@ -95,7 +94,7 @@ public class SleepSystem : MonoBehaviour
 
     IEnumerator SleepSequence()
     {
-        // Затемнение
+       
         yield return FadeTo(1f);
         if (!hasPlayedEggHatch &&
            GameDayManager.Instance != null &&
@@ -105,11 +104,10 @@ public class SleepSystem : MonoBehaviour
 
             if (eggHatchSound != null && AudioManager.Instance != null)
             {
-                // 2D звук (атмосферный, по всему экрану) — рекомендуется
+               
                 AudioManager.Instance.PlaySFX(eggHatchSound, eggHatchVolume, eggHatchPitch);
 
-                // Если хочешь 3D и привязать к позиции (например, к яйцу или кровати):
-                // AudioManager.Instance.PlaySFX(eggHatchSound, eggHatchVolume, eggHatchPitch, someEggTransform.position);
+               
 
                 Debug.Log("<color=cyan>【EGG HATCH】 Проиграно вылупление яйца! День 2</color>");
             }
@@ -119,7 +117,7 @@ public class SleepSystem : MonoBehaviour
             }
             yield return new WaitForSeconds(sleepScreenDuration);
 
-        // Телепорт к точке после сна
+        
         if (spawnPointAfterSleep)
         {
             player.transform.position = spawnPointAfterSleep.position;
@@ -130,25 +128,23 @@ public class SleepSystem : MonoBehaviour
        
         }
 
-        // Рассвет — убираем затемнение
+        
         yield return FadeTo(0f);
 
-        // Возвращаем управление игроку
+        
         if (playerRb) playerRb.isKinematic = false;
         player.enabled = true;
         player.EndSleep();
 
         TutorialManager.Instance?.OnPlayerSlept();
 
-        // Монолог по радио (у тебя уже был)
+       
         TriggerPostSleepMonologue();
 
         Debug.Log("[SleepSystem] Проснулись! Новый день!");
     }
 
-    // ============================================================
-    // Монолог после первого сна (оставил как было, только чуть поправил)
-    // ============================================================
+  
     public static bool HasPlayedPostFirstSleepMonologue { get; private set; } = false;
 
     private void TriggerPostSleepMonologue()
@@ -165,9 +161,7 @@ public class SleepSystem : MonoBehaviour
         }
     }
 
-    // ============================================================
-    // Фейд
-    // ============================================================
+    
     IEnumerator FadeTo(float a)
     {
         sleepImage.raycastTarget = a > 0f;

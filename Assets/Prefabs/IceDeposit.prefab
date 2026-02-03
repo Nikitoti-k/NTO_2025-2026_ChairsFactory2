@@ -64,7 +64,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: e61933bc9b7a14041a8f92dc4fbbd673, type: 2}
+  - {fileID: 2100000, guid: dfb70232ed2aaa447b8bcaa88a155f66, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -192,6 +192,8 @@ MonoBehaviour:
   hitsRequired: 3
   mineralPrefab: {fileID: 5941508467737296759, guid: 01f3b3c9428253945b041c9878b29bc7, type: 3}
   spawnPoint: {fileID: 4834058187007695671}
+  hitSoundKey: ice_hit
+  breakSoundKey: ice_break
 --- !u!135 &5907497370124100283
 SphereCollider:
   m_ObjectHideFlags: 0
