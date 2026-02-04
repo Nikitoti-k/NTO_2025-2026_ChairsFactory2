@@ -2,50 +2,52 @@
 using UnityEngine.InputSystem;
 using TMPro;
 using System.Collections;
+using UnityEngine.Events;
 
-public class TutorialManager : MonoBehaviour, ISaveableV2
+public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILocalizable
 {
-
     public static TutorialManager Instance { get; private set; }
 
     [SerializeField] private GameObject hintPanel;
     [SerializeField] private TMP_Text hintText;
     [SerializeField] private float holdAfterSuccess = 1.8f;
 
-    [Space(10)]
     [Header("=== ДЕВ-СКИПЫ ===")]
     [SerializeField] private bool skipToResearchTableOnStart = false;
 
-    [TextArea] public string lookText = "Осмотритесь вокруг — двигайте мышью";
-    [TextArea] public string moveText = "Двигайтесь с помощью <color=#ffff00>W A S D</color>";
-    [TextArea] public string doorText = "Чтобы открыть дверь — подойдите и <color=#ffff00>зажмите ЛКМ</color>";
-    [TextArea] public string vehicleText = "Подойдите к снегоходу и нажмите <color=#ffff00>E</color>";
-    [TextArea] public string flareText = "Бросьте факел — нажмите <color=#ffff00>F</color>";
-    [TextArea] public string breakDepositText = "Ломайте ледяную залежь — <color=#ffff00>ЛКМ</color>";
-    [TextArea] public string carryToVehicleText = "Отнесите добытый образец\nв <color=#ffff00>снегоход</color>";
-    [TextArea] public string returnToBaseText = "Вы собрали достаточно образцов.\n<color=#00ff00>Вернитесь на базу и изучите их</color>";
-    [TextArea] public string bringToTableText = "Возьмите образец и отнесите его\nна <color=#ffff00>исследовательский стол</color>";
-
-    [Header("Сканер")]
-    [TextArea] public string scanMoveHint = "Крутите джойстик на <color=#ffff00>LMB</color>, найдите активные зоны на образце!";
-    [TextArea] public string scanClickHint = "Нажмите на кнопку <color=#ffff00>получить данные</color>";
-    [TextArea] public string scanAccuracyHint = "Чем точнее вы выбрали точку на минерале,\nтем точнее вы получите данные.";
-    [TextArea] public string findTwoMorePointsHint = "Найдите еще <color=#ffff00>2 точки</color>, чтобы собрать все данные";
-    [TextArea] public string makeConclusionHint = "Сделайте вывод, к какому классу относится образец — <color=#ffff00>отправьте отчёт</color>";
-
-    [Header("Аномалия и карантин")]
-    [TextArea] public string placeAnomalyHint = "Поместите странный образец\nв <color=#ff3333>ящик для аномалий</color>";
-
-    [Header("Финал — сон")]
-    [TextArea] public string goToBedHint = "Лягте в кровать — нажмите <color=#ffff00>E</color>";
-
+    private readonly string[] hintKeys = new[]
+    {
+        "TUT_LOOK",          
+        "TUT_MOVE",        
+        "TUT_DOOR",         
+        "TUT_VEHICLE",       
+        "TUT_FLARE",       
+        "TUT_CARRY",        
+        "TUT_RETURN",        
+        "TUT_TABLE",          
+        "TUT_SCAN_MOVE",     
+        "TUT_SCAN_CLICK",    
+        "TUT_ACCURACY",       
+        "TUT_FIND_MORE",      
+        "TUT_CONCLUSION",     
+        "TUT_ANOMALY_PLACE",  
+        "TUT_GO_TO_BED"       
+    };
+    public bool HasPlayedIntroMonologue { get; set; } = false;
+    public bool HasPlayedReturnMonologue { get; set; } = false;
+    public bool HasPlayedFinalMonologue { get; set; } = false;
+    public bool HasPlayedMorningDay2 { get; set; } = false;
+    public bool HasPlayedMorningDay3 { get; set; } = false;
     [SerializeField] private Transform baseReturnPoint;
     [SerializeField] private float baseReturnDistance = 30f;
+   
+    [Space]
     [SerializeField] public RadioMonologue radioMonologue;
     [SerializeField] public SnapZone vehicleMineralSnapZone;
     [SerializeField] private SnapZone baseResearchSnapZone;
     [SerializeField] private QuarantineBox quarantineBox;
 
+    
     private int step = 0;
     private float timer = 0f;
     private bool waitingHold = false;
@@ -57,7 +59,6 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
     private bool firstMineralOnTable = false;
     private bool scanMoveHintShown = false, scanClickHintShown = false, accuracyHintShown = false;
     private bool showedFindTwoMore = false;
-
     private int researchedCount = 0;
     private MineralData currentScannedMineral;
     private Transform player;
@@ -67,34 +68,89 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
     private bool bedHintShown = false;
     private bool playerSlept = false;
     private bool finalMonologuePlayed = false;
-  
-
+    private bool conclusionHintShown = false;
+    [SerializeField] private bool conclusionHintPermanentlyDisabled = false; 
     private void Awake()
     {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
         player = GameObject.FindGameObjectWithTag("Player")?.transform;
-        if (Instance != null && Instance != this) Destroy(gameObject);
-        else Instance = this;
     }
 
     private void Start()
     {
-        gameObject.SetActive(false);
         if (skipToResearchTableOnStart)
             SkipToPutMineralOnTable();
     }
 
-    [ContextMenu("SKIP → Положите минерал на стол")]
-    public void SkipToPutMineralOnTable()
+    private void OnEnable()
     {
-        ResetAllFlags();
-        step = 9;
-        researchedCount = 2;
-        radioMonologue?.PlayReturnToBaseMonologue();
-        ShowHint(bringToTableText);
-        researchTableHintShown = true;
-        HighlightFirstTwoMineralsInVehicle();
+        LocalizationManager.Register(this);
+        LocalizationManager.OnLanguageChanged += OnLanguageChanged;
+        StartCoroutine(SubscribeWhenReady());
+
+        if (vehicleMineralSnapZone != null)
+            vehicleMineralSnapZone.onItemSnapped.AddListener(OnMineralPlacedInVehicle);
+        if (baseResearchSnapZone != null)
+            baseResearchSnapZone.onItemSnapped.AddListener(OnMineralPlacedOnResearchTable);
+        if (MineralScanner_Renderer.Instance != null)
+        {
+            MineralScanner_Renderer.Instance.SubscribeToAllThreeScanned(OnAllThreeValuesScanned);
+            MineralScanner_Renderer.Instance.SubscribeToProximity(OnScannerProximityChanged);
+        }
+        if (quarantineBox != null)
+            quarantineBox.onItemSnapped.AddListener(OnAnomalyPlacedInQuarantine);
     }
 
+    private void OnDisable()
+    {
+        LocalizationManager.Unregister(this);
+        LocalizationManager.OnLanguageChanged -= OnLanguageChanged;
+
+        if (GameDayManager.Instance != null)
+        {
+            GameDayManager.Instance.OnAnyDepositBroken.RemoveListener(OnAnyDepositBroken_Tutorial);
+            GameDayManager.Instance.OnMineralResearched.RemoveListener(OnMineralResearched);
+            GameDayManager.Instance.OnAllReportsSubmitted.RemoveListener(OnAllReportsSubmitted);
+        }
+
+        if (vehicleMineralSnapZone != null)
+            vehicleMineralSnapZone.onItemSnapped.RemoveListener(OnMineralPlacedInVehicle);
+        if (baseResearchSnapZone != null)
+            baseResearchSnapZone.onItemSnapped.RemoveListener(OnMineralPlacedOnResearchTable);
+        if (MineralScanner_Renderer.Instance != null)
+        {
+            MineralScanner_Renderer.Instance.UnsubscribeFromAllThreeScanned(OnAllThreeValuesScanned);
+            MineralScanner_Renderer.Instance.UnsubscribeFromProximity(OnScannerProximityChanged);
+        }
+        if (quarantineBox != null)
+            quarantineBox.onItemSnapped.RemoveListener(OnAnomalyPlacedInQuarantine);
+    }
+
+    private void OnDestroy()
+    {
+        LocalizationManager.OnLanguageChanged -= OnLanguageChanged;
+    }
+
+   
+    public void Localize()
+    {
+        if (hintPanel == null || hintText == null || !hintPanel.activeSelf) return;
+
+        if (step < hintKeys.Length)
+        {
+            string baseText = LocalizationManager.Loc(hintKeys[step]);
+            hintText.text = waitingHold ? baseText + " "+ LocalizationManager.Loc("TUT_Done") : baseText;
+        }
+    }
+
+    private void OnLanguageChanged(LocalizationManager.Language lang) => Localize();
+
+    
     public void ForceStartTutorial()
     {
         gameObject.SetActive(true);
@@ -103,71 +159,82 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
         step = 0;
         researchedCount = 0;
         finalMonologuePlayed = false;
-        ShowHint(lookText);
+        conclusionHintShown = false;
+        ShowHintByStep(0);
     }
 
-    private void OnEnable()
+    private void ShowHintByStep(int idx)
     {
-        if (GameDayManager.Instance != null)
-        {
-            GameDayManager.Instance.OnDepositsChanged.AddListener(OnDepositBroken);
-            GameDayManager.Instance.OnMineralResearched.AddListener(OnMineralResearched);
-            GameDayManager.Instance.OnAllReportsSubmitted.AddListener(OnAllReportsSubmitted);
-        }
-        if (vehicleMineralSnapZone != null)
-            vehicleMineralSnapZone.onItemSnapped.AddListener(OnMineralPlacedInVehicle);
-        if (baseResearchSnapZone != null)
-            baseResearchSnapZone.onItemSnapped.AddListener(OnMineralPlacedOnResearchTable);
-        if (MineralScanner_Renderer.Instance != null)
-        {
-            MineralScanner_Renderer.Instance.SubscribeToAllThreeScanned(OnAllThreeValuesScanned);
-            MineralScanner_Renderer.Instance.SubscribeToProximity(OnScannerProximityChanged); // ← ВОССТАНАВЛИВАЕМ!
-        }
-        if (quarantineBox != null)
-            quarantineBox.onItemSnapped.AddListener(OnAnomalyPlacedInQuarantine);
+        if (idx >= hintKeys.Length) return;
+        ShowHint(LocalizationManager.Loc(hintKeys[idx]));
     }
 
-    private void OnDisable()
+    private void ShowHint(string text)
     {
-        if (GameDayManager.Instance != null)
-        {
-            GameDayManager.Instance.OnDepositsChanged.RemoveListener(OnDepositBroken);
-            GameDayManager.Instance.OnMineralResearched.RemoveListener(OnMineralResearched);
-            GameDayManager.Instance.OnAllReportsSubmitted.RemoveListener(OnAllReportsSubmitted);
-        }
-        if (vehicleMineralSnapZone != null)
-            vehicleMineralSnapZone.onItemSnapped.RemoveListener(OnMineralPlacedInVehicle);
-        if (baseResearchSnapZone != null)
-            baseResearchSnapZone.onItemSnapped.RemoveListener(OnMineralPlacedOnResearchTable);
-        if (MineralScanner_Renderer.Instance != null)
-        {
-            MineralScanner_Renderer.Instance.UnsubscribeFromAllThreeScanned(OnAllThreeValuesScanned);
-            MineralScanner_Renderer.Instance.UnsubscribeFromProximity(OnScannerProximityChanged); // ← ВОССТАНАВЛИВАЕМ!
-        }
-        if (quarantineBox != null)
-            quarantineBox.onItemSnapped.RemoveListener(OnAnomalyPlacedInQuarantine);
+        if (hintPanel == null || hintText == null) return;
+        hintText.text = text;
+        hintPanel.SetActive(true);
     }
 
+    private void Success()
+    {
+        waitingHold = true;
+        timer = 0f;
+        Localize(); 
+    }
+
+    private void NextStep()
+    {
+        step++;
+        waitingHold = false;
+
+        switch (step)
+        {
+            case 4:
+               
+                break;
+            case 5: ShowHintByStep(5); break; // Ломай залежь
+            case 6: ShowHintByStep(6); break; // Отнеси в снегоход
+            case 7: hintPanel.SetActive(false); break;
+            case 8: ShowHintByStep(7); returnedHintShown = true; break; // Вернитесь на базу
+            case 9: ShowHintByStep(8); researchTableHintShown = true; HighlightFirstTwoMineralsInVehicle(); break;
+            default:
+                if (step < 4) ShowHintByStep(step);
+                break;
+        }
+    }
+
+    
     private void Update()
     {
         if (waitingHold)
         {
             timer += Time.deltaTime;
-            if (timer >= holdAfterSuccess) NextStep();
+            if (timer >= holdAfterSuccess)
+                NextStep();
             return;
         }
 
         switch (step)
         {
-            case 0: if (!looked && Mouse.current.delta.ReadValue().sqrMagnitude > 10f) { looked = true; Success(); } break;
-            case 1: if (!moved && IsWASDPressed()) { moved = true; Success(); } break;
-            case 2: if (!doorOpened && IsHoldingDoor()) { doorOpened = true; Success(); } break;
+            case 0:
+                if (!looked && Mouse.current.delta.ReadValue().sqrMagnitude > 10f)
+                { looked = true; Success(); }
+                break;
+            case 1:
+                if (!moved && IsWASDPressed())
+                { moved = true; Success(); }
+                break;
+            case 2:
+                if (!doorOpened && IsHoldingDoor())
+                { doorOpened = true; Success(); }
+                break;
             case 3:
                 if (!vehicleEntered && InputRouter.Instance?.CurrentController is TransportMovement)
                 {
                     vehicleEntered = true;
                     Success();
-                    if (hintPanel) hintPanel.SetActive(false);
+                    hintPanel.SetActive(false);
                 }
                 break;
         }
@@ -178,6 +245,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
             Success();
         }
 
+       
         if (step == 8 && returnedHintShown && player != null && baseReturnPoint != null)
         {
             if (Vector3.Distance(player.position, baseReturnPoint.position) <= baseReturnDistance)
@@ -187,31 +255,35 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
             }
         }
 
+        
         if (step == 9 && !researchTableHintShown && radioMonologue != null && !radioMonologue.IsPlaying)
         {
-            ShowHint(bringToTableText);
+            ShowHintByStep(8);
             researchTableHintShown = true;
             HighlightFirstTwoMineralsInVehicle();
         }
 
-        // ← ПОДСКАЗКА СНА — ТОЛЬКО ПОСЛЕ КАРАНТИНА!
+       
         if (!bedHintShown && !playerSlept && anomalyPlaced && GameDayManager.Instance != null && GameDayManager.Instance.CanSleep)
         {
-            ShowHint(goToBedHint);
+            ShowHintByStep(15);
             bedHintShown = true;
         }
     }
 
-    public void ActivateFlareHint()
+  
+    private IEnumerator SubscribeWhenReady()
     {
-        if (flareHintActive || step != 4) return;
-        flareHintActive = true;
-        ShowHint(flareText);
+        yield return new WaitUntil(() => GameDayManager.Instance != null);
+        var gdm = GameDayManager.Instance;
+        gdm.OnAnyDepositBroken.AddListener(OnAnyDepositBroken_Tutorial);
+        gdm.OnMineralResearched.AddListener(OnMineralResearched);
+        gdm.OnAllReportsSubmitted.AddListener(OnAllReportsSubmitted);
     }
 
-    private void OnDepositBroken(int count)
+    private void OnAnyDepositBroken_Tutorial()
     {
-        if (step == 5 && count >= 1 && !depositBroken)
+        if (step == 5 && !depositBroken)
         {
             depositBroken = true;
             Success();
@@ -229,7 +301,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
         }
         if (step == 7 && vehicleMineralSnapZone.AttachedItemsCount >= GameDayManager.Instance.MineralsToResearch && !returnedHintShown)
         {
-            ShowHint(returnToBaseText);
+            ShowHintByStep(7);
             returnedHintShown = true;
             step = 8;
         }
@@ -240,24 +312,24 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
         if (item.ItemType != GrabbableType.Mineral) return;
         var mineralData = item.GetComponentInChildren<MineralData>();
         if (mineralData == null || mineralData.isResearched) return;
+
         mineralData.EnableTutorialOutline(false);
         currentScannedMineral = mineralData;
 
         if (!firstMineralOnTable)
         {
             firstMineralOnTable = true;
-            ShowHint(scanMoveHint);
+            ShowHintByStep(9); 
             scanMoveHintShown = true;
         }
     }
 
-    // ← ВОССТАНАВЛИВАЕМ ПОДСКАЗКУ ДЛЯ КНОПКИ СКАНИРОВАНИЯ
     private void OnScannerProximityChanged(float proximity)
     {
         if (!firstMineralOnTable || !scanMoveHintShown || scanClickHintShown) return;
         if (proximity >= 0.6f)
         {
-            ShowHint(scanClickHint);
+            ShowHintByStep(10);
             scanMoveHintShown = false;
             scanClickHintShown = true;
         }
@@ -265,12 +337,8 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
 
     private void OnAllThreeValuesScanned()
     {
-        if (currentScannedMineral == null || currentScannedMineral.isResearched)
-        {
-            if (hintPanel.activeSelf && hintText.text.Contains("отправьте отчёт"))
-                hintPanel.SetActive(false);
-            return;
-        }
+        Debug.Log("3 точки!");
+        if (currentScannedMineral == null || currentScannedMineral.isResearched) return;
 
         bool allScanned = !string.IsNullOrEmpty(currentScannedMineral.savedAgeLine) &&
                           !string.IsNullOrEmpty(currentScannedMineral.savedRadioactivityLine) &&
@@ -278,19 +346,49 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
 
         if (allScanned)
         {
-            ShowHint(makeConclusionHint);
-            if (currentScannedMineral.isLastInTutorialQueue && !finalMonologuePlayed && radioMonologue != null)
+            
+            if (!conclusionHintShown)
+            {
+                ShowHintByStep(13);
+                conclusionHintShown = true;
+            }
+
+           
+            if (currentScannedMineral.isLastInTutorialQueue &&      
+                !finalMonologuePlayed &&
+                radioMonologue != null)
             {
                 radioMonologue.PlayFinalTutorialMonologue();
                 finalMonologuePlayed = true;
             }
         }
-        else if (hintPanel.activeSelf && hintText.text.Contains("отправьте отчёт"))
+        else
         {
-            hintPanel.SetActive(false);
+          
+            if (hintPanel.activeSelf && hintText.text.Contains(LocalizationManager.Loc("TUT_CONCLUSION")))
+            {
+                hintPanel.SetActive(false);
+            }
         }
     }
+    
+    public void OnReportEverSubmitted()
+    {
+        
 
+        conclusionHintShown = true;
+
+       
+        if (hintPanel != null && hintPanel.activeSelf)
+        {
+            string currentHint = hintText.text;
+            string conclusionText = LocalizationManager.Loc("TUT_CONCLUSION");
+            if (currentHint.Contains(conclusionText))
+            {
+                hintPanel.SetActive(false);
+            }
+        }
+    }
     public void OnRecordButtonPressed()
     {
         if (currentScannedMineral == null) return;
@@ -302,7 +400,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
 
         if (!accuracyHintShown)
         {
-            ShowHint(scanAccuracyHint);
+            ShowHintByStep(11);
             accuracyHintShown = true;
             StartCoroutine(HideHintAfter(3f));
             return;
@@ -310,7 +408,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
 
         if (scanned == 1 && !showedFindTwoMore)
         {
-            ShowHint(findTwoMorePointsHint);
+            ShowHintByStep(12);
             showedFindTwoMore = true;
             StartCoroutine(HideHintAfter(3f));
         }
@@ -329,12 +427,12 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
             }
         }
     }
-
+    
     private void OnAllReportsSubmitted()
     {
         if (!bedHintShown && !playerSlept && anomalyPlaced)
         {
-            ShowHint(goToBedHint);
+            ShowHintByStep(15);
             bedHintShown = true;
         }
     }
@@ -343,10 +441,9 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
     {
         if (anomalyHintShown || anomalyPlaced || currentScannedMineral == null) return;
 
-        // ← ПРОВЕРЯЕМ, ЧТО ЭТО АНОМАЛИЯ И МОНОЛОГ ПРОИГРАН
         if (currentScannedMineral.isAnomaly && radioMonologue != null && radioMonologue.HasPlayedFinalMonologue)
         {
-            ShowHint(placeAnomalyHint);
+            ShowHintByStep(14);
             anomalyHintShown = true;
         }
     }
@@ -358,81 +455,35 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
         {
             anomalyPlaced = true;
             Success();
-            if (hintPanel) hintPanel.SetActive(false);
+            hintPanel.SetActive(false);
         }
     }
 
     public void OnPlayerSlept()
     {
         playerSlept = true;
-        if (hintPanel.activeSelf && hintText.text.Contains("кровать"))
+        if (hintPanel != null && hintPanel.activeSelf)
             hintPanel.SetActive(false);
         Success();
     }
- 
 
-    public bool CanGrabAnyMineralFromVehicle()
+    
+    public void ActivateFlareHint()
     {
-        // Можно брать минералы ТОЛЬКО ПОСЛЕ ВТОРОГО МОНОЛОГА
-        return radioMonologue != null
-               && radioMonologue.HasPlayedReturnMonologue;
-    }
-
-    public bool CanGrabLastTutorialMineral() => researchedCount >= 2;
-
-    public bool CanGrabMineralFromVehicle(GrabbableItem item)
-    {
-        if (!returnedHintShown) return false;
-        var mineralData = item.GetComponentInChildren<MineralData>();
-        if (mineralData != null && mineralData.isLastInTutorialQueue)
-            return researchedCount >= 2;
-        return true;
+        if (flareHintActive || step != 4) return;
+        flareHintActive = true;
+        ShowHintByStep(4);
     }
 
     private void HighlightFirstTwoMineralsInVehicle()
     {
         if (vehicleMineralSnapZone == null) return;
-
         foreach (var item in vehicleMineralSnapZone.attachedItems)
         {
             var md = item.GetComponentInChildren<MineralData>();
-            if (md == null) continue;
-
-            // Подсвечиваем только те, что ТЫ УКАЗАЛ
-            md.EnableTutorialOutline(md.isTutorialHighlighted);
+            if (md != null)
+                md.EnableTutorialOutline(md.isTutorialHighlighted);
         }
-    }
-
-
-    private void Success()
-    {
-        waitingHold = true;
-        timer = 0f;
-        if (hintText) hintText.text += " Готово";
-    }
-
-    private void NextStep()
-    {
-        step++;
-        waitingHold = false;
-        switch (step)
-        {
-            case 4: break;
-            case 5: ShowHint(breakDepositText); break;
-            case 6: ShowHint(carryToVehicleText); break;
-            case 7: if (hintPanel) hintPanel.SetActive(false); break;
-            default:
-                if (step < 4)
-                    ShowHint(step switch { 0 => lookText, 1 => moveText, 2 => doorText, 3 => vehicleText, _ => "" });
-                break;
-        }
-    }
-
-    private void ShowHint(string text)
-    {
-        if (!hintPanel || !hintText) return;
-        hintText.text = text;
-        hintPanel.SetActive(true);
     }
 
     private IEnumerator HideHintAfter(float delay)
@@ -445,12 +496,11 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
     {
         looked = moved = doorOpened = vehicleEntered = depositBroken = false;
         firstMineralPlaced = flareHintActive = flareThrown = returnedHintShown = researchTableHintShown = false;
-        firstMineralOnTable = scanMoveHintShown = scanClickHintShown = accuracyHintShown = false;
-        showedFindTwoMore = false;
+        firstMineralOnTable = scanMoveHintShown = scanClickHintShown = accuracyHintShown = showedFindTwoMore = false;
         researchedCount = 0;
         currentScannedMineral = null;
-        anomalyHintShown = anomalyPlaced = bedHintShown = playerSlept = false;
-        finalMonologuePlayed = false;
+        anomalyHintShown = anomalyPlaced = bedHintShown = playerSlept = finalMonologuePlayed = false;
+        conclusionHintShown = false;
         waitingHold = false;
         if (hintPanel) hintPanel.SetActive(false);
     }
@@ -467,7 +517,164 @@ public class TutorialManager : MonoBehaviour, ISaveableV2
         return canGrab != null && canGrab.IsHoldingObject() && canGrab.GetGrabbedItem()?.CompareTag("Door") == true;
     }
 
+   
+    [ContextMenu("SKIP → Положите минерал на стол")]
+    public void SkipToPutMineralOnTable()
+    {
+        ResetAllFlags();
+        step = 9;
+        researchedCount = 2;
+        radioMonologue?.PlayReturnToBaseMonologue();
+        ShowHintByStep(8);
+        researchTableHintShown = true;
+        HighlightFirstTwoMineralsInVehicle();
+    }
+
+    // ==================== Сохранение ====================
     public string GetUniqueID() => "TutorialSystem";
-    public ObjectSaveData GetCommonSaveData() => null;
-    public void LoadCommonData(ObjectSaveData data) { }
+    public TutorialSaveData GetTutorialSaveData()
+    {
+        return new TutorialSaveData
+        {
+            step = step,
+            researchedCount = researchedCount,
+
+            hasPlayedIntroMonologue = HasPlayedIntroMonologue,
+            hasPlayedReturnMonologue = HasPlayedReturnMonologue,
+            hasPlayedFinalMonologue = HasPlayedFinalMonologue,
+            hasPlayedMorningDay2 = HasPlayedMorningDay2,
+            hasPlayedMorningDay3 = HasPlayedMorningDay3,
+
+            flareHintActive = flareHintActive,
+            flareThrown = flareThrown,
+            anomalyPlaced = anomalyPlaced,
+            playerSlept = playerSlept,
+
+            // === СОХРАНЯЕМ ВСЕ ПОДСКАЗКИ ===
+            hintShown_Look = looked,
+            hintShown_Move = moved,
+            hintShown_Door = doorOpened,
+            hintShown_Vehicle = vehicleEntered,
+            hintShown_Flare = flareHintActive && flareThrown,
+            hintShown_Break = depositBroken,
+            hintShown_Carry = firstMineralPlaced,
+            hintShown_Return = returnedHintShown,
+            hintShown_Table = researchTableHintShown,
+            hintShown_ScanMove = scanMoveHintShown,
+            hintShown_ScanClick = scanClickHintShown,
+            hintShown_Accuracy = accuracyHintShown,
+            hintShown_FindMore = showedFindTwoMore,
+            hintShown_Conclusion = conclusionHintShown,
+            hintShown_AnomalyPlace = anomalyHintShown,
+            hintShown_GoToBed = bedHintShown
+        };
+    }
+
+    public void LoadTutorialSaveData(TutorialSaveData data)
+    {
+        if (data == null) return;
+
+        ResetAllFlags();
+
+        step = data.step;
+        researchedCount = data.researchedCount;
+
+        HasPlayedIntroMonologue = data.hasPlayedIntroMonologue;
+        HasPlayedReturnMonologue = data.hasPlayedReturnMonologue;
+        HasPlayedFinalMonologue = data.hasPlayedFinalMonologue;
+        HasPlayedMorningDay2 = data.hasPlayedMorningDay2;
+        HasPlayedMorningDay3 = data.hasPlayedMorningDay3;
+
+        flareHintActive = data.flareHintActive;
+        flareThrown = data.flareThrown;
+        anomalyPlaced = data.anomalyPlaced;
+        playerSlept = data.playerSlept;
+
+        // === ВОССТАНАВЛИВАЕМ ФЛАГИ ПОДСКАЗОК ===
+        looked = data.hintShown_Look;
+        moved = data.hintShown_Move;
+        doorOpened = data.hintShown_Door;
+        vehicleEntered = data.hintShown_Vehicle;
+        depositBroken = data.hintShown_Break;
+        firstMineralPlaced = data.hintShown_Carry;
+        returnedHintShown = data.hintShown_Return;
+        researchTableHintShown = data.hintShown_Table;
+        scanMoveHintShown = data.hintShown_ScanMove;
+        scanClickHintShown = data.hintShown_ScanClick;
+        accuracyHintShown = data.hintShown_Accuracy;
+        showedFindTwoMore = data.hintShown_FindMore;
+        conclusionHintShown = data.hintShown_Conclusion;
+        anomalyHintShown = data.hintShown_AnomalyPlace;
+        bedHintShown = data.hintShown_GoToBed;
+
+        // Восстанавливаем монологи в радио
+        if (radioMonologue != null)
+        {
+            radioMonologue.HasPlayedIntroMonologue = data.hasPlayedIntroMonologue;
+            radioMonologue.HasPlayedReturnMonologue = data.hasPlayedReturnMonologue;
+            radioMonologue.HasPlayedFinalMonologue = data.hasPlayedFinalMonologue;
+        }
+
+        if (playerSlept || conclusionHintShown)
+        {
+            gameObject.SetActive(false);
+            hintPanel?.SetActive(false);
+            return;
+        }
+
+        gameObject.SetActive(true);
+        enabled = true;
+
+       
+        if (step < hintKeys.Length)
+        {
+            bool shouldShow = step switch
+            {
+                0 => !looked,
+                1 => !moved,
+                2 => !doorOpened,
+                3 => !vehicleEntered,
+                4 => flareHintActive && !data.hintShown_Flare,
+                5 => !depositBroken,
+                6 => !firstMineralPlaced,
+                7 => !returnedHintShown,
+                8 => !researchTableHintShown,
+                9 => !scanMoveHintShown,
+                10 => !scanClickHintShown,
+                11 => !accuracyHintShown,
+                12 => !showedFindTwoMore,
+                13 => !conclusionHintShown,
+                14 => !anomalyHintShown,
+                15 => !bedHintShown,
+                _ => true
+            };
+
+            if (shouldShow)
+                ShowHintByStep(step);
+            else
+                hintPanel?.SetActive(false);
+        }
+    }
+
+    public bool CanGrabAnyMineralFromVehicle()
+    {
+        return radioMonologue != null;
+    }
+
+    public bool CanGrabLastTutorialMineral()
+    {
+        return researchedCount >= 2;
+    }
+
+    public bool CanGrabMineralFromVehicle(GrabbableItem item)
+    {
+        if (!CanGrabAnyMineralFromVehicle()) return false;
+        var mineralData = item.GetComponentInChildren<MineralData>();
+        if (mineralData != null && mineralData.isLastInTutorialQueue)
+            return CanGrabLastTutorialMineral();
+        return true;
+    }
+
+    public ObjectSaveData GetCommonSaveData() => new ObjectSaveData { uniqueID = GetUniqueID(), isActive = gameObject.activeSelf };
+    public void LoadCommonData(ObjectSaveData data) => gameObject.SetActive(data.isActive);
 }

@@ -116,11 +116,43 @@ public class CameraController : MonoBehaviour
     public void ForceCameraSync()
     {
         if (_target == null) return;
+
         transform.position = _target.position + Vector3.up * eyeHeight;
         transform.rotation = Quaternion.Euler(_smoothPitch, _smoothYaw, 0f);
+
+        
+        var playerRb = _target.GetComponent<Rigidbody>();
+        if (playerRb != null)
+        {
+            playerRb.MoveRotation(Quaternion.Euler(0f, _smoothYaw, 0f));
+        }
+
         _yawVel = _pitchVel = 0f;
     }
+ 
+    public void LoadCameraDirectionAndSyncPlayer(Vector2 yawPitch)
+    {
+        float yaw = yawPitch.x;
+        float pitch = UnwrapAngle(yawPitch.y);
 
+        
+        _yaw = _smoothYaw = yaw;
+        _pitch = _smoothPitch = pitch;
+
+        transform.rotation = Quaternion.Euler(pitch, yaw, 0f);
+
+        
+        var playerRb = _target?.GetComponent<Rigidbody>();
+        if (playerRb != null)
+        {
+            playerRb.MoveRotation(Quaternion.Euler(0f, yaw, 0f));
+            playerRb.angularVelocity = Vector3.zero; 
+        }
+
+        
+        _yawVel = 0f;
+        _pitchVel = 0f;
+    }
     private void Update()
     {
         if (currentMode != ControlMode.FPS || _target == null || _router == null)
@@ -168,7 +200,8 @@ public class CameraController : MonoBehaviour
     {
         if (_target) transform.position = _target.position + Vector3.up * eyeHeight;
     }
-
+ 
+   
     private void HandleFPS_UIRaycast()
     {
         if (currentMode != ControlMode.FPS) return;

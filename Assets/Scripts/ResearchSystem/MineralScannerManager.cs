@@ -51,8 +51,7 @@ public class MineralScannerManager : MonoBehaviour
         if (obj != null)
         {
             var mineral = obj.GetComponentInChildren<MineralData>();
-          //  if (mineral != null && broughtTodayMineralIDs.Add(mineral.UniqueInstanceID))
-           //     GameDayManager.Instance.RegisterMineralResearched(mineral);
+        
         }
         OnMineralScanned?.Invoke(obj);
     }

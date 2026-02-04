@@ -1,7 +1,8 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
-
 using System;
+using System.Collections.Generic;
+
 [System.Serializable]
 public class SaveFile
 {
@@ -11,18 +12,80 @@ public class SaveFile
 
     public GameStateBlock gameState = new GameStateBlock();
     public string globalReports = "";
-
     public Vector2 cameraLookDirection;
+    public TutorialSaveData tutorialData = new TutorialSaveData();
 
-    public int tutorialProgress = 0;        // 0..5 (5 = завершён)
-    public bool flareHintWasShown = false;  // чтобы не показывать повторно в пещере
+    
+    public float masterVolume = 1f;
+    public float sfxVolume = 1f;
+    public float ambienceVolume = 1f;
+    public string language = "RU"; 
 
     public List<ObjectSaveData> objects = new List<ObjectSaveData>();
     public List<MineralSaveData> minerals = new List<MineralSaveData>();
     public List<DepositSaveData> deposits = new List<DepositSaveData>();
+
+    public SaveFile GetCleanCopy()
+    {
+        return new SaveFile
+        {
+            gameState = this.gameState,
+            globalReports = this.globalReports,
+            cameraLookDirection = this.cameraLookDirection,
+            tutorialData = this.tutorialData,
+            masterVolume = this.masterVolume,
+            sfxVolume = this.sfxVolume,
+            ambienceVolume = this.ambienceVolume,
+            language = this.language,
+            objects = this.objects,
+            minerals = this.minerals,
+            deposits = this.deposits
+        };
+    }
+}
+[System.Serializable]
+public class TutorialSaveData
+{
+    public int step = 0;
+    public int researchedCount = 0;
+
+   
+    public bool hasPlayedIntroMonologue = false;
+    public bool hasPlayedReturnMonologue = false;
+    public bool hasPlayedFinalMonologue = false;
+    public bool hasPlayedMorningDay2 = false;
+    public bool hasPlayedMorningDay3 = false;
+
+    
+    public bool flareHintActive = false;
+    public bool flareThrown = false;
+    public bool anomalyPlaced = false;
+    public bool playerSlept = false;
+
+   
+    public bool hintShown_Look = false;           
+    public bool hintShown_Move = false;          
+    public bool hintShown_Door = false;           
+    public bool hintShown_Vehicle = false;        
+    public bool hintShown_Flare = false;          
+    public bool hintShown_Break = false;          
+    public bool hintShown_Carry = false;          
+    public bool hintShown_Return = false;        
+    public bool hintShown_Table = false;          
+    public bool hintShown_ScanMove = false;       
+    public bool hintShown_ScanClick = false;     
+    public bool hintShown_Accuracy = false;       
+    public bool hintShown_FindMore = false;       
+    public bool hintShown_Conclusion = false;     
+    public bool hintShown_AnomalyPlace = false;  
+    public bool hintShown_GoToBed = false;       
 }
 
-
+public interface IHasTutorialData
+{
+    TutorialSaveData GetTutorialSaveData();
+    void LoadTutorialSaveData(TutorialSaveData data);
+}
 
 
 
@@ -60,6 +123,8 @@ public class GameStateBlock
     public float currentTimeInMinutes;
     public int depositsBrokenToday;
     public int mineralsResearchedToday;
+    
+  
 }
 
 [System.Serializable]
@@ -85,4 +150,24 @@ public class DepositSaveData
 {
     public string uniqueID;
     public int currentHits;
+}
+
+
+
+
+
+[System.Serializable]
+public class SaveSlotInfo
+{
+    public int slotIndex;
+    public string slotName;
+    public string saveTime;         
+    public Texture2D previewTexture;
+    public bool hasData;
+
+    public void DestroyTexture()
+    {
+        if (previewTexture != null && previewTexture != null)
+            UnityEngine.Object.Destroy(previewTexture);
+    }
 }

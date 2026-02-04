@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9dc88466fb3dae4bbc933e6cf50d87d, type: 3}
   m_Name: Anomaly
   m_EditorClassIdentifier: 
-  className: "\u0410\u043D\u043E\u043C\u0430\u043B\u0438\u044F"
+  localizationKey: NAME_MINERAL_CLASS_5
   isAnomalyClass: 1
   ageUnit: 0
   ageMin: 4

@@ -5,7 +5,7 @@ using System.Linq;
 public class SaveableObject : MonoBehaviour, ISaveableV2
 {
     [Header("Save System")]
-    [SerializeField] protected string uniqueID = "";
+    [SerializeField] public string uniqueID = "";
     [SerializeField] protected string prefabIdentifier = "";
 
     protected Rigidbody rb;
@@ -112,33 +112,47 @@ public class SaveableObject : MonoBehaviour, ISaveableV2
 
     protected virtual IEnumerator RestoreRelations(ObjectSaveData data)
     {
-        yield return new WaitForEndOfFrame();
+       
+        yield return new WaitUntil(() =>
+            InputRouter.Instance != null &&
+            FindObjectsOfType<SaveableObject>().Length >= SaveManager.Instance.GetCurrentObjectCountEstimate());
 
         var all = FindObjectsOfType<SaveableObject>(true);
 
+       
+        if (IsPlayer && !string.IsNullOrEmpty(data.controllingTransportID))
+        {
+            var transportObj = all.FirstOrDefault(x => x.GetUniqueID() == data.controllingTransportID);
+            if (transportObj != null && transportObj.TryGetComponent<IControllable>(out var ctrl))
+            {
+                
+                InputRouter.Instance.SetController(ctrl);
+                Debug.Log($"[Save] Управление транспортом восстановлено: {transportObj.name}");
+            }
+        }
+
+        
+        if (IsPlayer && !string.IsNullOrEmpty(data.seatedInTransportID))
+        {
+            var transportObj = all.FirstOrDefault(x => x.GetUniqueID() == data.seatedInTransportID);
+            if (transportObj != null && transportObj.TryGetComponent<TransportMovement>(out var transport))
+            {
+                if (TryGetComponent<PlayerMovement>(out var pm))
+                {
+                  
+                    pm.ForceMountWithoutControllerChange(transport);
+                }
+            }
+        }
+
+       
         if (!string.IsNullOrEmpty(data.snappedZoneID))
         {
             var zoneObj = all.FirstOrDefault(x => x.GetUniqueID() == data.snappedZoneID);
-            if (zoneObj && zoneObj.TryGetComponent<SnapZone>(out var zone) && TryGetComponent<GrabbableItem>(out var grabbable))
+            if (zoneObj && zoneObj.TryGetComponent<SnapZone>(out var zone) &&
+                TryGetComponent<GrabbableItem>(out var grabbable))
+            {
                 zone.LoadSnappedItem(grabbable, data.snapPointIndex);
-        }
-
-        if (IsPlayer)
-        {
-            if (!string.IsNullOrEmpty(data.seatedInTransportID))
-            {
-                var transport = all.FirstOrDefault(x => x.GetUniqueID() == data.seatedInTransportID)?.GetComponent<TransportMovement>();
-                if (transport && TryGetComponent<PlayerMovement>(out var pm))
-                {
-                    var method = pm.GetType().GetMethod("Mount", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                    method?.Invoke(pm, new object[] { transport });
-                }
-            }
-
-            if (!string.IsNullOrEmpty(data.controllingTransportID))
-            {
-                var ctrl = all.FirstOrDefault(x => x.GetUniqueID() == data.controllingTransportID)?.GetComponent<IControllable>();
-                if (ctrl != null) InputRouter.Instance?.SetController(ctrl);
             }
         }
 
@@ -150,7 +164,7 @@ public class SaveableObject : MonoBehaviour, ISaveableV2
     }
 }
 
-public static class TransformExtensions
+    public static class TransformExtensions
 {
     public static string GetPath(this Transform t)
         => t.parent == null ? t.name : t.parent.GetPath() + "/" + t.name;

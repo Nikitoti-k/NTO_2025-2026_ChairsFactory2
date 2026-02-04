@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7ed9c369805e45344ac3c49b4c747eca, type: 3}
   m_Name: DayTask_2
   m_EditorClassIdentifier: 
-  dayNumber: 1
-  depositsToBreak: 3
-  mineralsToResearch: 3
+  dayNumber: 2
+  depositsToBreak: 4
+  mineralsToResearch: 4
   caveEntrancePosition: {x: 0, y: 0, z: 0}
   caveSceneName: 

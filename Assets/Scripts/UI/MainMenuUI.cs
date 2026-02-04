@@ -4,13 +4,17 @@ using UnityEngine.SceneManagement;
 using TMPro;
 using System.IO;
 
-public class MainMenuUI : MonoBehaviour
+public class MainMenuUI : MonoBehaviour, ILocalizable
 {
     [Header("Главное меню")]
     [SerializeField] private Button newGameButton;
     [SerializeField] private Button loadGameButton;
     [SerializeField] private Button settingsButton;
     [SerializeField] private Button quitButton;
+
+    [Header("Переключение языка")]
+    [SerializeField] private Button languageButton;         
+    [SerializeField] private TextMeshProUGUI languageButtonText;
 
     [Header("Меню слотов")]
     [SerializeField] private GameObject saveLoadMenu;
@@ -21,15 +25,92 @@ public class MainMenuUI : MonoBehaviour
 
     [SerializeField] private string gameSceneName = "GameScene";
 
+    private void Awake()
+    {
+       
+        if (languageButton == null)
+        {
+            var btn = transform.Find("LanguageButton")?.GetComponent<Button>();
+            if (btn != null) languageButton = btn;
+        }
+        if (languageButtonText == null && languageButton != null)
+            languageButtonText = languageButton.GetComponentInChildren<TextMeshProUGUI>();
+    }
+
     private void Start()
     {
+        // === Основные кнопки ===
         newGameButton.onClick.AddListener(StartNewGame);
         loadGameButton.onClick.AddListener(OpenLoadMenu);
-        settingsButton.onClick.AddListener(() => Debug.Log("Настройки"));
+        settingsButton.onClick.AddListener(OpenSettings);
         quitButton.onClick.AddListener(QuitGame);
+
+        // === Кнопка языка ===
+        if (languageButton != null)
+        {
+            languageButton.onClick.RemoveAllListeners();
+            languageButton.onClick.AddListener(ToggleLanguage);
+            UpdateLanguageButtonText();
+        }
 
         if (errorText) errorText.gameObject.SetActive(false);
         saveLoadMenu.SetActive(false);
+
+      
+        LocalizationManager.OnLanguageChanged += OnLanguageChanged;
+    }
+
+    private void OnDestroy()
+    {
+        LocalizationManager.OnLanguageChanged -= OnLanguageChanged;
+    }
+
+    private void OnEnable()
+    {
+        LocalizationManager.Register(this);
+    }
+
+    private void OnDisable()
+    {
+        LocalizationManager.Unregister(this);
+    }
+
+    public void Localize()
+    {
+        UpdateLanguageButtonText();
+      
+    }
+
+    private void OnLanguageChanged(LocalizationManager.Language lang)
+    {
+        UpdateLanguageButtonText();
+    }
+
+    private void UpdateLanguageButtonText()
+    {
+        if (languageButtonText == null) return;
+
+        string text = LocalizationManager.CurrentLanguage == LocalizationManager.Language.RU ? "EN" : "RU";
+        languageButtonText.text = text;
+    }
+
+    private void ToggleLanguage()
+    {
+        var newLang = LocalizationManager.CurrentLanguage == LocalizationManager.Language.RU
+            ? LocalizationManager.Language.EN
+            : LocalizationManager.Language.RU;
+
+        LocalizationManager.SetLanguage(newLang);
+
+      
+        var anim = languageButton?.GetComponent<Animator>();
+        if (anim != null && anim.isActiveAndEnabled)
+        {
+            anim.Play("Click", -1, 0f);
+        }
+      
+
+        Debug.Log($"[MainMenu] Язык переключён на: {newLang}");
     }
 
     private void StartNewGame()
@@ -44,6 +125,11 @@ public class MainMenuUI : MonoBehaviour
     {
         saveLoadMenu.SetActive(true);
         saveLoadMenuScript.RefreshSlots();
+    }
+
+    private void OpenSettings()
+    {
+        AudioSettingsUI.Instance?.Open();
     }
 
     public void BackToMainMenu()

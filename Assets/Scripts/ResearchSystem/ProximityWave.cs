@@ -29,7 +29,7 @@ public class ProximityWave : MonoBehaviour
         lr.useWorldSpace = false;
         lr.loop = false;
         lr.widthMultiplier = lineWidth;
-        lr.material = new Material(Shader.Find("Unlit/Color"));
+      
         lr.receiveShadows = false;
         lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
     }

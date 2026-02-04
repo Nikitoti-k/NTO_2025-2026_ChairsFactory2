@@ -1,12 +1,18 @@
-﻿using UnityEngine;
+﻿using System.Collections;
+using UnityEngine;
 
 public class MineralSaveableObject : SaveableObject, IHasMineralData
 {
+    private MineralPointSpawner pointSpawner;
+
     protected override void Awake()
     {
         base.Awake();
         if (string.IsNullOrEmpty(uniqueID))
             uniqueID = System.Guid.NewGuid().ToString();
+
+       
+        pointSpawner = GetComponent<MineralPointSpawner>();
     }
 
     public MineralSaveData GetMineralSaveData()
@@ -42,13 +48,25 @@ public class MineralSaveableObject : SaveableObject, IHasMineralData
         mineral.savedRadioactivityLine = data.savedRadioactivityLine;
         mineral.savedCrystalLine = data.savedCrystalLine;
 
+       
         if (mineral.AgePoint) mineral.AgePoint.transform.localPosition = data.agePointLocalPos;
         if (mineral.CrystalPoint) mineral.CrystalPoint.transform.localPosition = data.crystalPointLocalPos;
         if (mineral.RadioactivityPoint) mineral.RadioactivityPoint.transform.localPosition = data.radioactivityPointLocalPos;
 
-        GetComponent<MineralPointSpawner>()?.RestorePointsFromSaveData(
-            data.agePointLocalPos,
-            data.crystalPointLocalPos,
-            data.radioactivityPointLocalPos);
+        
+        if (pointSpawner != null)
+        {
+            
+            if (pointSpawner.enabled)
+                pointSpawner.RestorePointsFromSaveData(data.agePointLocalPos, data.crystalPointLocalPos, data.radioactivityPointLocalPos);
+            else
+                StartCoroutine(RestorePointsWhenEnabled());
+        }
+
+        IEnumerator RestorePointsWhenEnabled()
+        {
+            yield return new WaitUntil(() => pointSpawner != null && pointSpawner.enabled);
+            pointSpawner.RestorePointsFromSaveData(data.agePointLocalPos, data.crystalPointLocalPos, data.radioactivityPointLocalPos);
+        }
     }
 }

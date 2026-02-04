@@ -1,80 +1,88 @@
-using UnityEngine;
-using UnityEngine.UI;
+п»їusing UnityEngine;
 using TMPro;
 using System.Collections;
 
-public class SaveFeedbackUI : MonoBehaviour
+public class SaveFeedbackUI : MonoBehaviour, ILocalizable
 {
     public static SaveFeedbackUI Instance { get; private set; }
 
-    [Header("UI Elements")]
-    [SerializeField] private Image icon;
-    [SerializeField] private TextMeshProUGUI messageText;
-    [SerializeField] private float displayDuration = 2f;
+    [SerializeField] private TextMeshProUGUI text;
+    [SerializeField] private float duration = 2f;
 
-   
-
-   
-
-    private AudioSource audioSource;
-    private Coroutine currentRoutine;
+    private Coroutine coroutine;
 
     private void Awake()
     {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-
-        // Скрываем сразу
-        if (icon) icon.enabled = false;
-        if (messageText) messageText.enabled = false;
-
-        audioSource = gameObject.AddComponent<AudioSource>();
-    }
-
-    public static void ShowSave(bool isAuto = false)
-    {
-        Instance?._Show("Сохранено");
-    }
-
-    public static void ShowLoad()
-    {
-        Instance?._Show("Загружено");
-    }
-
-    private void _Show(string text)
-    {
-        // Прерываем старую анимацию
-        if (currentRoutine != null)
-            StopCoroutine(currentRoutine);
-
-        currentRoutine = StartCoroutine(ShowRoutine(text));
-    }
-
-    private IEnumerator ShowRoutine(string text)
-    {
-        // Включаем
-        
-        if (messageText)
+        if (Instance != null && Instance != this)
         {
-            messageText.text = text;
-            messageText.enabled = true;
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+
+        // РЎРєСЂС‹РІР°РµРј СЃСЂР°Р·Сѓ
+        if (text != null)
+        {
+            text.color = new Color(text.color.r, text.color.g, text.color.b, 0f);
+            text.gameObject.SetActive(false);
         }
 
-      
+        LocalizationManager.Register(this);
+        Localize(); // РЅР° РІСЃСЏРєРёР№ СЃР»СѓС‡Р°Р№
+    }
 
-        // Ждём
-        float timer = 0f;
-        while (timer < displayDuration)
+    private void OnDestroy()
+    {
+        LocalizationManager.Unregister(this);
+        if (Instance == this) Instance = null;
+    }
+
+    public static void Show()
+    {
+        Instance?._Show();
+    }
+
+    private void _Show()
+    {
+        if (coroutine != null) StopCoroutine(coroutine);
+        coroutine = StartCoroutine(ShowCoroutine());
+    }
+
+    private IEnumerator ShowCoroutine()
+    {
+        text.gameObject.SetActive(true);
+        text.text = LocalizationManager.Loc("UI_PauseMenu_SaveFeedBack");
+
+        // РџРѕСЏРІР»РµРЅРёРµ
+        float t = 0f;
+        while (t < 0.2f)
         {
-            timer += Time.unscaledDeltaTime; // работает даже при Time.timeScale = 0
+            t += Time.unscaledDeltaTime;
+            text.color = new Color(text.color.r, text.color.g, text.color.b, Mathf.Lerp(0f, 1f, t / 0.2f));
             yield return null;
         }
 
-        // Выключаем
-        if (icon) icon.enabled = false;
-        if (messageText) messageText.enabled = false;
+        // Р”РµСЂР¶РёРј 2 СЃРµРєСѓРЅРґС‹
+        yield return new WaitForSecondsRealtime(duration);
 
-        currentRoutine = null;
+        // РСЃС‡РµР·РЅРѕРІРµРЅРёРµ
+        t = 0f;
+        while (t < 0.3f)
+        {
+            t += Time.unscaledDeltaTime;
+            text.color = new Color(text.color.r, text.color.g, text.color.b, Mathf.Lerp(1f, 0f, t / 0.3f));
+            yield return null;
+        }
+
+        text.color = new Color(text.color.r, text.color.g, text.color.b, 0f);
+        text.gameObject.SetActive(false);
+
+        coroutine = null;
+    }
+
+    public void Localize()
+    {
+        if (text != null && text.gameObject.activeSelf)
+            text.text = LocalizationManager.Loc("UI_PauseMenu_SaveFeedBack");
     }
 }

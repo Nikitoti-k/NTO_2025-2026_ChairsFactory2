@@ -1,5 +1,5 @@
-using System.Linq;
 using UnityEngine;
+using System.Linq;
 
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerMovement : MonoBehaviour, IControllable
@@ -10,6 +10,13 @@ public class PlayerMovement : MonoBehaviour, IControllable
     [SerializeField, Range(1f, 50f)] private float deceleration = 30f;
     [SerializeField, Range(1f, 50f)] private float airAcceleration = 8f;
     [SerializeField, Range(0f, 1f)] private float stopThreshold = 0.1f;
+
+    [Header("Шаги 👣")]
+    [SerializeField] private string footstepKey = "footstep_ice"; // ключ в базе
+    [SerializeField, Range(0.1f, 2f)] private float footstepInterval = 0.4f;
+    [SerializeField, Range(0f, 1f)] private float footstepVolumeMultiplier = 0.8f;
+    private float _lastFootstepTime;
+    private bool _lastGroundedState;
 
     [Header("Земля")]
     [SerializeField] private float groundCheckDistance = 0.2f;
@@ -53,22 +60,51 @@ public class PlayerMovement : MonoBehaviour, IControllable
     {
         if (_router?.CurrentController != this || _isMounting || _isSleeping) return;
         Move(_input);
+        HandleFootsteps();
     }
 
     private void Move(Vector2 input)
     {
         bool grounded = IsGrounded();
         if (input.sqrMagnitude < stopThreshold * stopThreshold) input = Vector2.zero;
+
         float accel = grounded ? acceleration : airAcceleration;
         float decel = grounded ? deceleration : airAcceleration;
+
         _smoothedInput = input.sqrMagnitude > 0.01f
             ? Vector2.MoveTowards(_smoothedInput, input, accel * Time.fixedDeltaTime)
             : Vector2.MoveTowards(_smoothedInput, Vector2.zero, decel * Time.fixedDeltaTime);
+
         Vector3 dir = (transform.right * _smoothedInput.x + transform.forward * _smoothedInput.y).normalized;
         Vector3 target = dir * walkSpeed;
         Vector3 horiz = new Vector3(_rb.linearVelocity.x, 0f, _rb.linearVelocity.z);
         horiz = Vector3.MoveTowards(horiz, target, accel * 10f * Time.fixedDeltaTime);
         _rb.linearVelocity = new Vector3(horiz.x, _rb.linearVelocity.y, horiz.z);
+    }
+
+    private void HandleFootsteps()
+    {
+        bool grounded = IsGrounded();
+
+       
+        if (!_lastGroundedState && grounded)
+        {
+            PlayFootstep();
+        }
+
+      
+        if (grounded && _smoothedInput.sqrMagnitude > 0.1f && Time.time >= _lastFootstepTime + footstepInterval)
+        {
+            PlayFootstep();
+            _lastFootstepTime = Time.time;
+        }
+
+        _lastGroundedState = grounded;
+    }
+
+    private void PlayFootstep()
+    {
+        AudioManager.Instance?.PlaySFX(footstepKey, footstepVolumeMultiplier, 1f, transform.position);
     }
 
     private bool IsGrounded()
@@ -97,47 +133,27 @@ public class PlayerMovement : MonoBehaviour, IControllable
     public void HandleInteract(bool pressed)
     {
         if (!pressed || _isMounting || _isSleeping) return;
-
         if (objectGrabber?.IsHoldingObject() == true)
         {
             TrySnapObject();
             return;
         }
-
-        // === ПОПЫТКА СПАТЬ ===
-        if (sleepSystem != null)
+        if (sleepSystem != null && sleepSystem.CanSleepNow())
         {
-            bool canSleep = sleepSystem.CanSleepNow();
-            Debug.Log($"[Player] Нажал E → Проверка сна: CanSleep = {canSleep}");
-
-            if (canSleep)
-            {
-                Debug.Log("[Player] Ложимся спать! Z-z-z...");
-                _isSleeping = true;
-                sleepSystem.StartSleep();
-                return;
-            }
-            else
-            {
-                Debug.LogWarning("[Player] НЕЛЬЗЯ СПАТЬ! Смотри логи выше ↑");
-            }
+            _isSleeping = true;
+            sleepSystem.StartSleep();
+            return;
         }
-
         TryMountTransport();
-
         if (TryOpenResearchReport())
             return;
-
-        Debug.Log("[Player] Нечего интерактировать рядом.");
     }
 
     private bool TryOpenResearchReport()
     {
-        var viewers = Physics.OverlapSphere(transform.position, 3f)
+        var nearest = Physics.OverlapSphere(transform.position, 3f)
             .Select(c => c.GetComponent<ResearchReportViewer>())
-            .Where(v => v != null);
-
-        var nearest = viewers.FirstOrDefault();
+            .FirstOrDefault(v => v != null);
         if (nearest != null)
         {
             nearest.OpenPanel();
@@ -174,12 +190,37 @@ public class PlayerMovement : MonoBehaviour, IControllable
             Mount(nearest);
         }
     }
+   
+    public void ForceMountWithoutControllerChange(TransportMovement transport)
+    {
+        _rb.isKinematic = true;
+        _rb.useGravity = false;
+        _rb.linearVelocity = Vector3.zero;
+        _rb.interpolation = RigidbodyInterpolation.None;
 
+        var col = GetComponent<Collider>();
+        col.enabled = false;
+
+        Transform seat = transport.seatTransform;
+        if (seat == null)
+        {
+            seat = new GameObject("PlayerSeat").transform;
+            seat.SetParent(transport.transform, false);
+            seat.localPosition = transport.fallbackMountOffset;
+        }
+
+        transform.SetParent(seat);
+        transform.localPosition = Vector3.zero;
+        transform.localRotation = Quaternion.identity;
+
+        _isMounting = false;
+    }
     private void Mount(TransportMovement transport)
     {
         _rb.isKinematic = true;
         _rb.useGravity = false;
         _rb.linearVelocity = Vector3.zero;
+        _rb.interpolation = RigidbodyInterpolation.None;
         var col = GetComponent<Collider>();
         col.enabled = false;
         Transform seat = transport.seatTransform;

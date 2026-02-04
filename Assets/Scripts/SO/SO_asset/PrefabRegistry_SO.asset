@@ -19,7 +19,15 @@ MonoBehaviour:
     prefab: {fileID: 3836979047366133623, guid: 9ae6765dfb76da048a579afe50c48d24, type: 3}
   - identifier: Min_3_anomaly
     prefab: {fileID: 3836979047366133623, guid: c395a4469781d4c40b5b1f12d347b704, type: 3}
+  - identifier: Min_4
+    prefab: {fileID: 3836979047366133623, guid: 237ecba0a6b766b41bd94e0e537c1510, type: 3}
+  - identifier: Min_5
+    prefab: {fileID: 3836979047366133623, guid: ea3e2bc19dc995541ad3d4daf3f51c4f, type: 3}
   - identifier: Flare
     prefab: {fileID: 666048536902696509, guid: 45a88e604c987eb49b1362c96164c561, type: 3}
   - identifier: Ice_Deposit
     prefab: {fileID: 7572829150447897209, guid: b775520f4d5274b4dbea4c765c9196e2, type: 3}
+  - identifier: Min_6
+    prefab: {fileID: 3836979047366133623, guid: 47f3b9d3ac0fd3e459d83c5aacd47797, type: 3}
+  - identifier: Min_7_anomaly
+    prefab: {fileID: 3836979047366133623, guid: bb8ed4be9fb35434ca42f738afed6fb8, type: 3}

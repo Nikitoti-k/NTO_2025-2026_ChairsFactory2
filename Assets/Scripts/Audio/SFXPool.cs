@@ -2,7 +2,8 @@ using UnityEngine;
 
 public class SFXPool : MonoBehaviour
 {
-    [SerializeField] private int poolSize = 10;
+    [SerializeField] private int poolSize = 20; // увеличил дл€ шагов
+
     private AudioSource[] _pool;
     private int _currentIndex = 0;
 
@@ -18,23 +19,24 @@ public class SFXPool : MonoBehaviour
             _pool[i].volume = 1f;
         }
     }
-
-    // Ќовый метод вместо простого циклического выбора:
+  
     public AudioSource GetAvailableSource()
     {
-        // сначала ищем свободный источник
+        // »щем свободный источник
         for (int i = 0; i < poolSize; i++)
         {
             int index = (_currentIndex + i) % poolSize;
             if (!_pool[index].isPlaying)
             {
-                _currentIndex = index;
+                _currentIndex = (index + 1) % poolSize;
                 return _pool[index];
             }
         }
 
-        // если нет свободных Ц берЄм самый старый
+        // Ќет свободных Ч принудительно останавливаем самый старый
         AudioSource src = _pool[_currentIndex];
+        src.Stop();
+        src.clip = null;
         _currentIndex = (_currentIndex + 1) % poolSize;
         return src;
     }

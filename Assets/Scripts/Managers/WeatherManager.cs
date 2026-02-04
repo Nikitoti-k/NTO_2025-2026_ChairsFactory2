@@ -13,20 +13,22 @@ public class WeatherManager : MonoBehaviour
     [SerializeField, Range(60f, 3600f)] float realSecondsPerGameDay = 300f;
 
     [Space]
-    [Tooltip("Если включено — время идёт всегда, даже без разрешений фаз")]
     public bool forceTimeFlow = false;
 
-    [Header("=== ЗОНЫ ДЛЯ СМЕНЫ ВРЕМЕНИ ===")]
-    [SerializeField] private Transform baseCenterPoint;        // Центр базы (кровать/дом)
-    [SerializeField] private float distanceToStartDay = 150f;  // Отъехал → день (12:00)
-    [SerializeField] private float distanceToTriggerEvening = 80f; // Вернулся → вечер (18:00)
+    [Header("=== НОВЫЙ РЕЖИМ: ВРЕМЯ ДО 00:00 + СОН ===")]
+    public bool isTimeFlow = false;
+
+    [Header("=== ЗОНЫ ДЛЯ СМЕНЫ ВРЕМЕНИ (без isTimeFlow) ===")]
+    [SerializeField] private Transform baseCenterPoint;
+    [SerializeField] private float distanceToStartDay = 150f;
+    [SerializeField] private float distanceToTriggerEvening = 80f;
 
     public UnityEvent<int> OnDayChanged = new UnityEvent<int>();
     public UnityEvent<TimeOfDay> OnPeriodChanged = new UnityEvent<TimeOfDay>();
     public UnityEvent<float, float> OnTimeChanged = new UnityEvent<float, float>();
 
     public int CurrentDay { get; private set; } = 1;
-    public float CurrentTimeInMinutes { get; private set; } = 480f; // 8:00 утра
+    public float CurrentTimeInMinutes { get; private set; } = 480f; // 8:00
     public TimeOfDay CurrentPeriod => GetCurrentPeriod();
 
     private float timeProgress;
@@ -34,14 +36,17 @@ public class WeatherManager : MonoBehaviour
     private Vector3 moonDefaultAngles;
     private TimeOfDay currentPeriodCache;
 
-    // === ФАЗЫ ВРЕМЕНИ ===
-    private bool dayTriggered = false;     // Отъехал далеко → день разрешён
-    private bool depositsBroken = false;    // Сломаны все залежи → вечер разрешён
-    private bool eveningTriggered = false;  // Вернулся → ночь разрешена
-
+    private bool dayTriggered = false;
+    private bool depositsBroken = false;
+    private bool eveningTriggered = false;
+    private bool ambienceTriggered = false; 
     private void Awake()
     {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
         Instance = this;
         DontDestroyOnLoad(gameObject);
 
@@ -49,37 +54,41 @@ public class WeatherManager : MonoBehaviour
         sunDefaultAngles = mainDirectionalLight.transform.localEulerAngles;
         if (moonLight) moonDefaultAngles = moonLight.transform.localEulerAngles;
 
-        JumpTo(480f); // 8:00 утра
+        JumpTo(480f);
     }
 
     private void Update()
     {
         if (!Application.isPlaying) return;
 
-        // === 1. ВРЕМЯ ИДЁТ ТОЛЬКО ЕСЛИ ФАЗА РАЗРЕШЕНА ===
-        if (forceTimeFlow || CanTimeProgress())
+        bool shouldAdvanceTime = isTimeFlow
+            ? CurrentTimeInMinutes < 1440f
+            : forceTimeFlow || CanTimeProgress();
+
+        if (shouldAdvanceTime)
         {
             timeProgress += Time.deltaTime / realSecondsPerGameDay;
             CurrentTimeInMinutes = timeProgress * 1440f;
         }
 
-        // === 2. НОВЫЙ ДЕНЬ ===
         if (CurrentTimeInMinutes >= 1440f)
         {
-            timeProgress = 0f;
-            CurrentTimeInMinutes = 480f; // 8:00 утра
-            CurrentDay++;
-            OnDayChanged.Invoke(CurrentDay);
-            ResetPhaseFlags();
-            GameDayManager.Instance?.SetDay(CurrentDay);
+            if (isTimeFlow)
+            {
+                CurrentTimeInMinutes = 1439.99f;
+                timeProgress = CurrentTimeInMinutes / 1440f;
+            }
+            else
+            {
+                StartNewDay();
+            }
         }
 
-        // === 3. ПРОВЕРЯЕМ УСЛОВИЯ ФАЗ ===
-        HandlePhaseTriggers();
+        if (!isTimeFlow)
+            HandlePhaseTriggers();
 
-        // === 4. ОБНОВЛЯЕМ ОСВЕЩЕНИЕ ===
         timeProgress = CurrentTimeInMinutes / 1440f;
-        UpdateLightingAndRotation();
+        UpdateLightingAndRotation(); 
 
         TimeOfDay newPeriod = GetCurrentPeriod();
         if (newPeriod != currentPeriodCache)
@@ -87,24 +96,72 @@ public class WeatherManager : MonoBehaviour
             currentPeriodCache = newPeriod;
             OnPeriodChanged.Invoke(newPeriod);
         }
-
         OnTimeChanged.Invoke(CurrentDay, CurrentTimeInMinutes);
     }
 
-    // === МОЖНО ЛИ ПРОГРЕССИРОВАТЬ ВРЕМЯ? ===
-    private bool CanTimeProgress()
+    private void UpdateLightingAndRotation()
     {
-        // 8:00-12:00 — всегда идёт (утро)
-        if (CurrentTimeInMinutes < 720f) return true;
+       
+        if (mainDirectionalLight != null)
+        {
+            mainDirectionalLight.color = directionalLightGradient.Evaluate(timeProgress);
 
-        // 12:00-18:00 — ждём все залежи
-        if (CurrentTimeInMinutes < 1080f) return depositsBroken;
+           
+            mainDirectionalLight.transform.localEulerAngles = new Vector3(
+                360f * timeProgress - 90f,
+                sunDefaultAngles.y,
+                sunDefaultAngles.z
+            );
 
-        // 18:00-24:00 — ждём возвращения
-        return eveningTriggered;
+          
+            float sunValue = Mathf.Clamp01(Mathf.Sin(timeProgress * Mathf.PI));
+            sunValue = Mathf.Max(sunValue, 0.03f); 
+            mainDirectionalLight.intensity = sunValue * 2f;
+        }
+
+        
+        if (moonLight != null)
+        {
+            moonLight.transform.localEulerAngles = new Vector3(
+                360f * timeProgress + 90f,
+                moonDefaultAngles.y,
+                moonDefaultAngles.z
+            );
+
+           
+            float moonValue = 1f - Mathf.Abs(Mathf.Sin(timeProgress * Mathf.PI));
+            moonLight.intensity = moonValue * 0.8f;
+        }
+
+        
+        if (CaveDarkness.IsInsideAnyCave)
+        {
+           
+            return;
+        }
+
+        
+        RenderSettings.ambientLight = ambientLightGradient.Evaluate(timeProgress);
     }
 
-    // === ПРОВЕРКА ТРИГГЕРОВ ФАЗ ===
+
+    private void StartNewDay()
+    {
+        timeProgress = 0f;
+        CurrentTimeInMinutes = 480f; 
+        CurrentDay++;
+        OnDayChanged.Invoke(CurrentDay);
+        ResetPhaseFlags();
+        GameDayManager.Instance?.SetDay(CurrentDay);
+    }
+
+    private bool CanTimeProgress()
+    {
+        if (CurrentTimeInMinutes < 720f) return true;                   
+        if (CurrentTimeInMinutes < 1080f) return depositsBroken;      
+        return eveningTriggered;                                     
+    }
+
     private void HandlePhaseTriggers()
     {
         var player = GameObject.FindGameObjectWithTag("Player")?.transform;
@@ -112,14 +169,22 @@ public class WeatherManager : MonoBehaviour
 
         float distFromBase = Vector3.Distance(player.position, baseCenterPoint.position);
 
-        // 1. ОТЪЕЗЖАЕТ ДАЛЕКО → ДЕНЬ РАЗРЕШЁН (12:00)
+      
+        if (!ambienceTriggered && distFromBase >= distanceToStartDay)
+        {
+            ambienceTriggered = true;
+            AudioManager.Instance.PlayDefaultAmbience();
+            Debug.Log("[Audio] Ambience запущено — игрок отошел от базы!");
+        }
+
+      
         if (!dayTriggered && distFromBase >= distanceToStartDay && CurrentTimeInMinutes >= 720f)
         {
             dayTriggered = true;
             Debug.Log("[Weather] День начался — игрок отъехал далеко от базы!");
         }
 
-        // 2. СЛОМАНЫ ВСЕ ЗАЛЕЖИ → ВЕЧЕР РАЗРЕШЁН (18:00)
+       
         if (dayTriggered && !depositsBroken && GameDayManager.Instance != null &&
             GameDayManager.Instance.DepositsBrokenToday >= GameDayManager.Instance.DepositsToBreak &&
             CurrentTimeInMinutes >= 1080f)
@@ -128,29 +193,34 @@ public class WeatherManager : MonoBehaviour
             Debug.Log("[Weather] Вечер разрешён — все залежи сломаны!");
         }
 
-        // 3. ВЕРНУЛСЯ НА БАЗУ → НОЧЬ РАЗРЕШЕНА (24:00)
-        if (depositsBroken && !eveningTriggered && distFromBase <= distanceToTriggerEvening &&
-            CurrentTimeInMinutes >= 1080f)
+       
+        if (depositsBroken && !eveningTriggered && distFromBase <= distanceToTriggerEvening && CurrentTimeInMinutes >= 1080f)
         {
             eveningTriggered = true;
             Debug.Log("[Weather] Ночь разрешена — игрок вернулся на базу!");
         }
     }
 
-    // === СПАТЬ МОЖНО ТОЛЬКО ПОСЛЕ ВСЕХ ЗАДАНИЙ ===
+   
     public bool CanSleepNow()
     {
-        return depositsBroken && eveningTriggered && GameDayManager.Instance != null &&
-               GameDayManager.Instance.CanSleep;
+        if (isTimeFlow)
+            return CurrentTimeInMinutes >= 1439f; 
+
+        return depositsBroken && eveningTriggered && GameDayManager.Instance != null && GameDayManager.Instance.CanSleep;
     }
 
     public void SleepAndNextDay()
     {
         CurrentDay++;
-        JumpTo(480f); // 8:00 утра следующего дня
+        JumpTo(480f); 
+        timeProgress = 480f / 1440f;
+
         ResetPhaseFlags();
         OnDayChanged.Invoke(CurrentDay);
         GameDayManager.Instance?.SetDay(CurrentDay);
+
+        Debug.Log($"[Weather] Новый день! День {CurrentDay}, 8:00 утра.");
     }
 
     public void SetTimeDirectly(int day, float minutes)
@@ -164,26 +234,6 @@ public class WeatherManager : MonoBehaviour
         CurrentTimeInMinutes = Mathf.Clamp(minutes, 0f, 1439.99f);
         timeProgress = CurrentTimeInMinutes / 1440f;
         UpdateLightingAndRotation();
-    }
-
-    private void UpdateLightingAndRotation()
-    {
-        if (mainDirectionalLight)
-        {
-            mainDirectionalLight.color = directionalLightGradient.Evaluate(timeProgress);
-            mainDirectionalLight.transform.localEulerAngles = new Vector3(360f * timeProgress - 90f, sunDefaultAngles.y, sunDefaultAngles.z);
-            float sun = Mathf.Clamp01(Mathf.Sin(timeProgress * Mathf.PI));
-            sun = Mathf.Max(sun, 0.03f);
-            mainDirectionalLight.intensity = sun * 2f;
-        }
-
-        if (moonLight)
-        {
-            moonLight.transform.localEulerAngles = new Vector3(360f * timeProgress + 90f, moonDefaultAngles.y, moonDefaultAngles.z);
-            moonLight.intensity = (1f - Mathf.Abs(Mathf.Sin(timeProgress * Mathf.PI))) * 0.8f;
-        }
-
-        RenderSettings.ambientLight = ambientLightGradient.Evaluate(timeProgress);
     }
 
     private TimeOfDay GetCurrentPeriod()
@@ -200,10 +250,14 @@ public class WeatherManager : MonoBehaviour
         dayTriggered = false;
         depositsBroken = false;
         eveningTriggered = false;
+        ambienceTriggered = false;
     }
 
     public string GetFormattedTime()
     {
+        if (isTimeFlow && CurrentTimeInMinutes >= 1439f)
+            return "00:00 — Спать!";
+
         int h = Mathf.FloorToInt(CurrentTimeInMinutes / 60f);
         int m = Mathf.FloorToInt(CurrentTimeInMinutes % 60f);
         return $"{h:00}:{m:00}";

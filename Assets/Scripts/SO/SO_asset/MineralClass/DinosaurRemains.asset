@@ -12,7 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d9dc88466fb3dae4bbc933e6cf50d87d, type: 3}
   m_Name: DinosaurRemains
   m_EditorClassIdentifier: 
-  className: "\u041E\u0441\u0442\u0430\u043D\u043A\u0438 \u0434\u0438\u043D\u043E\u0437\u0430\u0432\u0440\u043E\u0432"
+  localizationKey: NAME_MINERAL_CLASS_4
+  isAnomalyClass: 0
   ageUnit: 1
   ageMin: 65
   ageMax: 180

@@ -4,7 +4,7 @@ using TMPro;
 using System.Collections.Generic;
 using System.Linq;
 
-public class ResearchReportViewer : MonoBehaviour
+public class ResearchReportViewer : MonoBehaviour, ILocalizable
 {
     [Header("UI References")]
     [SerializeField] private GameObject reportPanel;
@@ -43,6 +43,17 @@ public class ResearchReportViewer : MonoBehaviour
         closeButton?.onClick.AddListener(ClosePanel);
         prevDayButton?.onClick.AddListener(ShowPreviousDay);
         nextDayButton?.onClick.AddListener(ShowNextDay);
+
+        LocalizationManager.Register(this);
+    }
+
+    private void OnDestroy()
+    {
+        LocalizationManager.Unregister(this);
+
+        closeButton?.onClick.RemoveListener(ClosePanel);
+        prevDayButton?.onClick.RemoveListener(ShowPreviousDay);
+        nextDayButton?.onClick.RemoveListener(ShowNextDay);
     }
 
     private void OnEnable()
@@ -55,10 +66,11 @@ public class ResearchReportViewer : MonoBehaviour
     {
         if (GameDayManager.Instance != null)
             GameDayManager.Instance.OnDayFullyCompleted.RemoveListener(OnDayCompleted);
+    }
 
-        closeButton?.onClick.RemoveListener(ClosePanel);
-        prevDayButton?.onClick.RemoveListener(ShowPreviousDay);
-        nextDayButton?.onClick.RemoveListener(ShowNextDay);
+    public void Localize()
+    {
+        UpdatePanelVisuals(); 
     }
 
     private void OnDayCompleted()
@@ -67,19 +79,16 @@ public class ResearchReportViewer : MonoBehaviour
         var currentDayReport = allReports.Find(r => r.dayNumber == today);
         if (currentDayReport != null)
         {
-            // Фиксируем результаты — больше не меняются
             currentDayReport.results = new List<MineralResearchResult>(currentDayReport.results);
         }
     }
 
-    // Статический метод для логирования результата исследования
     public static void LogResearchResult(string mineralName, bool correct, string className = "")
     {
         var viewer = FindObjectOfType<ResearchReportViewer>();
         if (viewer == null || GameDayManager.Instance == null) return;
 
         int today = GameDayManager.Instance.CurrentDay;
-
         var dayReport = viewer.allReports.Find(r => r.dayNumber == today);
         if (dayReport == null)
         {
@@ -90,7 +99,7 @@ public class ResearchReportViewer : MonoBehaviour
         int sampleNum = dayReport.results.Count + 1;
         dayReport.results.Add(new MineralResearchResult
         {
-            displayName = $"Образец №{sampleNum}",
+            displayName = LocalizationManager.Loc("REPORT_VIEWER_SAMPLE", sampleNum),
             wasCorrect = correct,
             mineralClassName = className
         });
@@ -99,11 +108,9 @@ public class ResearchReportViewer : MonoBehaviour
     public void OpenPanel()
     {
         if (!reportPanel) return;
-
         reportPanel.SetActive(true);
         CameraController.Instance.SetMode(CameraController.ControlMode.UI);
 
-        // Показываем последний завершённый день
         if (allReports.Count > 0)
         {
             currentViewedDayIndex = allReports.FindLastIndex(r => r.dayNumber < GameDayManager.Instance.CurrentDay);
@@ -139,24 +146,26 @@ public class ResearchReportViewer : MonoBehaviour
 
     private void UpdatePanelVisuals()
     {
-        // Очистка
+        
         foreach (Transform child in contentParent)
             Destroy(child.gameObject);
 
         if (currentViewedDayIndex < 0 || currentViewedDayIndex >= allReports.Count)
         {
             noReportsText.gameObject.SetActive(true);
-            noReportsText.text = "Нет завершённых отчётов.\nИсследуй минералы и заверши день!";
-            titleText.text = "Результаты исследований";
+            noReportsText.text = LocalizationManager.Loc("REPORT_VIEWER_NO_REPORTS");
+            titleText.text = LocalizationManager.Loc("REPORT_VIEWER_TITLE");
             dayCounterText.text = "";
             prevDayButton.interactable = nextDayButton.interactable = false;
             return;
         }
 
         var report = allReports[currentViewedDayIndex];
+
         noReportsText.gameObject.SetActive(false);
-        titleText.text = $"День {report.dayNumber}: Результаты";
-        dayCounterText.text = $"{currentViewedDayIndex + 1} / {allReports.Count}";
+        titleText.text = LocalizationManager.Loc("REPORT_VIEWER_DAY_TITLE", report.dayNumber);
+        dayCounterText.text = LocalizationManager.Loc("REPORT_VIEWER_DAY_COUNTER", currentViewedDayIndex + 1, allReports.Count);
+
         prevDayButton.interactable = currentViewedDayIndex > 0;
         nextDayButton.interactable = currentViewedDayIndex < allReports.Count - 1;
 
@@ -167,14 +176,30 @@ public class ResearchReportViewer : MonoBehaviour
             var img = entry.GetComponent<Image>();
 
             if (text)
-                text.text = $"{result.displayName}\n<size=70%>{result.mineralClassName}</size>";
+            {
+                string classText = string.IsNullOrEmpty(result.mineralClassName)
+                    ? ""
+                    : "\n" + LocalizationManager.Loc("REPORT_VIEWER_CLASS_FORMAT", result.mineralClassName);
+
+                text.text = result.displayName + classText;
+            }
 
             if (img)
+            {
                 img.color = result.wasCorrect
-                    ? new Color(0.1f, 0.8f, 0.1f, 0.95f)  // зелёный
-                    : new Color(0.8f, 0.2f, 0.2f, 0.95f); // красный
+                    ? new Color(0.1f, 0.8f, 0.1f, 0.95f) 
+                    : new Color(0.8f, 0.2f, 0.2f, 0.95f);
+            }
         }
     }
+
+  
+
+   
+  
+
+   
+
 
     // СЕРИАЛИЗАЦИЯ / ДЕСЕРИАЛИЗАЦИЯ — используется SaveManager'ом
     public string SerializeReports()

@@ -26,10 +26,10 @@ Material:
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
   m_InvalidKeywords: []
-  m_LightmapFlags: 2
+  m_LightmapFlags: 1
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
-  m_CustomRenderQueue: -1
+  m_CustomRenderQueue: 3011
   stringTagMap: {}
   disabledShaderPasses:
   - MOTIONVECTORS
@@ -61,10 +61,10 @@ Material:
     m_Floats:
     - _FresnelStrength: 0
     - _QueueControl: 0
-    - _QueueOffset: 0
+    - _QueueOffset: 11
     - _RefractStrength: -1
     m_Colors:
-    - _IceColor: {r: 0, g: 0.46098706, b: 2.3796904, a: 1}
+    - _IceColor: {r: 0, g: 0.46098706, b: 2.3796904, a: 0.52156866}
     - _IceTiling: {r: 1, g: 1, b: 0, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
