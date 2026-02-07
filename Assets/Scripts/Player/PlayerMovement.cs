@@ -12,7 +12,7 @@ public class PlayerMovement : MonoBehaviour, IControllable
     [SerializeField, Range(0f, 1f)] private float stopThreshold = 0.1f;
 
     [Header("Шаги 👣")]
-    [SerializeField] private string footstepKey = "footstep_ice"; // ключ в базе
+    [SerializeField] private string footstepKey = "footstep_ice";
     [SerializeField, Range(0.1f, 2f)] private float footstepInterval = 0.4f;
     [SerializeField, Range(0f, 1f)] private float footstepVolumeMultiplier = 0.8f;
     private float _lastFootstepTime;
@@ -36,6 +36,7 @@ public class PlayerMovement : MonoBehaviour, IControllable
 
     [Header("Компоненты")]
     [SerializeField] private CanGrab objectGrabber;
+    private CameraController _cameraController;
 
     private Rigidbody _rb;
     private InputRouter _router;
@@ -43,6 +44,10 @@ public class PlayerMovement : MonoBehaviour, IControllable
     private Vector2 _smoothedInput;
     private bool _isMounting;
     private bool _isSleeping;
+    private bool _isFocused;
+    private Vector3 _originalPosition;
+    private Quaternion _originalRotation;
+    private bool _wasKinematic;
 
     private void Awake()
     {
@@ -54,11 +59,16 @@ public class PlayerMovement : MonoBehaviour, IControllable
         if (miningRayOrigin == null) miningRayOrigin = Camera.main ? Camera.main.transform : transform;
     }
 
-    public void HandleMovement(Vector2 input) => _input = input;
+    public void SetCameraController(CameraController controller)
+    {
+        _cameraController = controller;
+    }
+
+    public void HandleMovement(Vector2 input) => _input = _isFocused ? Vector2.zero : input;
 
     private void FixedUpdate()
     {
-        if (_router?.CurrentController != this || _isMounting || _isSleeping) return;
+        if (_router?.CurrentController != this || _isMounting || _isSleeping || _isFocused) return;
         Move(_input);
         HandleFootsteps();
     }
@@ -86,13 +96,11 @@ public class PlayerMovement : MonoBehaviour, IControllable
     {
         bool grounded = IsGrounded();
 
-       
         if (!_lastGroundedState && grounded)
         {
             PlayFootstep();
         }
 
-      
         if (grounded && _smoothedInput.sqrMagnitude > 0.1f && Time.time >= _lastFootstepTime + footstepInterval)
         {
             PlayFootstep();
@@ -119,6 +127,7 @@ public class PlayerMovement : MonoBehaviour, IControllable
 
     public void HandlePhysicalInteract(bool pressed, bool held)
     {
+        if (_isFocused) return;
         objectGrabber?.HandlePhysicalInteract(pressed, held);
         if (pressed) MineIce();
     }
@@ -132,6 +141,7 @@ public class PlayerMovement : MonoBehaviour, IControllable
 
     public void HandleInteract(bool pressed)
     {
+        if (_isFocused) return;
         if (!pressed || _isMounting || _isSleeping) return;
         if (objectGrabber?.IsHoldingObject() == true)
         {
@@ -190,7 +200,7 @@ public class PlayerMovement : MonoBehaviour, IControllable
             Mount(nearest);
         }
     }
-   
+
     public void ForceMountWithoutControllerChange(TransportMovement transport)
     {
         _rb.isKinematic = true;
@@ -238,7 +248,45 @@ public class PlayerMovement : MonoBehaviour, IControllable
     }
 
     public void HandleFlare(bool pressed)
-        => GetComponent<FlareController>()?.ThrowFlare(pressed);
+    {
+        if (_isFocused) return;
+        GetComponent<FlareController>()?.ThrowFlare(pressed);
+    }
 
     public void HandleRotation(Vector2 mouseDelta) { }
+
+    public void SetFocusState(bool focused, Vector3 targetPosition, Quaternion targetRotation)
+    {
+        _isFocused = focused;
+
+        if (focused)
+        {
+            _originalPosition = transform.position;
+            _originalRotation = transform.rotation;
+            _wasKinematic = _rb.isKinematic;
+
+            _rb.isKinematic = true;
+            _input = Vector2.zero;
+            _smoothedInput = Vector2.zero;
+            _rb.linearVelocity = Vector3.zero;
+            _rb.angularVelocity = Vector3.zero;
+
+            transform.position = targetPosition;
+            transform.rotation = targetRotation;
+        }
+        else
+        {
+            transform.position = _originalPosition;
+            transform.rotation = _originalRotation;
+
+            _rb.isKinematic = _wasKinematic;
+            _rb.linearVelocity = Vector3.zero;
+            _rb.angularVelocity = Vector3.zero;
+
+            if (_router != null && _router.CurrentController == this)
+            {
+                _rb.freezeRotation = true;
+            }
+        }
+    }
 }
