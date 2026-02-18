@@ -11,6 +11,8 @@ public class PlayerMovement : MonoBehaviour, IControllable
     [SerializeField, Range(1f, 50f)] private float airAcceleration = 8f;
     [SerializeField, Range(0f, 1f)] private float stopThreshold = 0.1f;
 
+    public event System.Action<bool> OnFocusStateChanged;
+
     [Header("Шаги 👣")]
     [SerializeField] private string footstepKey = "footstep_ice";
     [SerializeField, Range(0.1f, 2f)] private float footstepInterval = 0.4f;
@@ -225,6 +227,7 @@ public class PlayerMovement : MonoBehaviour, IControllable
 
         _isMounting = false;
     }
+
     private void Mount(TransportMovement transport)
     {
         _rb.isKinematic = true;
@@ -258,6 +261,7 @@ public class PlayerMovement : MonoBehaviour, IControllable
     public void SetFocusState(bool focused, Vector3 targetPosition, Quaternion targetRotation)
     {
         _isFocused = focused;
+        OnFocusStateChanged?.Invoke(focused);
 
         if (focused)
         {

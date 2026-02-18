@@ -19,8 +19,10 @@ public class CameraController : MonoBehaviour
 
     [SerializeField] private LayerMask uiLayer = 1;
     [SerializeField] private LayerMask focusClickLayer = -1;
+    [SerializeField] private LayerMask focusInteractionLayer = -1;
     [SerializeField] private float uiRayDistance = 4f;
     [SerializeField] private float focusClickDistance = 10f;
+    [SerializeField] private float focusInteractionDistance = 3f;
 
     private Transform _target;
     private Rigidbody _targetRb;
@@ -44,9 +46,10 @@ public class CameraController : MonoBehaviour
     private float _originalYaw;
     private float _originalPitch;
     private ControlMode _modeBeforeFocus;
+    private bool _isDraggingJoystick = false;
 
     public static CameraController Instance { get; private set; }
-    private ControlMode currentMode = ControlMode.UI;
+    public ControlMode currentMode = ControlMode.UI;
 
     private void Awake()
     {
@@ -100,6 +103,12 @@ public class CameraController : MonoBehaviour
     {
         if (currentMode == mode) return;
         currentMode = mode;
+
+        if (_playerGrabber != null)
+        {
+            _playerGrabber.OnCameraModeChanged(mode);
+        }
+
         if (mode == ControlMode.FPS)
         {
             Cursor.lockState = CursorLockMode.Locked;
@@ -258,9 +267,7 @@ public class CameraController : MonoBehaviour
         if (currentMode != ControlMode.Focus) return;
 
         ReturnPlayerToOriginal();
-
         SetMode(_modeBeforeFocus);
-
         _currentFocusPoint = null;
     }
 
@@ -268,6 +275,8 @@ public class CameraController : MonoBehaviour
     {
         HandleFocusClick();
         HandleFocusExit();
+        HandleFocusInteractions();
+        HandleJoystickDragging();
 
         if (currentMode == ControlMode.Focus)
         {
@@ -331,6 +340,58 @@ public class CameraController : MonoBehaviour
         if (currentMode == ControlMode.Focus && Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame)
         {
             ReleaseFocus();
+        }
+    }
+
+    private void HandleFocusInteractions()
+    {
+        if (currentMode != ControlMode.Focus) return;
+        if (Mouse.current == null) return;
+
+        Ray ray = Camera.main.ScreenPointToRay(Mouse.current.position.ReadValue());
+
+        if (Mouse.current.leftButton.wasPressedThisFrame)
+        {
+            if (Physics.Raycast(ray, out RaycastHit hit, focusInteractionDistance, focusInteractionLayer))
+            {
+                var button = hit.collider.GetComponent<Button>();
+                if (button != null)
+                {
+                    button.onClick.Invoke();
+                    return;
+                }
+
+                var joystick = JoystickController.Instance;
+                if (joystick != null && joystick.TryGrab(Mouse.current.position.ReadValue()))
+                {
+                    _isDraggingJoystick = true;
+                    return;
+                }
+            }
+        }
+
+        if (Mouse.current.leftButton.wasReleasedThisFrame)
+        {
+            if (_isDraggingJoystick)
+            {
+                var joystick = JoystickController.Instance;
+                if (joystick != null)
+                {
+                    joystick.Release();
+                }
+                _isDraggingJoystick = false;
+            }
+        }
+    }
+
+    private void HandleJoystickDragging()
+    {
+        if (!_isDraggingJoystick || Mouse.current == null) return;
+
+        var joystick = JoystickController.Instance;
+        if (joystick != null && joystick.IsGrabbed)
+        {
+            joystick.UpdateDrag(Mouse.current.position.ReadValue());
         }
     }
 
