@@ -10,7 +10,7 @@ public class MoveObject : MonoBehaviour
     public float minY = 0f;
     public float maxY = 500f;
     
-    [Header("Счетчик шагов")]
+    [Header("Счётчик шагов")]
     private int stepCount = 0;
     public int maxSteps = 10;
     public int minSteps = 0;
@@ -20,7 +20,7 @@ public class MoveObject : MonoBehaviour
         rectTransform = GetComponent<RectTransform>();
         if (rectTransform == null)
         {
-            Debug.LogError("RectTransform не найден!");
+            Debug.LogError("RectTransform нету!");
         }
     }
 

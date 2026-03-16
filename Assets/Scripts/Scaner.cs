@@ -44,10 +44,9 @@ public class CleanSpawner : MonoBehaviour
             }
         }
         
-        // Дополнительное логгирование для игрока (из твоего примера)
         if (other.CompareTag("Player")) 
         {
-            Debug.Log("Игрок покинул территорию!");
+            Debug.Log("игрок -");
         }
     }
 
@@ -55,7 +54,6 @@ public class CleanSpawner : MonoBehaviour
     {
         Component[] components = target.GetComponentsInChildren<Component>();
 
-        // Сначала останавливаем физику
         foreach (var comp in components)
         {
             if (comp is Rigidbody rb)
@@ -65,7 +63,6 @@ public class CleanSpawner : MonoBehaviour
             }
         }
 
-        // Удаляем все компоненты, кроме модели и шейдера
         for (int i = components.Length - 1; i >= 0; i--)
         {
             Component comp = components[i];
