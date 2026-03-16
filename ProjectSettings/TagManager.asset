@@ -7,6 +7,7 @@ TagManager:
   - DoorHandle
   - ScannerJoystick
   - Door
+  - Clone
   layers:
   - Default
   - TransparentFX
