@@ -51,6 +51,8 @@ public class CameraController : MonoBehaviour
     public static CameraController Instance { get; private set; }
     public ControlMode currentMode = ControlMode.UI;
 
+    public static System.Action<ControlMode> OnModeChanged;
+
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
@@ -121,6 +123,8 @@ public class CameraController : MonoBehaviour
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
         }
+
+        OnModeChanged?.Invoke(mode);
     }
 
     private void WarpCursorToCenter()
