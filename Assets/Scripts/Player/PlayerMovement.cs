@@ -13,7 +13,7 @@ public class PlayerMovement : MonoBehaviour, IControllable
 
     public event System.Action<bool> OnFocusStateChanged;
 
-    [Header("Шаги 👣")]
+    [Header("Шаги")]
     [SerializeField] private string footstepKey = "footstep_ice";
     [SerializeField, Range(0.1f, 2f)] private float footstepInterval = 0.4f;
     [SerializeField, Range(0f, 1f)] private float footstepVolumeMultiplier = 0.8f;
