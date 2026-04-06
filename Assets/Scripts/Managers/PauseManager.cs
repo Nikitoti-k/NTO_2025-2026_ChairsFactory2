@@ -22,16 +22,15 @@ public class PauseManager : MonoBehaviour
 
     private bool isSavePopupOpen = false;
     [SerializeField] private Button settingsButton;
+
     private void Awake()
     {
-        Instance = this;
         if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
             return;
         }
         Instance = this;
-      
         pauseMenuUI.SetActive(false);
         if (manualSavePopup) manualSavePopup.SetActive(false);
     }
@@ -60,19 +59,18 @@ public class PauseManager : MonoBehaviour
 
     public void Pause()
     {
+        if (IsPaused) return;
         pauseMenuUI.SetActive(true);
         Time.timeScale = 0f;
-        CameraController.Instance.SetMode(CameraController.ControlMode.UI);
     }
 
     public void Resume()
     {
+        if (!IsPaused) return;
         pauseMenuUI.SetActive(false);
         if (manualSavePopup) manualSavePopup.SetActive(false);
         isSavePopupOpen = false;
-
         Time.timeScale = 1f;
-        CameraController.Instance.SetMode(CameraController.ControlMode.FPS);
     }
 
     private void OpenSavePopup()
@@ -92,10 +90,12 @@ public class PauseManager : MonoBehaviour
             isSavePopupOpen = false;
         }
     }
+
     private void OpenSettings()
     {
         AudioSettingsUI.Instance?.Open();
     }
+
     public void ToMainMenu()
     {
         Time.timeScale = 1f;
