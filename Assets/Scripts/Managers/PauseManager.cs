@@ -2,7 +2,15 @@
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
-public class PauseManager : MonoBehaviour
+public interface IPauseManager
+{
+    void Pause();
+    void Resume();
+    void ToMainMenu();
+    void Quit();
+}
+
+public class PauseManager : MonoBehaviour, IPauseManager
 {
     public static PauseManager Instance { get; private set; }
     public static bool IsPaused => Time.timeScale == 0f;
@@ -16,66 +24,87 @@ public class PauseManager : MonoBehaviour
     [SerializeField] private Button saveButton;
     [SerializeField] private Button mainMenuButton;
     [SerializeField] private Button quitButton;
+    [SerializeField] private Button settingsButton;
 
     [Header("Сцены")]
     [SerializeField] private string mainMenuScene = "MainMenu";
 
     private bool isSavePopupOpen = false;
-    [SerializeField] private Button settingsButton;
 
     private void Awake()
     {
-        if (Instance != null && Instance != this)
+        try
         {
-            Destroy(gameObject);
-            return;
+            if (Instance != null && Instance != this)
+            {
+                Destroy(gameObject);
+                return;
+            }
+            Instance = this;
+            if (pauseMenuUI != null) pauseMenuUI.SetActive(false);
+            if (manualSavePopup != null) manualSavePopup.SetActive(false);
         }
-        Instance = this;
-        pauseMenuUI.SetActive(false);
-        if (manualSavePopup) manualSavePopup.SetActive(false);
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[PauseManager] Awake error: {e.Message}");
+        }
     }
 
     private void Start()
     {
-        if (resumeButton) resumeButton.onClick.AddListener(Resume);
-        if (saveButton) saveButton.onClick.AddListener(OpenSavePopup);
-        if (mainMenuButton) mainMenuButton.onClick.AddListener(ToMainMenu);
-        if (quitButton) quitButton.onClick.AddListener(Quit);
-        if (settingsButton) settingsButton.onClick.AddListener(OpenSettings);
+        try
+        {
+            if (resumeButton) resumeButton.onClick.AddListener(Resume);
+            if (saveButton) saveButton.onClick.AddListener(OpenSavePopup);
+            if (mainMenuButton) mainMenuButton.onClick.AddListener(ToMainMenu);
+            if (quitButton) quitButton.onClick.AddListener(Quit);
+            if (settingsButton) settingsButton.onClick.AddListener(OpenSettings);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[PauseManager] Start error: {e.Message}");
+        }
     }
 
     private void Update()
     {
-        if (InputManager.Instance?.EscapePressed == true)
+        if (InputManager.Instance != null && InputManager.Instance.EscapePressed)
         {
-            if (isSavePopupOpen)
-                CloseSavePopup();
-            else if (IsPaused)
-                Resume();
-            else
-                Pause();
+            try
+            {
+                if (isSavePopupOpen)
+                    CloseSavePopup();
+                else if (IsPaused)
+                    Resume();
+                else
+                    Pause();
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[PauseManager] Update error: {e.Message}");
+            }
         }
     }
 
     public void Pause()
     {
         if (IsPaused) return;
-        pauseMenuUI.SetActive(true);
+        if (pauseMenuUI != null) pauseMenuUI.SetActive(true);
         Time.timeScale = 0f;
     }
 
     public void Resume()
     {
         if (!IsPaused) return;
-        pauseMenuUI.SetActive(false);
-        if (manualSavePopup) manualSavePopup.SetActive(false);
+        if (pauseMenuUI != null) pauseMenuUI.SetActive(false);
+        if (manualSavePopup != null) manualSavePopup.SetActive(false);
         isSavePopupOpen = false;
         Time.timeScale = 1f;
     }
 
     private void OpenSavePopup()
     {
-        if (manualSavePopup)
+        if (manualSavePopup != null)
         {
             manualSavePopup.SetActive(true);
             isSavePopupOpen = true;
@@ -84,7 +113,7 @@ public class PauseManager : MonoBehaviour
 
     public void CloseSavePopup()
     {
-        if (manualSavePopup)
+        if (manualSavePopup != null)
         {
             manualSavePopup.SetActive(false);
             isSavePopupOpen = false;
@@ -93,21 +122,36 @@ public class PauseManager : MonoBehaviour
 
     private void OpenSettings()
     {
-        AudioSettingsUI.Instance?.Open();
+        if (AudioSettingsUI.Instance != null)
+            AudioSettingsUI.Instance.Open();
     }
 
     public void ToMainMenu()
     {
-        Time.timeScale = 1f;
-        SceneManager.LoadScene(mainMenuScene);
+        try
+        {
+            Time.timeScale = 1f;
+            SceneManager.LoadScene(mainMenuScene);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[PauseManager] ToMainMenu error: {e.Message}");
+        }
     }
 
     public void Quit()
     {
+        try
+        {
 #if UNITY_EDITOR
-        UnityEditor.EditorApplication.isPlaying = false;
+            UnityEditor.EditorApplication.isPlaying = false;
 #else
-        Application.Quit();
+            Application.Quit();
 #endif
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[PauseManager] Quit error: {e.Message}");
+        }
     }
 }

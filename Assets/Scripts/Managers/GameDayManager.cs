@@ -1,10 +1,26 @@
 ﻿using UnityEngine;
 using UnityEngine.Events;
 using System.Collections.Generic;
-using WrightAngle.Waypoint;
 using System;
+using WrightAngle.Waypoint;
 
-public class GameDayManager : MonoBehaviour
+public interface IGameDayManager
+{
+    int CurrentDay { get; }
+    DailyTaskSO CurrentTask { get; }
+    int DepositsToBreak { get; }
+    int MineralsToResearch { get; }
+    int DepositsBrokenToday { get; }
+    int MineralsResearchedToday { get; }
+    bool CanStartEvening { get; }
+    bool CanSleep { get; }
+    void SetDay(int day);
+    void RegisterDepositBroken();
+    void RegisterMineralResearched(MineralData mineral);
+    void SleepAndStartNewDay();
+}
+
+public class GameDayManager : MonoBehaviour, IGameDayManager
 {
     public static GameDayManager Instance { get; private set; }
     [SerializeField] private DailyTasksDatabase tasksDatabase;
@@ -22,7 +38,6 @@ public class GameDayManager : MonoBehaviour
     public DayConfiguration[] dayConfigurations;
 
     private WaypointTarget currentActiveWaypoint;
-
     private readonly HashSet<string> fullyResearchedMinerals = new HashSet<string>();
     private int depositsBrokenToday;
     private int mineralsResearchedToday;
@@ -49,29 +64,46 @@ public class GameDayManager : MonoBehaviour
 
     private void Awake()
     {
-        if (Instance != null && Instance != this)
+        try
         {
-            Destroy(gameObject);
-            return;
+            if (Instance != null && Instance != this)
+            {
+                Destroy(gameObject);
+                return;
+            }
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+
+            if (tasksDatabase == null)
+                Debug.LogError("[GameDayManager] tasksDatabase not assigned");
         }
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[GameDayManager] Awake error: {e.Message}");
+        }
+    }
 
-        if (tasksDatabase == null)
-            Debug.LogError("[GameDayManager] tasksDatabase не назначен в инспекторе!");
-
+    private void Start()
+    {
         SetDay(CurrentDay);
     }
 
     public void SetDay(int day)
     {
-        CurrentDay = day;
-        currentTask = tasksDatabase?.GetTaskForDay(day);
-        ResetDailyCounters();
-        ApplyDayConfiguration();
+        try
+        {
+            CurrentDay = day;
+            currentTask = tasksDatabase?.GetTaskForDay(day);
+            ResetDailyCounters();
+            ApplyDayConfiguration();
 
-        OnDepositsChanged.Invoke(depositsBrokenToday);
-        OnMineralsResearchedChanged.Invoke(mineralsResearchedToday);
+            OnDepositsChanged.Invoke(depositsBrokenToday);
+            OnMineralsResearchedChanged.Invoke(mineralsResearchedToday);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[GameDayManager] SetDay failed: {e.Message}");
+        }
     }
 
     private void ApplyDayConfiguration()
@@ -118,35 +150,49 @@ public class GameDayManager : MonoBehaviour
 
     public void RegisterDepositBroken()
     {
-        depositsBrokenToday++;
-        OnDepositsChanged.Invoke(depositsBrokenToday);
-        OnAnyDepositBroken.Invoke();
-
-        if (depositsBrokenToday >= DepositsToBreak && !allDepositsBroken)
+        try
         {
-            allDepositsBroken = true;
-            OnAllDepositsBroken.Invoke();
+            depositsBrokenToday++;
+            OnDepositsChanged.Invoke(depositsBrokenToday);
+            OnAnyDepositBroken.Invoke();
+
+            if (depositsBrokenToday >= DepositsToBreak && !allDepositsBroken)
+            {
+                allDepositsBroken = true;
+                OnAllDepositsBroken.Invoke();
+            }
+            CheckFullCompletion();
         }
-        CheckFullCompletion();
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[GameDayManager] RegisterDepositBroken error: {e.Message}");
+        }
     }
 
     public void RegisterMineralResearched(MineralData mineral)
     {
-        if (mineral == null) return;
-
-        string id = mineral.UniqueInstanceID;
-        if (!fullyResearchedMinerals.Add(id)) return;
-
-        mineralsResearchedToday++;
-        OnMineralsResearchedChanged.Invoke(mineralsResearchedToday);
-        OnMineralResearched?.Invoke(mineral);
-
-        if (mineralsResearchedToday >= MineralsToResearch && !allReportsSubmitted)
+        try
         {
-            allReportsSubmitted = true;
-            OnAllReportsSubmitted.Invoke();
+            if (mineral == null) return;
+
+            string id = mineral.UniqueInstanceID;
+            if (!fullyResearchedMinerals.Add(id)) return;
+
+            mineralsResearchedToday++;
+            OnMineralsResearchedChanged.Invoke(mineralsResearchedToday);
+            OnMineralResearched?.Invoke(mineral);
+
+            if (mineralsResearchedToday >= MineralsToResearch && !allReportsSubmitted)
+            {
+                allReportsSubmitted = true;
+                OnAllReportsSubmitted.Invoke();
+            }
+            CheckFullCompletion();
         }
-        CheckFullCompletion();
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[GameDayManager] RegisterMineralResearched error: {e.Message}");
+        }
     }
 
     private void CheckFullCompletion()
@@ -157,15 +203,21 @@ public class GameDayManager : MonoBehaviour
 
     public void SleepAndStartNewDay()
     {
-        if (!CanSleep) return;
-
-        SetDay(CurrentDay + 1);
-
-        var radio = FindObjectOfType<RadioMonologue>();
-        if (radio != null)
+        try
         {
-            if (CurrentDay == 2) radio.PlayMorningMonologue_Day2();
-            else if (CurrentDay == 3) radio.PlayMorningMonologue_Day3();
+            if (!CanSleep) return;
+            SetDay(CurrentDay + 1);
+
+            var radio = FindObjectOfType<RadioMonologue>();
+            if (radio != null)
+            {
+                if (CurrentDay == 2) radio.PlayMorningMonologue_Day2();
+                else if (CurrentDay == 3) radio.PlayMorningMonologue_Day3();
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[GameDayManager] SleepAndStartNewDay error: {e.Message}");
         }
     }
 

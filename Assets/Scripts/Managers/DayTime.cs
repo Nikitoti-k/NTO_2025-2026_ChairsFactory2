@@ -1,37 +1,55 @@
 using UnityEngine;
 
+public interface IDayTime
+{
+    float TimeProgress { get; set; }
+    void UpdateLighting(float progress);
+}
 
+[ExecuteInEditMode]
+public class DayTime : MonoBehaviour, IDayTime
+{
+    [SerializeField] Gradient directLightGradient;
+    [SerializeField] Gradient ambientLightGradient;
+    [SerializeField] Light dirLight;
+    [SerializeField, Range(0f, 1f)] float timeProgress;
 
-    public class Daytime : MonoBehaviour
+    private Vector3 defaultAngles;
+
+    public float TimeProgress
     {
-        [ExecuteInEditMode]
-        [SerializeField] Gradient directLightGradient;
-        [SerializeField] Gradient ambientLightGradient;
-
-        [SerializeField, Range(1, 3660)] float timeInSeconds = 60;
-
-        [SerializeField, Range(0f, 1f)] float timeProgress;
-
-        [SerializeField] Light dirLight;
-
-        Vector3 defaultAngles;
-
-        void Start()
+        get => timeProgress;
+        set
         {
-            defaultAngles = dirLight.transform.localEulerAngles;
-        }
-
-        void Update()
-        {
-        if(Application.isPlaying)
-            timeProgress += Time.deltaTime / timeInSeconds;
-
-            if (timeProgress > 1f)
-                timeProgress = 0f;
-
-            dirLight.color = directLightGradient.Evaluate(timeProgress);
-            RenderSettings.ambientLight = ambientLightGradient.Evaluate(timeProgress);
-
-            dirLight.transform.localEulerAngles = new Vector3(360f * timeProgress - 90, defaultAngles.y, defaultAngles.z);
+            timeProgress = Mathf.Clamp01(value);
+            UpdateLighting(timeProgress);
         }
     }
+
+    private void Start()
+    {
+        if (dirLight != null)
+            defaultAngles = dirLight.transform.localEulerAngles;
+    }
+
+    private void Update()
+    {
+        if (!Application.isPlaying) return;
+        UpdateLighting(timeProgress);
+    }
+
+    public void UpdateLighting(float progress)
+    {
+        try
+        {
+            if (dirLight == null) return;
+            dirLight.color = directLightGradient.Evaluate(progress);
+            RenderSettings.ambientLight = ambientLightGradient.Evaluate(progress);
+            dirLight.transform.localEulerAngles = new Vector3(360f * progress - 90f, defaultAngles.y, defaultAngles.z);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[DayTime] Lighting update failed: {e.Message}");
+        }
+    }
+}

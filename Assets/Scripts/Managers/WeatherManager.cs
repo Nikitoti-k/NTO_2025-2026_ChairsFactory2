@@ -1,9 +1,21 @@
 ﻿using UnityEngine;
 using UnityEngine.Events;
 
-public class WeatherManager : MonoBehaviour
+
+public interface IWeatherManager
 {
-    public enum TimeOfDay { Night, Morning, Day, Evening }
+    int CurrentDay { get; }
+    float CurrentTimeInMinutes { get; }
+    TimeOfDay CurrentPeriod { get; }
+    void SetTimeDirectly(int day, float minutes);
+    void SleepAndNextDay();
+    bool CanSleepNow();
+    string GetFormattedTime();
+}
+public enum TimeOfDay { Night, Morning, Day, Evening }
+
+public class WeatherManager : MonoBehaviour, IWeatherManager
+{
     public static WeatherManager Instance { get; private set; }
 
     [SerializeField] Light mainDirectionalLight;
@@ -11,14 +23,10 @@ public class WeatherManager : MonoBehaviour
     [SerializeField] Gradient directionalLightGradient;
     [SerializeField] Gradient ambientLightGradient;
     [SerializeField, Range(60f, 3600f)] float realSecondsPerGameDay = 300f;
+    [SerializeField] bool forceTimeFlow = false;
+    [SerializeField] bool isTimeFlow = false;
 
-    [Space]
-    public bool forceTimeFlow = false;
-
-    [Header("=== НОВЫЙ РЕЖИМ: ВРЕМЯ ДО 00:00 + СОН ===")]
-    public bool isTimeFlow = false;
-
-    [Header("=== ЗОНЫ ДЛЯ СМЕНЫ ВРЕМЕНИ (без isTimeFlow) ===")]
+    [Header("Зоны для смены времени (без isTimeFlow)")]
     [SerializeField] private Transform baseCenterPoint;
     [SerializeField] private float distanceToStartDay = 150f;
     [SerializeField] private float distanceToTriggerEvening = 80f;
@@ -28,7 +36,7 @@ public class WeatherManager : MonoBehaviour
     public UnityEvent<float, float> OnTimeChanged = new UnityEvent<float, float>();
 
     public int CurrentDay { get; private set; } = 1;
-    public float CurrentTimeInMinutes { get; private set; } = 480f; // 8:00
+    public float CurrentTimeInMinutes { get; private set; } = 480f;
     public TimeOfDay CurrentPeriod => GetCurrentPeriod();
 
     private float timeProgress;
@@ -39,127 +47,127 @@ public class WeatherManager : MonoBehaviour
     private bool dayTriggered = false;
     private bool depositsBroken = false;
     private bool eveningTriggered = false;
-    private bool ambienceTriggered = false; 
+    private bool ambienceTriggered = false;
+
     private void Awake()
     {
-        if (Instance != null && Instance != this)
+        try
         {
-            Destroy(gameObject);
-            return;
+            if (Instance != null && Instance != this)
+            {
+                Destroy(gameObject);
+                return;
+            }
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+
+            if (mainDirectionalLight == null) mainDirectionalLight = FindObjectOfType<Light>();
+            if (mainDirectionalLight != null)
+                sunDefaultAngles = mainDirectionalLight.transform.localEulerAngles;
+            if (moonLight != null)
+                moonDefaultAngles = moonLight.transform.localEulerAngles;
+
+            JumpTo(480f);
         }
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-
-        if (mainDirectionalLight == null) mainDirectionalLight = FindObjectOfType<Light>();
-        sunDefaultAngles = mainDirectionalLight.transform.localEulerAngles;
-        if (moonLight) moonDefaultAngles = moonLight.transform.localEulerAngles;
-
-        JumpTo(480f);
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[WeatherManager] Awake error: {e.Message}");
+        }
     }
 
     private void Update()
     {
         if (!Application.isPlaying) return;
-
-        bool shouldAdvanceTime = isTimeFlow
-            ? CurrentTimeInMinutes < 1440f
-            : forceTimeFlow || CanTimeProgress();
-
-        if (shouldAdvanceTime)
+        try
         {
-            timeProgress += Time.deltaTime / realSecondsPerGameDay;
-            CurrentTimeInMinutes = timeProgress * 1440f;
-        }
+            bool shouldAdvanceTime = isTimeFlow
+                ? CurrentTimeInMinutes < 1440f
+                : forceTimeFlow || CanTimeProgress();
 
-        if (CurrentTimeInMinutes >= 1440f)
-        {
-            if (isTimeFlow)
+            if (shouldAdvanceTime)
             {
-                CurrentTimeInMinutes = 1439.99f;
-                timeProgress = CurrentTimeInMinutes / 1440f;
+                timeProgress += Time.deltaTime / realSecondsPerGameDay;
+                CurrentTimeInMinutes = timeProgress * 1440f;
             }
-            else
+
+            if (CurrentTimeInMinutes >= 1440f)
             {
-                StartNewDay();
+                if (isTimeFlow)
+                {
+                    CurrentTimeInMinutes = 1439.99f;
+                    timeProgress = CurrentTimeInMinutes / 1440f;
+                }
+                else
+                {
+                    StartNewDay();
+                }
             }
+
+            if (!isTimeFlow)
+                HandlePhaseTriggers();
+
+            timeProgress = CurrentTimeInMinutes / 1440f;
+            UpdateLightingAndRotation();
+
+            TimeOfDay newPeriod = GetCurrentPeriod();
+            if (newPeriod != currentPeriodCache)
+            {
+                currentPeriodCache = newPeriod;
+                OnPeriodChanged.Invoke(newPeriod);
+            }
+            OnTimeChanged.Invoke(CurrentDay, CurrentTimeInMinutes);
         }
-
-        if (!isTimeFlow)
-            HandlePhaseTriggers();
-
-        timeProgress = CurrentTimeInMinutes / 1440f;
-        UpdateLightingAndRotation(); 
-
-        TimeOfDay newPeriod = GetCurrentPeriod();
-        if (newPeriod != currentPeriodCache)
+        catch (System.Exception e)
         {
-            currentPeriodCache = newPeriod;
-            OnPeriodChanged.Invoke(newPeriod);
+            Debug.LogError($"[WeatherManager] Update error: {e.Message}");
         }
-        OnTimeChanged.Invoke(CurrentDay, CurrentTimeInMinutes);
     }
 
     private void UpdateLightingAndRotation()
     {
-       
-        if (mainDirectionalLight != null)
+        try
         {
-            mainDirectionalLight.color = directionalLightGradient.Evaluate(timeProgress);
+            if (mainDirectionalLight != null)
+            {
+                mainDirectionalLight.color = directionalLightGradient.Evaluate(timeProgress);
+                mainDirectionalLight.transform.localEulerAngles = new Vector3(360f * timeProgress - 90f, sunDefaultAngles.y, sunDefaultAngles.z);
+                float sunValue = Mathf.Clamp01(Mathf.Sin(timeProgress * Mathf.PI));
+                sunValue = Mathf.Max(sunValue, 0.03f);
+                mainDirectionalLight.intensity = sunValue * 2f;
+            }
 
-           
-            mainDirectionalLight.transform.localEulerAngles = new Vector3(
-                360f * timeProgress - 90f,
-                sunDefaultAngles.y,
-                sunDefaultAngles.z
-            );
+            if (moonLight != null)
+            {
+                moonLight.transform.localEulerAngles = new Vector3(360f * timeProgress + 90f, moonDefaultAngles.y, moonDefaultAngles.z);
+                float moonValue = 1f - Mathf.Abs(Mathf.Sin(timeProgress * Mathf.PI));
+                moonLight.intensity = moonValue * 0.8f;
+            }
 
-          
-            float sunValue = Mathf.Clamp01(Mathf.Sin(timeProgress * Mathf.PI));
-            sunValue = Mathf.Max(sunValue, 0.03f); 
-            mainDirectionalLight.intensity = sunValue * 2f;
+            if (!CaveDarkness.IsInsideAnyCave)
+                RenderSettings.ambientLight = ambientLightGradient.Evaluate(timeProgress);
         }
-
-        
-        if (moonLight != null)
+        catch (System.Exception e)
         {
-            moonLight.transform.localEulerAngles = new Vector3(
-                360f * timeProgress + 90f,
-                moonDefaultAngles.y,
-                moonDefaultAngles.z
-            );
-
-           
-            float moonValue = 1f - Mathf.Abs(Mathf.Sin(timeProgress * Mathf.PI));
-            moonLight.intensity = moonValue * 0.8f;
+            Debug.LogError($"[WeatherManager] Lighting update error: {e.Message}");
         }
-
-        
-        if (CaveDarkness.IsInsideAnyCave)
-        {
-           
-            return;
-        }
-
-        
-        RenderSettings.ambientLight = ambientLightGradient.Evaluate(timeProgress);
     }
-
 
     private void StartNewDay()
     {
         timeProgress = 0f;
-        CurrentTimeInMinutes = 480f; 
+        CurrentTimeInMinutes = 480f;
         CurrentDay++;
         OnDayChanged.Invoke(CurrentDay);
         ResetPhaseFlags();
-        GameDayManager.Instance?.SetDay(CurrentDay);
+        if (GameDayManager.Instance != null)
+            GameDayManager.Instance.SetDay(CurrentDay);
     }
 
     private bool CanTimeProgress()
     {
-        if (CurrentTimeInMinutes < 720f) return true;                   
-        if (CurrentTimeInMinutes < 1080f) return depositsBroken;      
-        return eveningTriggered;                                     
+        if (CurrentTimeInMinutes < 720f) return true;
+        if (CurrentTimeInMinutes < 1080f) return depositsBroken;
+        return eveningTriggered;
     }
 
     private void HandlePhaseTriggers()
@@ -169,58 +177,57 @@ public class WeatherManager : MonoBehaviour
 
         float distFromBase = Vector3.Distance(player.position, baseCenterPoint.position);
 
-      
         if (!ambienceTriggered && distFromBase >= distanceToStartDay)
         {
             ambienceTriggered = true;
-            AudioManager.Instance.PlayDefaultAmbience();
-            Debug.Log("[Audio] Ambience запущено — игрок отошел от базы!");
+            if (AudioManager.Instance != null) AudioManager.Instance.PlayDefaultAmbience();
+            Debug.Log("[Weather] Ambience started");
         }
 
-      
         if (!dayTriggered && distFromBase >= distanceToStartDay && CurrentTimeInMinutes >= 720f)
         {
             dayTriggered = true;
-            Debug.Log("[Weather] День начался — игрок отъехал далеко от базы!");
+            Debug.Log("[Weather] Day started");
         }
 
-       
         if (dayTriggered && !depositsBroken && GameDayManager.Instance != null &&
             GameDayManager.Instance.DepositsBrokenToday >= GameDayManager.Instance.DepositsToBreak &&
             CurrentTimeInMinutes >= 1080f)
         {
             depositsBroken = true;
-            Debug.Log("[Weather] Вечер разрешён — все залежи сломаны!");
+            Debug.Log("[Weather] Evening allowed");
         }
 
-       
         if (depositsBroken && !eveningTriggered && distFromBase <= distanceToTriggerEvening && CurrentTimeInMinutes >= 1080f)
         {
             eveningTriggered = true;
-            Debug.Log("[Weather] Ночь разрешена — игрок вернулся на базу!");
+            Debug.Log("[Weather] Night allowed");
         }
     }
 
-   
     public bool CanSleepNow()
     {
         if (isTimeFlow)
-            return CurrentTimeInMinutes >= 1439f; 
-
+            return CurrentTimeInMinutes >= 1439f;
         return depositsBroken && eveningTriggered && GameDayManager.Instance != null && GameDayManager.Instance.CanSleep;
     }
 
     public void SleepAndNextDay()
     {
-        CurrentDay++;
-        JumpTo(480f); 
-        timeProgress = 480f / 1440f;
-
-        ResetPhaseFlags();
-        OnDayChanged.Invoke(CurrentDay);
-        GameDayManager.Instance?.SetDay(CurrentDay);
-
-        Debug.Log($"[Weather] Новый день! День {CurrentDay}, 8:00 утра.");
+        try
+        {
+            CurrentDay++;
+            JumpTo(480f);
+            ResetPhaseFlags();
+            OnDayChanged.Invoke(CurrentDay);
+            if (GameDayManager.Instance != null)
+                GameDayManager.Instance.SetDay(CurrentDay);
+            Debug.Log($"[Weather] New day {CurrentDay}, 8:00 AM");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[WeatherManager] SleepAndNextDay error: {e.Message}");
+        }
     }
 
     public void SetTimeDirectly(int day, float minutes)
@@ -256,8 +263,7 @@ public class WeatherManager : MonoBehaviour
     public string GetFormattedTime()
     {
         if (isTimeFlow && CurrentTimeInMinutes >= 1439f)
-            return "00:00 — Спать!";
-
+            return "00:00 — Sleep!";
         int h = Mathf.FloorToInt(CurrentTimeInMinutes / 60f);
         int m = Mathf.FloorToInt(CurrentTimeInMinutes % 60f);
         return $"{h:00}:{m:00}";
