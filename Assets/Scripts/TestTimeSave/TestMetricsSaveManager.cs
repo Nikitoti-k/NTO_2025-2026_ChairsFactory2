@@ -4,13 +4,13 @@ using System.IO;
 using System.Text;
 using UnityEngine;
 
-public class MetricsSaveManager : MonoBehaviour
+public class TestMetricsSaveManager : MonoBehaviour
 {
     private string savePath;
-    private MetricsSaveData allMetricsSaveData;
+    private TestMetricsSaveData allMetricsSaveData;
 
     [System.Serializable]
-    public class MetricsSaveData
+    public class TestMetricsSaveData
     {
         public List<float> sessionTime = new List<float>();
         public List<int> tutorialStep = new List<int>();
@@ -18,13 +18,13 @@ public class MetricsSaveManager : MonoBehaviour
 
     private void Start()
     {
-        allMetricsSaveData = new MetricsSaveData();
-        savePath = Application.persistentDataPath + "/metricsSave.json";
+        allMetricsSaveData = new TestMetricsSaveData();
+        savePath = Application.persistentDataPath + "/testMetricsSave.json";
 
         if (File.Exists(savePath))
         {
             string json = File.ReadAllText(savePath);
-            allMetricsSaveData = JsonUtility.FromJson<MetricsSaveData>(json);
+            allMetricsSaveData = JsonUtility.FromJson<TestMetricsSaveData>(json);
         }
     }
 
@@ -42,7 +42,7 @@ public class MetricsSaveManager : MonoBehaviour
         File.WriteAllText(savePath, json);
 
         string loadedJson = File.ReadAllText(savePath);
-        MetricsSaveData loadedData = JsonUtility.FromJson<MetricsSaveData>(loadedJson);
+        TestMetricsSaveData loadedData = JsonUtility.FromJson<TestMetricsSaveData>(loadedJson);
 
         for (int i = 0; i < loadedData.sessionTime.Count; i++)
         {
@@ -61,7 +61,7 @@ public class MetricsSaveManager : MonoBehaviour
         }
 
         string loadedJson = File.ReadAllText(savePath);
-        MetricsSaveData loadedData = JsonUtility.FromJson<MetricsSaveData>(loadedJson);
+        TestMetricsSaveData loadedData = JsonUtility.FromJson<TestMetricsSaveData>(loadedJson);
 
         StringBuilder csv = new StringBuilder();
 
@@ -74,7 +74,7 @@ public class MetricsSaveManager : MonoBehaviour
             csv.AppendLine($"{i + 1};{loadedData.sessionTime[i]:F2};{loadedData.tutorialStep[i]}");
         }
 
-        string csvPath = Path.Combine(Application.persistentDataPath, "metrics_export.csv");
+        string csvPath = Path.Combine(Application.persistentDataPath, "test_metrics_export.csv");
         File.WriteAllText(csvPath, csv.ToString(), Encoding.UTF8);
 
         Debug.Log($"<color=green>CSV файл сохранён: {csvPath}</color>");
