@@ -150,6 +150,17 @@
                 },
                 {
                     "name": "",
+                    "id": "86e49851-20b2-4072-8335-d0c518c4eaa0",
+                    "path": "<Mouse>/leftButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "InteractButton",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
                     "id": "0ca29bb8-18b5-4f93-b59e-bd96dbac871a",
                     "path": "<Mouse>/leftButton",
                     "interactions": "",
