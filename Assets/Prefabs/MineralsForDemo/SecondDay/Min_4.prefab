@@ -204,7 +204,6 @@ GameObject:
   - component: {fileID: 4405867673796213298}
   - component: {fileID: 7871520735525561329}
   - component: {fileID: 8676950379519079216}
-  - component: {fileID: 6288640472036236482}
   - component: {fileID: -5694235772493845425}
   m_Layer: 7
   m_Name: Min_4
@@ -376,20 +375,6 @@ MonoBehaviour:
   minDistanceBetweenPoints: 0.3
   spawnPointsOnStart: 1
   generateDataOnStart: 1
---- !u!114 &6288640472036236482
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3836979047366133623}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 227be5d68e5675f428e2fd8d1931a2ca, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  uniqueID: 
-  prefabIdentifier: Min_4
 --- !u!65 &-5694235772493845425
 BoxCollider:
   m_ObjectHideFlags: 0
