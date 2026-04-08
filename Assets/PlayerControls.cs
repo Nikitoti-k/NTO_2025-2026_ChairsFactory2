@@ -120,6 +120,15 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
                     ""initialStateCheck"": false
                 },
                 {
+                    ""name"": ""TransportInteractButton"",
+                    ""type"": ""Button"",
+                    ""id"": ""d1628cf1-8932-4e52-bd40-fe3cbe668f58"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
                     ""name"": ""Physical_Interact_Button"",
                     ""type"": ""Button"",
                     ""id"": ""78b7cfe6-68b7-4009-a495-b7f9006cabb3"",
@@ -236,17 +245,6 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
                 },
                 {
                     ""name"": """",
-                    ""id"": ""86e49851-20b2-4072-8335-d0c518c4eaa0"",
-                    ""path"": ""<Mouse>/leftButton"",
-                    ""interactions"": """",
-                    ""processors"": """",
-                    ""groups"": """",
-                    ""action"": ""InteractButton"",
-                    ""isComposite"": false,
-                    ""isPartOfComposite"": false
-                },
-                {
-                    ""name"": """",
                     ""id"": ""0ca29bb8-18b5-4f93-b59e-bd96dbac871a"",
                     ""path"": ""<Mouse>/leftButton"",
                     ""interactions"": """",
@@ -288,6 +286,28 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
                     ""action"": ""DialogueButton"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""fd19f772-9af3-4294-8b28-115b1568b362"",
+                    ""path"": ""<Mouse>/rightButton"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""TransportInteractButton"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""ec5e8452-40a0-4822-87e6-28eca7795882"",
+                    ""path"": ""<Keyboard>/e"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""TransportInteractButton"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -299,6 +319,7 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         m_Player_Move = m_Player.FindAction("Move", throwIfNotFound: true);
         m_Player_Look = m_Player.FindAction("Look", throwIfNotFound: true);
         m_Player_InteractButton = m_Player.FindAction("InteractButton", throwIfNotFound: true);
+        m_Player_TransportInteractButton = m_Player.FindAction("TransportInteractButton", throwIfNotFound: true);
         m_Player_Physical_Interact_Button = m_Player.FindAction("Physical_Interact_Button", throwIfNotFound: true);
         m_Player_FlareButton = m_Player.FindAction("FlareButton", throwIfNotFound: true);
         m_Player_PauseButton = m_Player.FindAction("PauseButton", throwIfNotFound: true);
@@ -386,6 +407,7 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
     private readonly InputAction m_Player_Move;
     private readonly InputAction m_Player_Look;
     private readonly InputAction m_Player_InteractButton;
+    private readonly InputAction m_Player_TransportInteractButton;
     private readonly InputAction m_Player_Physical_Interact_Button;
     private readonly InputAction m_Player_FlareButton;
     private readonly InputAction m_Player_PauseButton;
@@ -413,6 +435,10 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         /// Provides access to the underlying input action "Player/InteractButton".
         /// </summary>
         public InputAction @InteractButton => m_Wrapper.m_Player_InteractButton;
+        /// <summary>
+        /// Provides access to the underlying input action "Player/TransportInteractButton".
+        /// </summary>
+        public InputAction @TransportInteractButton => m_Wrapper.m_Player_TransportInteractButton;
         /// <summary>
         /// Provides access to the underlying input action "Player/Physical_Interact_Button".
         /// </summary>
@@ -464,6 +490,9 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
             @InteractButton.started += instance.OnInteractButton;
             @InteractButton.performed += instance.OnInteractButton;
             @InteractButton.canceled += instance.OnInteractButton;
+            @TransportInteractButton.started += instance.OnTransportInteractButton;
+            @TransportInteractButton.performed += instance.OnTransportInteractButton;
+            @TransportInteractButton.canceled += instance.OnTransportInteractButton;
             @Physical_Interact_Button.started += instance.OnPhysical_Interact_Button;
             @Physical_Interact_Button.performed += instance.OnPhysical_Interact_Button;
             @Physical_Interact_Button.canceled += instance.OnPhysical_Interact_Button;
@@ -496,6 +525,9 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
             @InteractButton.started -= instance.OnInteractButton;
             @InteractButton.performed -= instance.OnInteractButton;
             @InteractButton.canceled -= instance.OnInteractButton;
+            @TransportInteractButton.started -= instance.OnTransportInteractButton;
+            @TransportInteractButton.performed -= instance.OnTransportInteractButton;
+            @TransportInteractButton.canceled -= instance.OnTransportInteractButton;
             @Physical_Interact_Button.started -= instance.OnPhysical_Interact_Button;
             @Physical_Interact_Button.performed -= instance.OnPhysical_Interact_Button;
             @Physical_Interact_Button.canceled -= instance.OnPhysical_Interact_Button;
@@ -569,6 +601,13 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnInteractButton(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "TransportInteractButton" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnTransportInteractButton(InputAction.CallbackContext context);
         /// <summary>
         /// Method invoked when associated input action "Physical_Interact_Button" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
         /// </summary>

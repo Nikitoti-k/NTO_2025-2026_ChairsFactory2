@@ -4,6 +4,7 @@ public interface IControllable
 {
     void HandleMovement(Vector2 input);
     void HandleInteract(bool pressed);
+    void HandleTransportInteract(bool pressed);
     void HandlePhysicalInteract(bool pressed, bool held);
     void HandleFlare(bool pressed);
 }
@@ -41,6 +42,7 @@ public class InputRouter : MonoBehaviour
         }
 
         CurrentController.HandleInteract(im.Interact);
+        CurrentController.HandleTransportInteract(im.TransportInteract);
         CurrentController.HandlePhysicalInteract(im.Physical, im.PhysicalHeld);
         CurrentController.HandleFlare(im.Flare);
     }

@@ -156,9 +156,16 @@ public class PlayerMovement : MonoBehaviour, IControllable
             sleepSystem.StartSleep();
             return;
         }
-        TryMountTransport();
+        
         if (TryOpenResearchReport())
             return;
+    }
+
+    public void HandleTransportInteract(bool pressed)
+    {
+        if (_isFocused) return;
+        if (!pressed || _isMounting || _isSleeping) return;
+        TryMountTransport();
     }
 
     private bool TryOpenResearchReport()

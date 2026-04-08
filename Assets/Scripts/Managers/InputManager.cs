@@ -6,6 +6,7 @@ public interface IInputManager
     Vector2 Move { get; }
     Vector2 Look { get; }
     bool Interact { get; }
+    bool TransportInteract { get; }
     bool Physical { get; }
     bool PhysicalHeld { get; }
     bool Flare { get; }
@@ -23,6 +24,7 @@ public class InputManager : MonoBehaviour, IInputManager
     public Vector2 Move => _move;
     public Vector2 Look => _look;
     public bool Interact => _interact;
+    public bool TransportInteract => _transportInteract;
     public bool Physical => _physical;
     public bool PhysicalHeld => _physicalHeld;
     public bool Flare => _flare;
@@ -30,7 +32,7 @@ public class InputManager : MonoBehaviour, IInputManager
     public bool EscapePressed { get; private set; }
 
     private Vector2 _move, _look;
-    private bool _interact, _physical, _physicalHeld, _flare, _radioNext;
+    private bool _interact, _transportInteract, _physical, _physicalHeld, _flare, _radioNext;
     private PlayerControls _actions;
 
     private void Awake()
@@ -54,6 +56,7 @@ public class InputManager : MonoBehaviour, IInputManager
             _actions.Player.Look.canceled += _ => _look = Vector2.zero;
 
             _actions.Player.InteractButton.performed += _ => _interact = true;
+            _actions.Player.TransportInteractButton.performed += _ => _transportInteract = true;
             _actions.Player.Physical_Interact_Button.performed += _ => { _physical = true; _physicalHeld = true; };
             _actions.Player.Physical_Interact_Button.canceled += _ => _physicalHeld = false;
             _actions.Player.FlareButton.performed += _ => _flare = true;
@@ -69,6 +72,7 @@ public class InputManager : MonoBehaviour, IInputManager
     private void LateUpdate()
     {
         _interact = false;
+        _transportInteract = false;
         _physical = false;
         _flare = false;
         _radioNext = false;

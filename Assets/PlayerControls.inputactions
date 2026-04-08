@@ -34,6 +34,15 @@
                     "initialStateCheck": false
                 },
                 {
+                    "name": "TransportInteractButton",
+                    "type": "Button",
+                    "id": "d1628cf1-8932-4e52-bd40-fe3cbe668f58",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
                     "name": "Physical_Interact_Button",
                     "type": "Button",
                     "id": "78b7cfe6-68b7-4009-a495-b7f9006cabb3",
@@ -150,17 +159,6 @@
                 },
                 {
                     "name": "",
-                    "id": "86e49851-20b2-4072-8335-d0c518c4eaa0",
-                    "path": "<Mouse>/leftButton",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "InteractButton",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
                     "id": "0ca29bb8-18b5-4f93-b59e-bd96dbac871a",
                     "path": "<Mouse>/leftButton",
                     "interactions": "",
@@ -200,6 +198,28 @@
                     "processors": "",
                     "groups": "",
                     "action": "DialogueButton",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "fd19f772-9af3-4294-8b28-115b1568b362",
+                    "path": "<Mouse>/rightButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "TransportInteractButton",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "ec5e8452-40a0-4822-87e6-28eca7795882",
+                    "path": "<Keyboard>/e",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "TransportInteractButton",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

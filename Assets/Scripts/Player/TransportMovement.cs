@@ -59,7 +59,8 @@ public class TransportMovement : SaveableObject, IControllable
     }
 
     public void HandleMovement(Vector2 input) => _input = input;
-    public void HandleInteract(bool pressed) { if (pressed) Dismount(); }
+    public void HandleInteract(bool pressed) {}
+    public void HandleTransportInteract(bool pressed) { if (pressed) Dismount(); }
     public void HandlePhysicalInteract(bool pressed, bool held) { }
     public void HandleFlare(bool pressed) { }
 
