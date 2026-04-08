@@ -383,7 +383,7 @@ public class SaveManager : MonoBehaviour
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        if (!scene.name.Equals("GameScene") && !scene.name.Equals("TestScene"))
+        if (!scene.name.Equals("GameScene") && !scene.name.Equals("TestScene") && !scene.name.Equals("GGrriisshha"))
             return;
 
         if (pendingLoadSlot != -1)
