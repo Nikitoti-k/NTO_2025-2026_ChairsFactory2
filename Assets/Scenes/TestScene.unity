@@ -6522,7 +6522,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: New Text
+  m_text: '[RADIO_SPEAKER_COMMAND]'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 53bb0cef898848d48a2d4325caee0ad0, type: 2}
   m_sharedMaterial: {fileID: -8054130897896450662, guid: 53bb0cef898848d48a2d4325caee0ad0, type: 2}
@@ -9682,7 +9682,7 @@ Transform:
   m_GameObject: {fileID: 343934408}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: 0.5300436, z: -0, w: 0.8479704}
-  m_LocalPosition: {x: 35.16, y: 13.09, z: 223.76}
+  m_LocalPosition: {x: 47.04, y: 13.71, z: 229.55}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -39009,15 +39009,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8569012870414844013, guid: 237ecba0a6b766b41bd94e0e537c1510, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 33.89817
+      value: 45.77817
       objectReference: {fileID: 0}
     - target: {fileID: 8569012870414844013, guid: 237ecba0a6b766b41bd94e0e537c1510, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 15.059999
+      value: 15.679999
       objectReference: {fileID: 0}
     - target: {fileID: 8569012870414844013, guid: 237ecba0a6b766b41bd94e0e537c1510, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 222.55644
+      value: 228.34645
       objectReference: {fileID: 0}
     - target: {fileID: 8569012870414844013, guid: 237ecba0a6b766b41bd94e0e537c1510, type: 3}
       propertyPath: m_LocalRotation.w
@@ -48956,7 +48956,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: New Text
+  m_text: '[MONOLOGUE_RETURN_01]'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 53bb0cef898848d48a2d4325caee0ad0, type: 2}
   m_sharedMaterial: {fileID: -8054130897896450662, guid: 53bb0cef898848d48a2d4325caee0ad0, type: 2}
@@ -51948,43 +51948,43 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: dc1c2b81c8fb11f4e9a30649530100a0, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 6.78
+      value: 6.83
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: dc1c2b81c8fb11f4e9a30649530100a0, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -1.06
+      value: -1.59
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: dc1c2b81c8fb11f4e9a30649530100a0, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 1.11
+      value: -0.64
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: dc1c2b81c8fb11f4e9a30649530100a0, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.43003786
+      value: 0.4872142
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: dc1c2b81c8fb11f4e9a30649530100a0, type: 3}
       propertyPath: m_LocalRotation.x
-      value: -0.56972957
+      value: -0.5080087
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: dc1c2b81c8fb11f4e9a30649530100a0, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0.5058816
+      value: 0.4510776
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: dc1c2b81c8fb11f4e9a30649530100a0, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0.48431346
+      value: 0.5487061
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: dc1c2b81c8fb11f4e9a30649530100a0, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
-      value: -78.528
+      value: -81.905
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: dc1c2b81c8fb11f4e9a30649530100a0, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
-      value: -144.053
+      value: -56.893
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: dc1c2b81c8fb11f4e9a30649530100a0, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
-      value: 233.501
+      value: 147.155
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: dc1c2b81c8fb11f4e9a30649530100a0, type: 3}
       propertyPath: m_Name
@@ -53487,7 +53487,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1832999329}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f43cdda3f2a44874fb8bafc960cca1d9, type: 3}
   m_Name: 
@@ -59027,6 +59027,7 @@ GameObject:
   - component: {fileID: 1988298932}
   - component: {fileID: 1988298929}
   - component: {fileID: 1988298931}
+  - component: {fileID: 1988298933}
   m_Layer: 0
   m_Name: TutorialManager
   m_TagString: Untagged
@@ -59041,7 +59042,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1988298928}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ad906da3c66338444ac09e2373e812ff, type: 3}
   m_Name: 
@@ -59119,6 +59120,29 @@ MonoBehaviour:
   rotateX: 1
   rotateY: 1
   rotateZ: 0
+--- !u!114 &1988298933
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1988298928}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b0a9c843cf95f0440afc03515638015f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hintPanel: {fileID: 209348059}
+  hintText: {fileID: 2020114527}
+  holdAfterSuccess: 1.2
+  skipToResearchTableOnStart: 0
+  baseReturnPoint: {fileID: 742248460}
+  baseReturnDistance: 10
+  radioMonologue: {fileID: 1259642625}
+  vehicleMineralSnapZone: {fileID: 344416184}
+  baseResearchSnapZone: {fileID: 1811693064}
+  quarantineBox: {fileID: 320478865}
+  conclusionHintPermanentlyDisabled: 0
 --- !u!1 &1992280462
 GameObject:
   m_ObjectHideFlags: 0
@@ -60104,7 +60128,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: New Text
+  m_text: '[TUT_SCAN_MOVE]'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 53bb0cef898848d48a2d4325caee0ad0, type: 2}
   m_sharedMaterial: {fileID: -8054130897896450662, guid: 53bb0cef898848d48a2d4325caee0ad0, type: 2}
