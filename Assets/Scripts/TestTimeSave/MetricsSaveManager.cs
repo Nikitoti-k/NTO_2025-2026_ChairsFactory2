@@ -44,7 +44,11 @@ public class MetricsSaveManager : MonoBehaviour
         /*float sessionMedian = CalculateMedian(loadedData.sessionTime);
         float tutorialStepMedian = CalculateMedian(loadedData.tutorialStep);*/
 
-        Debug.Log($"Загружено: {loadedData.sessionTime[0]}, {loadedData.tutorialStep[0]}");
+        for(int i = 0; i < loadedData.sessionTime.Count;  i++)
+        {
+            print(i + ". Время сесии: " + loadedData.sessionTime[i] + "Шаг обучения: " + loadedData.tutorialStep[i]);
+
+        }
 
     }
 
