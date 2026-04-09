@@ -6,6 +6,7 @@ public class Cassette : MonoBehaviour
     [SerializeField] private CassetteData data;
     public CassetteData Data => data;
 
+    public int id;
     private Rigidbody rb;
     private Collider col;
     private bool isInserted = false;
