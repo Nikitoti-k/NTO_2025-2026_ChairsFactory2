@@ -4,15 +4,16 @@ using UnityEngine.UI;
 
 public class CassettePlayer : MonoBehaviour
 {
-    [Header("3D Components")]
+    [Header("3D компоненты")]
     [SerializeField] private Transform cassetteSlot;
    //[SerializeField] private Collider insertTrigger;  
 
-    [Header("Video Player")]
+    [Header("Видео плеер")]
     [SerializeField] private VideoPlayer videoPlayer;
 
-    [Header("Fullscreen UI")]
+    [Header("UI")]
     [SerializeField] private GameObject fullscreenUI;
+    [SerializeField] private GameObject additionalFullscreenUI;
     [SerializeField] private RawImage videoDisplay;
     [SerializeField] private RenderTexture videoRenderTexture;
 
@@ -22,13 +23,15 @@ public class CassettePlayer : MonoBehaviour
     [SerializeField] private Button speedUpButton;
     [SerializeField] private Button speedDownButton;
     [SerializeField] private Button closeButton;
+    [SerializeField] private Button closeAdditionalUI;
     [SerializeField] private Text timeText;
     [SerializeField] private Text speedText;
 
-    [Header("Settings")]
+    [Header("Настройки")]
     [SerializeField] private float rewindSeconds = 10f;
 
     private Cassette currentCassette;
+    private AdditionalCassette currentAdditionalCassette;
     private float currentSpeed = 1.0f;
     private bool isPlaying = false;
 
@@ -49,6 +52,7 @@ public class CassettePlayer : MonoBehaviour
         speedUpButton.onClick.AddListener(() => SetSpeed(2.0f));
         speedDownButton.onClick.AddListener(() => SetSpeed(0.5f));
         closeButton.onClick.AddListener(CloseUI);
+        closeAdditionalUI.onClick.AddListener(CloseAdditionalUI);
 
         UpdateSpeedUI();
     }
@@ -61,13 +65,22 @@ public class CassettePlayer : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (currentCassette != null) return;
+        if (currentCassette != null && currentAdditionalCassette != null) return;
 
         Cassette cassette = other.GetComponent<Cassette>();
         if (cassette != null && !cassette.IsInserted())
         {
             InsertCassette(cassette);
         }
+        else
+        {
+            AdditionalCassette additionalCassette = other.GetComponent<AdditionalCassette>();
+            if(additionalCassette != null && !additionalCassette.IsInserted())
+            {
+                InsertAdditionalCassette(additionalCassette);
+            }
+        }
+        
     }
 
     private void InsertCassette(Cassette cassette)
@@ -83,6 +96,16 @@ public class CassettePlayer : MonoBehaviour
         videoPlayer.Prepare();
     }
 
+    private void InsertAdditionalCassette(AdditionalCassette cassette)
+    {
+        currentAdditionalCassette = cassette;
+        currentAdditionalCassette.InsertIntoPlayer(cassetteSlot);
+
+        fullscreenUI.SetActive(true);
+        Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.None;
+    }
+
     private void EjectCassette()
     {
         if (currentCassette == null) return;
@@ -90,6 +113,15 @@ public class CassettePlayer : MonoBehaviour
         videoPlayer.Stop();
         currentCassette.EjectFromPlayer();
         currentCassette = null;
+        isPlaying = false;
+    }
+
+    private void EjectAdditionalCassette()
+    {
+        if (currentAdditionalCassette == null) return;
+
+        currentAdditionalCassette.EjectFromPlayer();
+        currentAdditionalCassette = null;
         isPlaying = false;
     }
 
@@ -136,6 +168,14 @@ public class CassettePlayer : MonoBehaviour
         Cursor.lockState = CursorLockMode.Locked;
         EjectCassette();
     }
+
+    private void CloseAdditionalUI()
+    {
+        additionalFullscreenUI.SetActive(false);
+        Cursor.visible = false;
+        Cursor.lockState = CursorLockMode.Locked;
+        EjectCassette();
+    } 
 
     private void UpdateTimeUI()
     {
