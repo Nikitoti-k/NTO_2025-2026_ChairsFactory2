@@ -27271,6 +27271,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Min_1
       objectReference: {fileID: 0}
+    - target: {fileID: 3836979047366133623, guid: 8d5726580eec5f04e808a63fb618b3d0, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 8569012870414844013, guid: 8d5726580eec5f04e808a63fb618b3d0, type: 3}
       propertyPath: m_LocalPosition.x
       value: 59.372185
@@ -39055,7 +39059,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3836979047366133623, guid: 237ecba0a6b766b41bd94e0e537c1510, type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8569012870414844013, guid: 237ecba0a6b766b41bd94e0e537c1510, type: 3}
       propertyPath: m_LocalPosition.x
@@ -59204,6 +59208,8 @@ MonoBehaviour:
   holdAfterSuccess: 1.2
   skipToResearchTableOnStart: 0
   skipSnowmobile: 1
+  afterReturnHintText: 
+  beforeAnomalyHintText: 
   baseReturnPoint: {fileID: 742248460}
   baseReturnDistance: 10
   radioMonologue: {fileID: 1259642625}
