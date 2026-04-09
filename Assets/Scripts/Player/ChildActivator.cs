@@ -11,8 +11,7 @@ public class ChildActivator : MonoBehaviour
     {
         if (other.CompareTag("Player") && canActivate && childObject != null)
         {
-            childObject.SetActive(true);
-            canActivate = false;  // One-shot (убери для повторений)
+            FindFirstObjectByType<StartEndCassette>().StartEndVideo();
         }
     }
 }

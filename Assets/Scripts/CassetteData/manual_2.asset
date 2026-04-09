@@ -16,4 +16,4 @@ MonoBehaviour:
   displayName: manual_2
   coverSprite: {fileID: 0}
   description: das
-  videoClip: {fileID: 32900000, guid: 14b739a4501b17443a7e5e7f9cb3639d, type: 3}
+  videoClip: {fileID: 32900000, guid: 546542881733dee429799c9963cd77ee, type: 3}

@@ -43,7 +43,7 @@ public class SaveFile
         };
     }
 }
-[System.Serializable]
+/*[System.Serializable]
 public class TutorialSaveData
 {
     public int step = 0;
@@ -79,7 +79,7 @@ public class TutorialSaveData
     public bool hintShown_Conclusion = false;     
     public bool hintShown_AnomalyPlace = false;  
     public bool hintShown_GoToBed = false;       
-}
+}*/
 
 public interface IHasTutorialData
 {
