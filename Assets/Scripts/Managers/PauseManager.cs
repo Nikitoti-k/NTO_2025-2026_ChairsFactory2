@@ -30,7 +30,6 @@ public class PauseManager : MonoBehaviour, IPauseManager
     [SerializeField] private string mainMenuScene = "MainMenu";
 
     private bool isSavePopupOpen = false;
-    private CameraController.ControlMode _previousCameraMode; // сохранённый режим камеры
 
     private void Awake()
     {
@@ -90,15 +89,6 @@ public class PauseManager : MonoBehaviour, IPauseManager
     public void Pause()
     {
         if (IsPaused) return;
-
-        // Сохраняем текущий режим камеры (если камера существует)
-        if (CameraController.Instance != null)
-        {
-            _previousCameraMode = CameraController.Instance.currentMode;
-            // Принудительно переключаем камеру в режим UI, чтобы курсор стал видимым
-            CameraController.Instance.ForceSetMode(CameraController.ControlMode.UI);
-        }
-
         if (pauseMenuUI != null) pauseMenuUI.SetActive(true);
         Time.timeScale = 0f;
     }
@@ -106,23 +96,10 @@ public class PauseManager : MonoBehaviour, IPauseManager
     public void Resume()
     {
         if (!IsPaused) return;
-
         if (pauseMenuUI != null) pauseMenuUI.SetActive(false);
         if (manualSavePopup != null) manualSavePopup.SetActive(false);
         isSavePopupOpen = false;
-
         Time.timeScale = 1f;
-
-        // Восстанавливаем предыдущий режим камеры
-        if (CameraController.Instance != null)
-        {
-            // Если режим не изменился за время паузы (никто не вызывал ForceSetMode),
-            // то возвращаем сохранённый режим. В противном случае оставляем текущий.
-            if (CameraController.Instance.currentMode == CameraController.ControlMode.UI)
-            {
-                CameraController.Instance.ForceSetMode(_previousCameraMode);
-            }
-        }
     }
 
     private void OpenSavePopup()
@@ -153,7 +130,6 @@ public class PauseManager : MonoBehaviour, IPauseManager
     {
         try
         {
-            // Возвращаем время в нормальное состояние перед загрузкой сцены
             Time.timeScale = 1f;
             SceneManager.LoadScene(mainMenuScene);
         }
@@ -167,7 +143,6 @@ public class PauseManager : MonoBehaviour, IPauseManager
     {
         try
         {
-            Time.timeScale = 1f; // на всякий случай
 #if UNITY_EDITOR
             UnityEditor.EditorApplication.isPlaying = false;
 #else

@@ -48,9 +48,6 @@ public class CameraController : MonoBehaviour
     private ControlMode _modeBeforeFocus;
     private bool _isDraggingJoystick = false;
 
-    // Флаг, разрешающий принудительное переключение режима (например, при выходе из паузы)
-    private bool _ignorePauseCheck = false;
-
     public static CameraController Instance { get; private set; }
     public ControlMode currentMode = ControlMode.UI;
 
@@ -85,9 +82,6 @@ public class CameraController : MonoBehaviour
 
         CanGrab.OnGrabbed += OnPlayerGrabbed;
         CanGrab.OnReleased += OnPlayerReleased;
-
-        // Явно применяем начальный режим
-        SetMode(currentMode);
     }
 
     private void OnDestroy()
@@ -109,13 +103,6 @@ public class CameraController : MonoBehaviour
 
     public void SetMode(ControlMode mode)
     {
-        // Если игра на паузе, запрещаем переключение в FPS или Focus (кроме принудительного вызова)
-        if (!_ignorePauseCheck && PauseManager.IsPaused && mode != ControlMode.UI)
-        {
-            Debug.Log("[CameraController] Попытка переключиться в FPS/Focus во время паузы – игнорируется");
-            return;
-        }
-
         if (currentMode == mode) return;
         currentMode = mode;
 
@@ -138,14 +125,6 @@ public class CameraController : MonoBehaviour
         }
 
         OnModeChanged?.Invoke(mode);
-    }
-
-    // Метод для принудительного переключения режима из PauseManager (игнорирует проверку паузы)
-    public void ForceSetMode(ControlMode mode)
-    {
-        _ignorePauseCheck = true;
-        SetMode(mode);
-        _ignorePauseCheck = false;
     }
 
     private void WarpCursorToCenter()
@@ -298,13 +277,10 @@ public class CameraController : MonoBehaviour
 
     private void Update()
     {
-        // Если игра на паузе, не обрабатываем никакое управление камерой и ввод
-        if (PauseManager.IsPaused) return;
-
-        HandleFocusClick();      // теперь работает только в FPS и при активной игре
-        HandleFocusExit();       // только в Focus
-        HandleFocusInteractions(); // только в Focus
-        HandleJoystickDragging();   // только если джойстик захвачен
+        HandleFocusClick();
+        HandleFocusExit();
+        HandleFocusInteractions();
+        HandleJoystickDragging();
 
         if (currentMode == ControlMode.Focus)
         {
@@ -314,6 +290,7 @@ public class CameraController : MonoBehaviour
 
         if (currentMode != ControlMode.FPS || _target == null || _router == null)
         {
+            HandleFPS_UIRaycast();
             return;
         }
 
@@ -348,8 +325,7 @@ public class CameraController : MonoBehaviour
 
     private void HandleFocusClick()
     {
-        if (currentMode != ControlMode.FPS) return;
-        if (PauseManager.IsPaused) return;          // дополнительная защита
+        if (currentMode == ControlMode.Focus) return;
         if (Mouse.current == null || !Mouse.current.leftButton.wasPressedThisFrame) return;
 
         Ray ray = Camera.main.ScreenPointToRay(Mouse.current.position.ReadValue());
@@ -374,7 +350,6 @@ public class CameraController : MonoBehaviour
     private void HandleFocusInteractions()
     {
         if (currentMode != ControlMode.Focus) return;
-        if (PauseManager.IsPaused) return;
         if (Mouse.current == null) return;
 
         Ray ray = Camera.main.ScreenPointToRay(Mouse.current.position.ReadValue());
@@ -416,7 +391,6 @@ public class CameraController : MonoBehaviour
     private void HandleJoystickDragging()
     {
         if (!_isDraggingJoystick || Mouse.current == null) return;
-        if (PauseManager.IsPaused) return;
 
         var joystick = JoystickController.Instance;
         if (joystick != null && joystick.IsGrabbed)
@@ -448,7 +422,6 @@ public class CameraController : MonoBehaviour
 
     private void FixedUpdate()
     {
-        if (PauseManager.IsPaused) return;
         if (_targetRb && currentMode == ControlMode.FPS && _router.CurrentController is PlayerMovement)
             _targetRb.MoveRotation(Quaternion.Euler(0f, _yaw, 0f));
     }
@@ -462,8 +435,6 @@ public class CameraController : MonoBehaviour
     private void HandleFPS_UIRaycast()
     {
         if (currentMode != ControlMode.FPS) return;
-        if (PauseManager.IsPaused) return;
-
         Ray ray = new Ray(transform.position, transform.forward);
         if (Physics.Raycast(ray, out RaycastHit hit, uiRayDistance, uiLayer) && Mouse.current.leftButton.wasPressedThisFrame)
         {

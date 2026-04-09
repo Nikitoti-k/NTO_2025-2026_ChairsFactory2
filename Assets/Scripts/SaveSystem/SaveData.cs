@@ -43,6 +43,43 @@ public class SaveFile
         };
     }
 }
+[System.Serializable]
+public class TutorialSaveData
+{
+    public int step = 0;
+    public int researchedCount = 0;
+
+   
+    public bool hasPlayedIntroMonologue = false;
+    public bool hasPlayedReturnMonologue = false;
+    public bool hasPlayedFinalMonologue = false;
+    public bool hasPlayedMorningDay2 = false;
+    public bool hasPlayedMorningDay3 = false;
+
+    
+    public bool flareHintActive = false;
+    public bool flareThrown = false;
+    public bool anomalyPlaced = false;
+    public bool playerSlept = false;
+
+   
+    public bool hintShown_Look = false;           
+    public bool hintShown_Move = false;          
+    public bool hintShown_Door = false;           
+    public bool hintShown_Vehicle = false;        
+    public bool hintShown_Flare = false;          
+    public bool hintShown_Break = false;          
+    public bool hintShown_Carry = false;          
+    public bool hintShown_Return = false;        
+    public bool hintShown_Table = false;          
+    public bool hintShown_ScanMove = false;       
+    public bool hintShown_ScanClick = false;     
+    public bool hintShown_Accuracy = false;       
+    public bool hintShown_FindMore = false;       
+    public bool hintShown_Conclusion = false;     
+    public bool hintShown_AnomalyPlace = false;  
+    public bool hintShown_GoToBed = false;       
+}
 
 public interface IHasTutorialData
 {
