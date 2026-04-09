@@ -2,7 +2,6 @@ using UnityEngine;
 using UnityEngine.Video;
 using UnityEngine.UI;
 using System;
-using System.Collections;
 
 public class CassettePlayer : MonoBehaviour
 {
@@ -16,7 +15,6 @@ public class CassettePlayer : MonoBehaviour
     [Header("Fullscreen UI")]
     [SerializeField] private GameObject fullscreenUI;
     [SerializeField] private RawImage videoDisplay;
-    [SerializeField] private float fadeSpeed = 0.5f;
     [SerializeField] private RenderTexture videoRenderTexture;
 
     [Header("UI Controls")]
@@ -82,27 +80,13 @@ public class CassettePlayer : MonoBehaviour
     {
         currentCassette = cassette;
         currentCassette.InsertIntoPlayer(cassetteSlot);
-        Color c = videoDisplay.color;
-        c.a = 0;
-        videoDisplay.color = c;
-        StartCoroutine(FadeTo(1f));
+
         fullscreenUI.SetActive(true);
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
 
         videoPlayer.clip = cassette.Data.videoClip;
         videoPlayer.Prepare();
-    }
-
-    public IEnumerator FadeTo(float targetAlpha)
-    {
-        Color c = videoDisplay.color;
-        while (!Mathf.Approximately(c.a, targetAlpha))
-        {
-            c.a = Mathf.MoveTowards(c.a, targetAlpha, fadeSpeed * Time.deltaTime);
-            videoDisplay.color = c;
-            yield return null;
-        }
     }
 
     private void EjectCassette()
@@ -114,7 +98,6 @@ public class CassettePlayer : MonoBehaviour
         
         isPlaying = false;
         int id = currentCassette.id;
-        
         print(id);
         switch (id)
         {
@@ -173,8 +156,7 @@ public class CassettePlayer : MonoBehaviour
 
     private void CloseUI()
     {
-        //fullscreenUI.SetActive(false);
-        StartCoroutine(FadeTo(0f));
+        fullscreenUI.SetActive(false);
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Locked;
         EjectCassette();

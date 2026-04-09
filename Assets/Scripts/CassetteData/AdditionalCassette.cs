@@ -8,13 +8,10 @@ public class AdditionalCassette : MonoBehaviour
     //private Collider col;
     private bool isInserted = false;
 
-
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
     }
-
-
 
     public void InsertIntoPlayer(Transform slot)
     {
