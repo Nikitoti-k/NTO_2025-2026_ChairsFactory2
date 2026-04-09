@@ -1,19 +1,19 @@
 using UnityEngine;
 using UnityEngine.Video;
 using UnityEngine.UI;
+using System;
 
 public class CassettePlayer : MonoBehaviour
 {
-    [Header("3D компоненты")]
+    [Header("3D Components")]
     [SerializeField] private Transform cassetteSlot;
-   //[SerializeField] private Collider insertTrigger;  
+    //[SerializeField] private Collider insertTrigger;  
 
-    [Header("Видео плеер")]
+    [Header("Video Player")]
     [SerializeField] private VideoPlayer videoPlayer;
 
-    [Header("UI")]
+    [Header("Fullscreen UI")]
     [SerializeField] private GameObject fullscreenUI;
-    [SerializeField] private GameObject additionalFullscreenUI;
     [SerializeField] private RawImage videoDisplay;
     [SerializeField] private RenderTexture videoRenderTexture;
 
@@ -23,17 +23,20 @@ public class CassettePlayer : MonoBehaviour
     [SerializeField] private Button speedUpButton;
     [SerializeField] private Button speedDownButton;
     [SerializeField] private Button closeButton;
-    [SerializeField] private Button closeAdditionalUI;
     [SerializeField] private Text timeText;
     [SerializeField] private Text speedText;
 
-    [Header("Настройки")]
+    [Header("Settings")]
     [SerializeField] private float rewindSeconds = 10f;
 
     private Cassette currentCassette;
-    private AdditionalCassette currentAdditionalCassette;
     private float currentSpeed = 1.0f;
     private bool isPlaying = false;
+
+    public static event Action OnCassete1Play;
+    public static event Action OnCassete2Play;
+    public static event Action OnCassete3Play;
+    public static event Action OnCassete4Play;
 
     private void Start()
     {
@@ -52,7 +55,6 @@ public class CassettePlayer : MonoBehaviour
         speedUpButton.onClick.AddListener(() => SetSpeed(2.0f));
         speedDownButton.onClick.AddListener(() => SetSpeed(0.5f));
         closeButton.onClick.AddListener(CloseUI);
-        closeAdditionalUI.onClick.AddListener(CloseAdditionalUI);
 
         UpdateSpeedUI();
     }
@@ -65,22 +67,13 @@ public class CassettePlayer : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (currentCassette != null && currentAdditionalCassette != null) return;
+        if (currentCassette != null) return;
 
         Cassette cassette = other.GetComponent<Cassette>();
         if (cassette != null && !cassette.IsInserted())
         {
             InsertCassette(cassette);
         }
-        else
-        {
-            AdditionalCassette additionalCassette = other.GetComponent<AdditionalCassette>();
-            if(additionalCassette != null && !additionalCassette.IsInserted())
-            {
-                InsertAdditionalCassette(additionalCassette);
-            }
-        }
-        
     }
 
     private void InsertCassette(Cassette cassette)
@@ -96,33 +89,33 @@ public class CassettePlayer : MonoBehaviour
         videoPlayer.Prepare();
     }
 
-    private void InsertAdditionalCassette(AdditionalCassette cassette)
-    {
-        currentAdditionalCassette = cassette;
-        currentAdditionalCassette.InsertIntoPlayer(cassetteSlot);
-
-        fullscreenUI.SetActive(true);
-        Cursor.visible = true;
-        Cursor.lockState = CursorLockMode.None;
-    }
-
     private void EjectCassette()
     {
         if (currentCassette == null) return;
 
         videoPlayer.Stop();
         currentCassette.EjectFromPlayer();
+        
+        isPlaying = false;
+        int id = currentCassette.Data.id;
+        print(id);
+        switch (id)
+        {
+            case 1:
+                OnCassete1Play.Invoke();
+                break;
+            case 2:
+                OnCassete2Play.Invoke();
+                break;
+            case 3:
+                OnCassete3Play.Invoke();
+                break;
+            case 4:
+                OnCassete4Play.Invoke();
+                break;
+        }
+
         currentCassette = null;
-        isPlaying = false;
-    }
-
-    private void EjectAdditionalCassette()
-    {
-        if (currentAdditionalCassette == null) return;
-
-        currentAdditionalCassette.EjectFromPlayer();
-        currentAdditionalCassette = null;
-        isPlaying = false;
     }
 
     public void TogglePlayPause()
@@ -168,14 +161,6 @@ public class CassettePlayer : MonoBehaviour
         Cursor.lockState = CursorLockMode.Locked;
         EjectCassette();
     }
-
-    private void CloseAdditionalUI()
-    {
-        additionalFullscreenUI.SetActive(false);
-        Cursor.visible = false;
-        Cursor.lockState = CursorLockMode.Locked;
-        EjectCassette();
-    } 
 
     private void UpdateTimeUI()
     {
