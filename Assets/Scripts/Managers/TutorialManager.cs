@@ -20,6 +20,10 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
     [SerializeField] private string customBaseReturnedHintText = "Вернулись на базу! Теперь сделайте что-то...";
     [SerializeField] private string customPreAnomalyHintText = "Скоро нужно будет поместить аномалию в специальный ящик...";
 
+    [Header("=== ОБЪЕКТЫ ДЛЯ АКТИВАЦИИ ПРИ ПОДСКАЗКАХ ===")]
+    [SerializeField] private GameObject objectForFirstNewHint;   // активируется при показе подсказки шага 8
+    [SerializeField] private GameObject objectForSecondNewHint;  // активируется при показе подсказки шага 15
+
     private readonly string[] hintKeys = new[]
     {
         "TUT_LOOK",                // 0
@@ -206,6 +210,16 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
             text = LocalizationManager.Loc(hintKeys[idx]);
 
         ShowHint(text);
+
+        // Активация объектов при показе соответствующих подсказок
+        if (idx == 8 && objectForFirstNewHint != null)
+        {
+            objectForFirstNewHint.SetActive(true);
+        }
+        if (idx == 15 && objectForSecondNewHint != null)
+        {
+            objectForSecondNewHint.SetActive(true);
+        }
     }
 
     private void ShowHint(string text)
@@ -611,6 +625,10 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
         baseReturnedHintCompleted = false;
         preAnomalyHintCompleted = false;
         if (hintPanel) hintPanel.SetActive(false);
+
+        // Деактивируем объекты подсказок при сбросе
+        if (objectForFirstNewHint != null) objectForFirstNewHint.SetActive(false);
+        if (objectForSecondNewHint != null) objectForSecondNewHint.SetActive(false);
     }
 
     private bool IsWASDPressed()
@@ -636,14 +654,9 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
 
     private void OnCassette3Played()
     {
-        // Завершаем подсказку шага 15, если она активна
         if (step == 15 && !waitingHold)
         {
             Success();
-        }
-        else if (step == 15 && waitingHold)
-        {
-            // Уже завершается, ничего не делаем
         }
     }
 
