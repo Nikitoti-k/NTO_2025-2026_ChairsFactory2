@@ -68301,6 +68301,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Cassete_2
       objectReference: {fileID: 0}
+    - target: {fileID: 7215506049535298895, guid: ff8b8fe82cff32f4d9a9c2ed5a839aa6, type: 3}
+      propertyPath: id
+      value: 2
+      objectReference: {fileID: 0}
     - target: {fileID: 8483750509736448154, guid: ff8b8fe82cff32f4d9a9c2ed5a839aa6, type: 3}
       propertyPath: m_LocalPosition.x
       value: -1.39

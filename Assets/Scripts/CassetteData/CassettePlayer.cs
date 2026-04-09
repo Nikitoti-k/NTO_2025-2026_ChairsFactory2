@@ -97,7 +97,7 @@ public class CassettePlayer : MonoBehaviour
         currentCassette.EjectFromPlayer();
         
         isPlaying = false;
-        int id = currentCassette.Data.id;
+        int id = currentCassette.id;
         print(id);
         switch (id)
         {
