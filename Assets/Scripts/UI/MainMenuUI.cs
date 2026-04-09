@@ -9,6 +9,7 @@ public class MainMenuUI : MonoBehaviour, ILocalizable
     [Header("Главное меню")]
     [SerializeField] private Button newGameButton;
     [SerializeField] private Button loadGameButton;
+    [SerializeField] private Button loadTestGameButton;
     [SerializeField] private Button settingsButton;
     [SerializeField] private Button quitButton;
 
@@ -24,6 +25,7 @@ public class MainMenuUI : MonoBehaviour, ILocalizable
     [SerializeField] private TextMeshProUGUI errorText;
 
     [SerializeField] private string gameSceneName = "GameScene";
+    [SerializeField] private string testGameSceneName = "TestGame";
 
     private void Awake()
     {
@@ -42,6 +44,7 @@ public class MainMenuUI : MonoBehaviour, ILocalizable
         // === Основные кнопки ===
         newGameButton.onClick.AddListener(StartNewGame);
         loadGameButton.onClick.AddListener(OpenLoadMenu);
+        loadTestGameButton.onClick.AddListener(StartTestGame);
         settingsButton.onClick.AddListener(OpenSettings);
         quitButton.onClick.AddListener(QuitGame);
 
@@ -119,6 +122,12 @@ public class MainMenuUI : MonoBehaviour, ILocalizable
             SaveManager.Instance.DeleteSlot(i);
 
         SceneManager.LoadScene(gameSceneName);
+    }
+
+
+    private void StartTestGame()
+    {
+        SceneManager.LoadScene(testGameSceneName);
     }
 
     private void OpenLoadMenu()
