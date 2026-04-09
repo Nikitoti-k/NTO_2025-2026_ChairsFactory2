@@ -29351,6 +29351,67 @@ Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: a492578b1cf506f4289ab139f8e25476, type: 3}
   m_PrefabInstance: {fileID: 6006925565311883152}
   m_PrefabAsset: {fileID: 0}
+--- !u!1001 &941622959
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 1811776450443201894, guid: d40374699a62f324d9cdb3c1e16e39d4, type: 3}
+      propertyPath: m_Name
+      value: Cassete_3
+      objectReference: {fileID: 0}
+    - target: {fileID: 7215506049535298895, guid: d40374699a62f324d9cdb3c1e16e39d4, type: 3}
+      propertyPath: id
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 8483750509736448154, guid: d40374699a62f324d9cdb3c1e16e39d4, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -2.81
+      objectReference: {fileID: 0}
+    - target: {fileID: 8483750509736448154, guid: d40374699a62f324d9cdb3c1e16e39d4, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 3.93
+      objectReference: {fileID: 0}
+    - target: {fileID: 8483750509736448154, guid: d40374699a62f324d9cdb3c1e16e39d4, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -152.75
+      objectReference: {fileID: 0}
+    - target: {fileID: 8483750509736448154, guid: d40374699a62f324d9cdb3c1e16e39d4, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8483750509736448154, guid: d40374699a62f324d9cdb3c1e16e39d4, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8483750509736448154, guid: d40374699a62f324d9cdb3c1e16e39d4, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8483750509736448154, guid: d40374699a62f324d9cdb3c1e16e39d4, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8483750509736448154, guid: d40374699a62f324d9cdb3c1e16e39d4, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8483750509736448154, guid: d40374699a62f324d9cdb3c1e16e39d4, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8483750509736448154, guid: d40374699a62f324d9cdb3c1e16e39d4, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: d40374699a62f324d9cdb3c1e16e39d4, type: 3}
 --- !u!1 &952349105
 GameObject:
   m_ObjectHideFlags: 0
@@ -39512,9 +39573,9 @@ MonoBehaviour:
     - MONOLOGUE_INTRO_03
   - speakerNameKey: RADIO_SPEAKER_COMMAND
     phraseKeys:
-    - MONOLOGUE_RETURN_01
-    - MONOLOGUE_RETURN_02
-    - MONOLOGUE_RETURN_03
+    - "\u0444\u0444\u0444\u0444\u0444\u0444\u0444\u0444\u0444"
+    - "\u0444\u0444\u0444\u0444\u0444\u0444\u0444\u0444"
+    - "\u0444\u0444\u0444"
   - speakerNameKey: RADIO_SPEAKER_COMMAND
     phraseKeys:
     - MONOLOGUE_FINAL_01
@@ -39530,6 +39591,10 @@ MonoBehaviour:
     phraseKeys:
     - MONOLOGUE_MORNING_DAY3_01
     - MONOLOGUE_MORNING_DAY3_02
+  customReturnMonologueText: "\u0421 \u0432\u043E\u0437\u0432\u0440\u0430\u0449\u0435\u043D\u0438\u0435\u043C!
+    \u041F\u0440\u043E\u0441\u043C\u043E\u0442\u0440\u0438 \u043A\u0430\u0441\u0441\u0435\u0442\u0443,
+    \u0447\u0442\u043E\u0431\u044B \u043F\u043E\u043D\u044F\u0442\u044C, \u0432 \u0447\u0435\u043C
+    \u0441\u043E\u0441\u0442\u043E\u0438\u0442 \u0442\u0432\u043E\u044F \u0440\u0430\u0431\u043E\u0442\u0430."
   radioNoiseKey: radio_static
   radioNoiseVolume: 0.7
   tutorialManager: {fileID: 1988298929}
@@ -41773,7 +41838,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3836979047366133623, guid: 237ecba0a6b766b41bd94e0e537c1510, type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8569012870414844013, guid: 237ecba0a6b766b41bd94e0e537c1510, type: 3}
       propertyPath: m_LocalPosition.x
@@ -61488,6 +61553,8 @@ MonoBehaviour:
     phraseKeys:
     - MONOLOGUE_MORNING_DAY3_01
     - MONOLOGUE_MORNING_DAY3_02
+  customReturnMonologueText: "\u0422\u0435\u043A\u0441\u0442 \u043C\u043E\u043D\u043E\u043B\u043E\u0433\u0430
+    \u0432\u043E\u0437\u0432\u0440\u0430\u0442\u0430 \u043D\u0430 \u0431\u0430\u0437\u0443..."
   radioNoiseKey: radio_static
   radioNoiseVolume: 0.7
   tutorialManager: {fileID: 1988298929}
@@ -62721,8 +62788,13 @@ MonoBehaviour:
   holdAfterSuccess: 1.2
   skipToResearchTableOnStart: 0
   skipSnowmobile: 0
-  afterReturnHintText: 
-  beforeAnomalyHintText: 
+  customBaseReturnedHintText: "\u041F\u0440\u043E\u0441\u043B\u0443\u0448\u0430\u0442\u044C
+    \u043A\u0430\u0441\u0441\u0435\u0442\u0443 \"\u0418\u043D\u0441\u0442\u0440\u0443\u043A\u0446\u0438\u044F
+    \u043F\u043E \u0440\u0430\u0431\u043E\u0442\u0435 \u0441 \u043E\u0431\u043E\u0440\u0443\u0434\u043E\u0432\u0430\u043D\u0438\u0435\u043C\"
+    \u0432 \u043A\u043E\u0440\u043E\u0431\u043A\u0435"
+  customPreAnomalyHintText: "\u041F\u0440\u043E\u0441\u043B\u0443\u0448\u0430\u0442\u044C
+    \u043A\u0430\u0441\u0441\u0435\u0442\u0443 \"\u0418\u043D\u0441\u0442\u0440\u0443\u043A\u0446\u0438\u044F
+    \u043F\u043E \u0440\u0430\u0431\u043E\u0442\u0435 \u0441 \u0430\u043D\u043E\u043C\u0430\u043B\u0438\u044F\u043C\u0438"
   baseReturnPoint: {fileID: 742248460}
   baseReturnDistance: 10
   radioMonologue: {fileID: 1259642625}
@@ -68311,7 +68383,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8483750509736448154, guid: ff8b8fe82cff32f4d9a9c2ed5a839aa6, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 3.798
+      value: 4.11
       objectReference: {fileID: 0}
     - target: {fileID: 8483750509736448154, guid: ff8b8fe82cff32f4d9a9c2ed5a839aa6, type: 3}
       propertyPath: m_LocalPosition.z
@@ -70936,3 +71008,4 @@ SceneRoots:
   - {fileID: 1337850967}
   - {fileID: 1150705689}
   - {fileID: 303524724}
+  - {fileID: 941622959}

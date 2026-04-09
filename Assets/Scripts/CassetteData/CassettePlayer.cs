@@ -102,16 +102,16 @@ public class CassettePlayer : MonoBehaviour
         switch (id)
         {
             case 1:
-                OnCassete1Play.Invoke();
+                OnCassete1Play?.Invoke();
                 break;
             case 2:
-                OnCassete2Play.Invoke();
+                OnCassete2Play?.Invoke();
                 break;
             case 3:
-                OnCassete3Play.Invoke();
+                OnCassete3Play?.Invoke();
                 break;
             case 4:
-                OnCassete4Play.Invoke();
+                OnCassete4Play?.Invoke();
                 break;
         }
 
