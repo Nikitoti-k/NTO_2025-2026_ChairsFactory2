@@ -16,6 +16,10 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
     [SerializeField] private bool skipToResearchTableOnStart = false;
     [SerializeField] private bool skipSnowmobile = false;
 
+    [Header("=== ТЕКСТЫ ПОДСКАЗОК (прямой ввод) ===")]
+    [TextArea(2, 4)] [SerializeField] private string afterReturnHintText = "";
+    [TextArea(2, 4)] [SerializeField] private string beforeAnomalyHintText = "";
+
     private readonly string[] hintKeys = new[]
     {
         "TUT_LOOK",
@@ -26,12 +30,14 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
         "TUT_BREAK",
         "TUT_CARRY",
         "TUT_RETURN",
+        "TUT_AFTER_RETURN",
         "TUT_TABLE",
         "TUT_SCAN_MOVE",
         "TUT_SCAN_CLICK",
         "TUT_ACCURACY",
         "TUT_FIND_MORE",
         "TUT_CONCLUSION",
+        "TUT_BEFORE_ANOMALY",
         "TUT_ANOMALY_PLACE",
         "TUT_GO_TO_BED"
     };
@@ -148,14 +154,22 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
     public void Localize()
     {
         if (hintPanel == null || hintText == null || !hintPanel.activeSelf) return;
-        if (step < hintKeys.Length)
-        {
-            string baseText = LocalizationManager.Loc(hintKeys[step]);
-            hintText.text = waitingHold ? baseText + " " + LocalizationManager.Loc("TUT_Done") : baseText;
-        }
+        string baseText = GetHintTextByStep(step);
+        hintText.text = waitingHold ? baseText + " " + LocalizationManager.Loc("TUT_Done") : baseText;
     }
 
     private void OnLanguageChanged(LocalizationManager.Language lang) => Localize();
+
+    private string GetHintTextByStep(int idx)
+    {
+        if (idx == 8 && !string.IsNullOrEmpty(afterReturnHintText))
+            return afterReturnHintText;
+        if (idx == 15 && !string.IsNullOrEmpty(beforeAnomalyHintText))
+            return beforeAnomalyHintText;
+        if (idx < hintKeys.Length)
+            return LocalizationManager.Loc(hintKeys[idx]);
+        return "";
+    }
 
     public void ForceStartTutorial()
     {
@@ -172,8 +186,8 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
     private void ShowHintByStep(int idx)
     {
         if (skipSnowmobile && idx == 3) return;
-        if (idx >= hintKeys.Length) return;
-        ShowHint(LocalizationManager.Loc(hintKeys[idx]));
+        if (idx >= hintKeys.Length && idx != 8 && idx != 15) return;
+        ShowHint(GetHintTextByStep(idx));
     }
 
     private void ShowHint(string text)
@@ -201,10 +215,8 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
         if (skipSnowmobile && step == 3)
         {
             step = 4;
-            // Если при пропуске снегохода мы уже на шаге 4, то показываем подсказку для факела только если она ещё не активна
             if (step == 4 && !flareHintActive)
             {
-                // Не показываем сразу, подсказка активируется позже через ActivateFlareHint()
                 hintPanel.SetActive(false);
             }
         }
@@ -216,7 +228,6 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
             switch (step)
             {
                 case 4:
-                    // Факел – не показываем автоматически, ждём ActivateFlareHint()
                     break;
                 case 5:
                     if (!depositBroken) ShowHintByStep(5);
@@ -226,8 +237,8 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
                     {
                         if (depositBroken && !returnedHintShown)
                         {
-                            step = 8;
-                            ShowHintByStep(7);
+                            step = 9;
+                            ShowHintByStep(8);
                             returnedHintShown = true;
                         }
                     }
@@ -271,7 +282,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
                 if (skipSnowmobile && depositBroken)
                 {
                     Success();
-                    step = 8;
+                    step = 9;
                 }
                 else if (!skipSnowmobile && firstMineralPlaced) Success();
                 break;
@@ -279,7 +290,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
                 if (skipSnowmobile)
                 {
                     Success();
-                    step = 8;
+                    step = 9;
                 }
                 else if (vehicleMineralSnapZone != null &&
                     vehicleMineralSnapZone.AttachedItemsCount >= GameDayManager.Instance.MineralsToResearch)
@@ -300,12 +311,14 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
                 }
                 break;
             case 9:
+                break;
+            case 10:
                 if (baseResearchSnapZone != null && baseResearchSnapZone.AttachedItemsCount > 0)
                 {
                     if (!firstMineralOnTable)
                     {
                         firstMineralOnTable = true;
-                        ShowHintByStep(9);
+                        ShowHintByStep(10);
                         scanMoveHintShown = true;
                     }
                 }
@@ -342,9 +355,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
                 { vehicleEntered = true; Success(); hintPanel.SetActive(false); }
                 else if (skipSnowmobile)
                 {
-                    // При пропуске снегохода сразу завершаем шаг 3 и переходим дальше
                     Success();
-                    // Скрываем панель, если она вдруг показалась (хотя ShowHintByStep для 3 не вызывается)
                     if (hintPanel != null) hintPanel.SetActive(false);
                 }
                 break;
@@ -368,7 +379,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
 
         if (!bedHintShown && !playerSlept && anomalyPlaced && GameDayManager.Instance != null && GameDayManager.Instance.CanSleep)
         {
-            ShowHintByStep(15);
+            ShowHintByStep(17);
             bedHintShown = true;
         }
     }
@@ -422,7 +433,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
         if (!firstMineralOnTable)
         {
             firstMineralOnTable = true;
-            ShowHintByStep(9);
+            ShowHintByStep(10);
             scanMoveHintShown = true;
         }
     }
@@ -432,7 +443,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
         if (!firstMineralOnTable || !scanMoveHintShown || scanClickHintShown) return;
         if (proximity >= 0.6f)
         {
-            ShowHintByStep(10);
+            ShowHintByStep(11);
             scanMoveHintShown = false;
             scanClickHintShown = true;
         }
@@ -448,7 +459,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
         {
             if (!conclusionHintShown)
             {
-                ShowHintByStep(13);
+                ShowHintByStep(14);
                 conclusionHintShown = true;
             }
             if (currentScannedMineral.isLastInTutorialQueue && !finalMonologuePlayed && radioMonologue != null)
@@ -486,14 +497,14 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
 
         if (!accuracyHintShown)
         {
-            ShowHintByStep(11);
+            ShowHintByStep(12);
             accuracyHintShown = true;
             StartCoroutine(HideHintAfter(3f));
             return;
         }
         if (scanned == 1 && !showedFindTwoMore)
         {
-            ShowHintByStep(12);
+            ShowHintByStep(13);
             showedFindTwoMore = true;
             StartCoroutine(HideHintAfter(3f));
         }
@@ -517,7 +528,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
     {
         if (!bedHintShown && !playerSlept && anomalyPlaced)
         {
-            ShowHintByStep(15);
+            ShowHintByStep(17);
             bedHintShown = true;
         }
     }
@@ -527,7 +538,7 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
         if (anomalyHintShown || anomalyPlaced || currentScannedMineral == null) return;
         if (currentScannedMineral.isAnomaly && radioMonologue != null && radioMonologue.HasPlayedFinalMonologue)
         {
-            ShowHintByStep(14);
+            ShowHintByStep(15);
             anomalyHintShown = true;
         }
     }
@@ -605,10 +616,10 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
     public void SkipToPutMineralOnTable()
     {
         ResetAllFlags();
-        step = 9;
+        step = 10;
         researchedCount = 2;
         radioMonologue?.PlayReturnToBaseMonologue();
-        ShowHintByStep(8);
+        ShowHintByStep(9);
         researchTableHintShown = true;
         if (!skipSnowmobile)
             HighlightFirstTwoMineralsInVehicle();
