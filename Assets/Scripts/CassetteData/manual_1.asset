@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 75ca28b452a24d34bb974e5c53a0aab4, type: 3}
+  m_Name: manual_1
+  m_EditorClassIdentifier: 
+  id: 1
+  displayName: manual_1
+  coverSprite: {fileID: 0}
+  description: das
+  videoClip: {fileID: 32900000, guid: 7d376f75ce809aa44b1bb059f191fc95, type: 3}
