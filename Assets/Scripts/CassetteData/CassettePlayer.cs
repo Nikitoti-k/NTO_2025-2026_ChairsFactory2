@@ -1,12 +1,13 @@
 using UnityEngine;
 using UnityEngine.Video;
 using UnityEngine.UI;
+using System;
 
 public class CassettePlayer : MonoBehaviour
 {
     [Header("3D компоненты")]
     [SerializeField] private Transform cassetteSlot;
-   //[SerializeField] private Collider insertTrigger;  
+   //[SerializeField] private Collider insertTrigger;
 
     [Header("Видео плеер")]
     [SerializeField] private VideoPlayer videoPlayer;
@@ -29,6 +30,12 @@ public class CassettePlayer : MonoBehaviour
 
     [Header("Настройки")]
     [SerializeField] private float rewindSeconds = 10f;
+
+    public static event Action OnCassete1Play;
+    public static event Action OnCassete2Play;
+    public static event Action OnCassete3Play;
+    public static event Action OnCassete4Play;
+
 
     private Cassette currentCassette;
     private AdditionalCassette currentAdditionalCassette;
@@ -86,6 +93,25 @@ public class CassettePlayer : MonoBehaviour
     private void InsertCassette(Cassette cassette)
     {
         currentCassette = cassette;
+        int id = int.Parse(currentCassette.Data.id);
+        switch (id)
+        {
+            case 1: 
+                OnCassete1Play.Invoke();
+                break;
+            case 2:
+                OnCassete2Play.Invoke();
+                break;
+            case 3:
+                OnCassete3Play.Invoke();
+                break;
+            case 4:
+                OnCassete4Play.Invoke();
+                break;
+
+        }
+
+
         currentCassette.InsertIntoPlayer(cassetteSlot);
 
         fullscreenUI.SetActive(true);
