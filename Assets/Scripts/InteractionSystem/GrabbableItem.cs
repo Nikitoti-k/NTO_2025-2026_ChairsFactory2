@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public enum GrabbableType { Mineral, Tool, Door, Resource, Junk }
+public enum GrabbableType { Mineral, Tool, Door, Resource, Junk, Cassette}
 
 public abstract class GrabbableItem : MonoBehaviour
 {
