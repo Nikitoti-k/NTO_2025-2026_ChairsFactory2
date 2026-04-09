@@ -713,6 +713,8 @@ public class TutorialManager : MonoBehaviour, ISaveableV2, IHasTutorialData, ILo
         return true;
     }
 
+    public int GetResearchedCount() => researchedCount;
+
     public ObjectSaveData GetCommonSaveData() => new ObjectSaveData { uniqueID = GetUniqueID(), isActive = gameObject.activeSelf };
     public void LoadCommonData(ObjectSaveData data) => gameObject.SetActive(data.isActive);
 }
