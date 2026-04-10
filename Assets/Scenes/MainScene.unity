@@ -2768,7 +2768,7 @@ MonoBehaviour:
   saveLoadMenu: {fileID: 1512301512}
   saveLoadMenuScript: {fileID: 1512301517}
   errorText: {fileID: 729774650}
-  gameSceneName: GameScene
+  gameSceneName: GGrriisshha
   testGameSceneName: TestScene
 --- !u!1 &896953358
 GameObject:

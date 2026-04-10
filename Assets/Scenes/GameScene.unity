@@ -33833,6 +33833,7 @@ MonoBehaviour:
   cassetteSlot: {fileID: 1098773899}
   videoPlayer: {fileID: 959308104}
   fullscreenUI: {fileID: 509249383}
+  additionalFullscreenUI: {fileID: 0}
   videoDisplay: {fileID: 511787733}
   videoRenderTexture: {fileID: 8400000, guid: 5516e9a1233c03e48b58326e8f27ddb4, type: 2}
   playPauseButton: {fileID: 505014394}
@@ -33840,6 +33841,7 @@ MonoBehaviour:
   speedUpButton: {fileID: 385898896}
   speedDownButton: {fileID: 1398327966}
   closeButton: {fileID: 207832798}
+  additionCloseButton: {fileID: 0}
   timeText: {fileID: 0}
   speedText: {fileID: 0}
   rewindSeconds: 10
@@ -58138,7 +58140,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3836979047366133623, guid: 237ecba0a6b766b41bd94e0e537c1510, type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8569012870414844013, guid: 237ecba0a6b766b41bd94e0e537c1510, type: 3}
       propertyPath: m_LocalPosition.x

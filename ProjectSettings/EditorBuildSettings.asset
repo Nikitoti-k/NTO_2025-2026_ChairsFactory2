@@ -15,8 +15,14 @@ EditorBuildSettings:
     path: Assets/Scenes/TestScene1.unity
     guid: c1e66d14dd07a054e90e19e212fbf922
   - enabled: 1
-    path: Assets/Scenes/TestScene.unity
+    path: Assets/Scenes/TestScene2.unity
     guid: f3728833899fbe54aaf24520e593f497
+  - enabled: 1
+    path: Assets/Scenes/TestScene.unity
+    guid: bf3caa25ab479d84297ced6db4b9a428
+  - enabled: 1
+    path: Assets/Scenes/GGrriisshha.unity
+    guid: 1d16267f92c352644bbb4bc585ffe76c
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: eb6297aa6955eb545bc396fa5fdabe28, type: 3}
   m_UseUCBPForAssetBundles: 0
